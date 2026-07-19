@@ -10,6 +10,7 @@ from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from unittest.mock import MagicMock, patch
 
+import gtp
 from gtp.cli import build_parser, main
 from gtp.model import Diagnostic
 from gtp.status import StatusResult
@@ -294,7 +295,7 @@ class CliTests(unittest.TestCase):
         with redirect_stdout(output), self.assertRaises(SystemExit) as raised:
             build_parser().parse_args(["--version"])
         self.assertEqual(0, raised.exception.code)
-        self.assertEqual("1.0.0\n", output.getvalue())
+        self.assertEqual(f"{gtp.__version__}\n", output.getvalue())
 
     def test_status_halt_is_successful_observation(self) -> None:
         observed = StatusResult(
