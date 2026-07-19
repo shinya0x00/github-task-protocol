@@ -1,4 +1,5 @@
 {
+  "legacy": true,
   "release_candidate": "1.0.0",
   "date": "2026-07-19",
   "repository": "shinya0x00/github-task-protocol",

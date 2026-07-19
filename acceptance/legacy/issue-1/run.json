@@ -1,4 +1,5 @@
 {
+  "legacy": true,
   "run": "gtp-walking-skeleton-2026-07-19",
   "repository": "shinya0x00/github-task-protocol",
   "bootstrap_main_sha": "af29a98be8b6666afe5fabfecdaac2a5a6f3ae13",

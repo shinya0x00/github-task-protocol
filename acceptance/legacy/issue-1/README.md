@@ -1,4 +1,4 @@
-# Real GitHub acceptance run
+# Legacy real GitHub acceptance run
 
 このdirectoryは、walking skeletonを実GitHubで1回だけ通した受け入れ記録を置く。GTP coreの正準仕様ではない。
 
@@ -37,7 +37,7 @@ GITHUB_TOKEN=<token> PYTHONPATH=src python3 -m gtp status \
   https://github.com/shinya0x00/github-task-protocol/issues/1
 ```
 
-release candidateのlocal/CI検証結果は`acceptance/v1.0.0.json`へ記録する。
+当時のrelease candidate記録は[`../v1.0.0/v1.0.0.json`](../v1.0.0/v1.0.0.json)に保存している。
 
 ## Evidence limits
 
