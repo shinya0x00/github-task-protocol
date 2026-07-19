@@ -11,9 +11,12 @@
   },
   "agent_b": {
     "runtime": "Claude Code (Sonnet 5)",
+    "first_commit_sha": "b7d083f104b129ec0b39ef24593e66bfb162a01f",
     "input_given": "https://github.com/shinya0x00/github-task-protocol/issues/7",
     "input_was_issue_url_only": true,
     "chat_history_or_handoff_doc_read": false,
+    "canonical_adapter_in_system_environment": true,
+    "adapter_limit": "This run demonstrates handoff with GTP.md plus its canonical adapter. It does not demonstrate that the agent would discover GTP.md from the Issue URL without that environment instruction.",
     "first_next_action": "Read GTP.md as the sole spec, read Issue #7 comments in Server Order, reconstructed state as in_progress from the Contract+Start Records, then fetched and checked out the existing remote branch agent/issue-7-level0-handoff instead of creating a new branch or PR.",
     "first_next_action_basis_urls": [
       "https://github.com/shinya0x00/github-task-protocol/issues/7#issuecomment-5015234969",
@@ -30,6 +33,17 @@
     "gtp_cli_used": false,
     "gtp_status_used": false,
     "gtp_check_used": false
+  },
+  "human_probe": {
+    "attempt_1": {
+      "result": "failed",
+      "owner_response": "何もわからない",
+      "observed_problem": "The acceptance report did not present the goal, allowed files, current state, and next action in plain language before implementation detail."
+    },
+    "repair": "Added a plain-language four-point current-state summary at the top of README.md.",
+    "attempt_2": {
+      "result": "not_run"
+    }
   },
   "observed_ambiguity_for_human_review": "The invoking harness's default branch-naming convention (claude/github-task-protocol-issue-7-1s76g6) conflicted with the branch already bound by the Start Record (agent/issue-7-level0-handoff) and open PR #16. Continuing on a different branch would have violated GTP.md §9 (1 Issue = 1 branch = 1 PR). This was flagged and confirmed with the repository owner before any commit was made; no unattended decision was made to switch branches."
 }
