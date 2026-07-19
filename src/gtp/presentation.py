@@ -9,6 +9,15 @@ from .status import StatusResult
 
 
 AUTHORITY_NOTICE = "この出力は変更・完了・mergeの許可を与えません"
+HALT_MESSAGES = {
+    "invalid_record": "GTP Recordの形式、内容、編集状態のいずれかが不正です",
+    "conflicting_records": "同じ役割のRecordが競合しています",
+    "invalid_transition": "Recordの順序または参照関係が成立していません",
+    "invalid_binding": "Issue、branch、PR、scopeの束縛が一致しません",
+    "invalid_evidence": "Done Conditionに対応するEvidenceを確認できません",
+    "stale_evidence": "EvidenceがDoneのsource head SHAと一致しません",
+    "terminal_violation": "terminal stateの前後関係に違反するRecordまたはmergeがあります",
+}
 
 
 def _record(value: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -24,6 +33,13 @@ def _record(value: dict[str, Any] | None) -> dict[str, Any] | None:
         "id": value.get("id"),
         "observation": observation,
     }
+
+
+def _branch(value: dict[str, Any] | None) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    observation = {"exists": value["exists"]} if "exists" in value else {}
+    return {"name": value.get("name"), "observation": observation}
 
 
 def _next_action(result: StatusResult) -> str:
@@ -76,7 +92,7 @@ def status_projection(result: StatusResult) -> dict[str, Any]:
         "issue_url": result.issue_url,
         "state": result.state,
         "halt_reason": diagnostics[0]["token"] if result.state == "halt" and diagnostics else None,
-        "details": [item.get("detail", {}) for item in diagnostics],
+        "details": [item["detail"] for item in diagnostics if "detail" in item],
         "next_action": _next_action(result),
         "primary_url": _primary_url(result),
         "authority": "none",
@@ -85,7 +101,7 @@ def status_projection(result: StatusResult) -> dict[str, Any]:
         "start": _record(current.get("start")),
         "done": _record(current.get("done")),
         "stop": _record(current.get("stop")),
-        "branch": current.get("branch"),
+        "branch": _branch(current.get("branch")),
         "pr_candidate": candidate,
         "bound_pr": current.get("bound_pr"),
         "diagnostics": diagnostics,
@@ -96,6 +112,8 @@ def status_projection(result: StatusResult) -> dict[str, Any]:
 def _status_text(machine: dict[str, Any]) -> list[str]:
     state = machine["state"] if machine["state"] is not None else "不明"
     action = machine["next_action"]
+    branch = machine.get("branch")
+    branch_name = branch.get("name") if isinstance(branch, dict) else None
     stop_text = {
         "unmanaged": "停止は不要です。Contractを記録する段階です",
         "ready": "停止は不要です。作業開始前です",
@@ -117,16 +135,22 @@ def _status_text(machine: dict[str, Any]) -> list[str]:
         "retry_acquisition": "GitHub情報を再取得してください",
     }[action]
     if machine["state"] is None:
-        reason = "GitHub情報を完全に取得できず、stateを決定していません"
+        errors = machine["acquisition_errors"]
+        code = errors[0].get("code", "acquisition_incomplete") if errors else "acquisition_incomplete"
+        reason = f"{code} — GitHub情報を完全に取得できず、stateを決定していません"
     elif machine["state"] == "halt":
-        reason = f"{machine['halt_reason']} — protocol上の矛盾または不適合を確認しました"
+        token = machine["halt_reason"]
+        reason = f"{token} — {HALT_MESSAGES.get(token, 'protocol上の矛盾または不適合を確認しました')}"
     elif action == "await_merge":
         reason = "Done Claimは確認済みですが、native mergeはまだ確認できません"
+    elif action == "post_done":
+        reason = f"Start、作業branch {branch_name or '（名前不明）'}、PR candidateを確認しました"
+    elif action == "continue_work":
+        reason = f"Startと作業branch {branch_name or '（名前不明）'}を確認しました"
     else:
         reason = {
             "unmanaged": "有効なContractがありません",
             "ready": "有効なContractがあり、Startはまだありません",
-            "in_progress": "Startと作業branchを確認しました",
             "done": "Done Claimのsource head、Evidence、native mergeを確認しました",
             "stopped": "有効なStop Recordを確認しました",
         }[machine["state"]]

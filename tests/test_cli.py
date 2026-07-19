@@ -10,23 +10,29 @@ from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from unittest.mock import MagicMock, patch
 
-from gtp.cli import main
+from gtp.cli import build_parser, main
+from gtp.model import Diagnostic
 from gtp.status import StatusResult
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "carriers" / "contract-valid.md"
 HTTP_FIXTURES = Path(__file__).parent / "fixtures" / "http"
+CLI_FIXTURES = Path(__file__).parent / "fixtures" / "cli"
 
 
 class CliTests(unittest.TestCase):
-    def call(self, argv: list[str]) -> tuple[int, list[str], dict]:
+    def capture(self, argv: list[str]) -> tuple[int, str]:
         output = StringIO()
         with redirect_stdout(output):
             code = main(argv)
-        text = output.getvalue()
-        json_start = text.index("{")
-        human = text[:json_start].rstrip("\n").splitlines()
-        return code, human, json.loads(text[json_start:])
+        return code, output.getvalue()
+
+    def call(self, argv: list[str]) -> tuple[int, list[str], dict]:
+        code, text = self.capture(argv)
+        lines = text.splitlines(keepends=True)
+        json_line = next(index for index, line in enumerate(lines) if line.rstrip("\n") == "{")
+        human = [line.rstrip("\n") for line in lines[:json_line]]
+        return code, human, json.loads("".join(lines[json_line:]))
 
     def call_http_fixture(self, name: str) -> tuple[int, dict]:
         fixture = json.loads((HTTP_FIXTURES / name).read_text(encoding="utf-8"))
@@ -251,12 +257,44 @@ class CliTests(unittest.TestCase):
         self.assertFalse(output["recognized"])
         self.assertIn("通常comment", human[0])
 
+    def test_check_invalid_carrier_and_input_error_are_distinct(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            invalid = Path(directory) / "invalid.md"
+            invalid.write_text("<!-- gtp-record:v1 -->\n壊れたCarrier\n", encoding="utf-8")
+            invalid_code, invalid_human, invalid_output = self.call(["check", str(invalid)])
+            missing_code, missing_human, missing_output = self.call(
+                ["check", str(Path(directory) / "missing.md")]
+            )
+            non_utf8 = Path(directory) / "non-utf8.md"
+            non_utf8.write_bytes(b"\xff")
+            encoding_code, _, encoding_output = self.call(["check", str(non_utf8)])
+        self.assertEqual(1, invalid_code)
+        self.assertTrue(invalid_output["recognized"])
+        self.assertFalse(invalid_output["schema_valid"])
+        self.assertIn("適合しません", invalid_human[0])
+        self.assertEqual(2, missing_code)
+        self.assertIsNone(missing_output["recognized"])
+        self.assertEqual("input_error", missing_output["errors"][0]["code"])
+        self.assertIn("読めません", missing_human[0])
+        self.assertEqual(2, encoding_code)
+        self.assertEqual("input_error", encoding_output["errors"][0]["code"])
+
+    def test_only_status_and_check_are_public_commands(self) -> None:
+        actions = build_parser()._subparsers._group_actions
+        self.assertEqual(1, len(actions))
+        self.assertEqual({"status", "check"}, set(actions[0].choices))
+
     def test_status_halt_is_successful_observation(self) -> None:
-        observed = StatusResult("https://github.com/o/r/issues/1", "halt")
+        observed = StatusResult(
+            "https://github.com/o/r/issues/1",
+            "halt",
+            [Diagnostic("invalid_binding", ("https://github.com/o/r/pull/7",))],
+        )
         with patch("gtp.cli.evaluate_issue", return_value=observed):
             code, human, output = self.call(["status", observed.issue_url])
         self.assertEqual(0, code)
         self.assertEqual("halt", output["state"])
+        self.assertEqual("invalid_binding", output["halt_reason"])
         self.assertEqual("状態: halt", human[0])
         self.assertTrue(human[-1].startswith("非許可表示:"))
 
@@ -271,6 +309,93 @@ class CliTests(unittest.TestCase):
         self.assertEqual(2, code)
         self.assertIsNone(output["state"])
         self.assertEqual("状態: 不明", human[0])
+
+    def test_status_human_and_machine_matrix(self) -> None:
+        matrix = json.loads((CLI_FIXTURES / "status-matrix.json").read_text(encoding="utf-8"))
+        issue_url = "https://github.com/o/r/issues/1"
+        for case in matrix["states"]:
+            diagnostic = case.get("diagnostic")
+            diagnostics = (
+                [Diagnostic(diagnostic, ("https://github.com/o/r/pull/7",), {"sample": True})]
+                if diagnostic
+                else []
+            )
+            errors = [case["acquisition_error"]] if case.get("acquisition_error") else []
+            observed = StatusResult(
+                issue_url,
+                case["state"],
+                diagnostics,
+                case.get("current", {}),
+                errors,
+            )
+            with self.subTest(case=case["name"]), patch(
+                "gtp.cli.evaluate_issue", return_value=observed
+            ):
+                code, human, output = self.call(["status", issue_url])
+                self.assertEqual(2 if case["state"] is None else 0, code)
+                self.assertEqual(6, len(human))
+                self.assertEqual(
+                    ["状態", "停止要否", "次の行動", "理由", "最初のURL", "非許可表示"],
+                    [line.split(":", 1)[0] for line in human],
+                )
+                self.assertIn(case["reason_contains"], human[3])
+                self.assertEqual(case["state"], output["state"])
+                self.assertEqual(case["next_action"], output["next_action"])
+                self.assertEqual("none", output["authority"])
+                self.assertEqual(
+                    "incomplete" if case["state"] is None else "complete",
+                    output["acquisition"],
+                )
+                self.assertTrue(
+                    {
+                        "gtp", "command", "issue_url", "state", "halt_reason",
+                        "details", "next_action", "primary_url", "authority",
+                        "acquisition", "contract", "start", "done", "stop",
+                        "branch", "pr_candidate", "bound_pr", "diagnostics",
+                    }.issubset(output)
+                )
+                if diagnostic:
+                    self.assertEqual([{"sample": True}], output["details"])
+                if case["name"] == "in_progress awaiting merge":
+                    self.assertEqual(
+                        3, output["done"]["observation"]["comment_id"]
+                    )
+                    self.assertNotIn("comment_id", output["done"])
+                if case["name"] == "in_progress":
+                    self.assertEqual(
+                        {"exists": True}, output["branch"]["observation"]
+                    )
+                    self.assertNotIn("exists", output["branch"])
+
+    def test_all_halt_reasons_have_specific_japanese_and_first_url(self) -> None:
+        matrix = json.loads((CLI_FIXTURES / "status-matrix.json").read_text(encoding="utf-8"))
+        issue_url = "https://github.com/o/r/issues/1"
+        cause_url = "https://github.com/o/r/issues/1#issuecomment-9"
+        for case in matrix["halt_reasons"]:
+            observed = StatusResult(
+                issue_url,
+                "halt",
+                [Diagnostic(case["token"], (cause_url,))],
+            )
+            with self.subTest(reason=case["token"]), patch(
+                "gtp.cli.evaluate_issue", return_value=observed
+            ):
+                code, human, output = self.call(["status", issue_url])
+                self.assertEqual(0, code)
+                self.assertEqual(f"理由: {case['token']} — {case['message']}", human[3])
+                self.assertEqual(f"最初のURL: {cause_url}", human[4])
+                self.assertEqual(case["token"], output["halt_reason"])
+                self.assertEqual(cause_url, output["primary_url"])
+
+    def test_stdout_is_deterministic_and_human_text_precedes_json(self) -> None:
+        observed = StatusResult("https://github.com/o/r/issues/1", "unmanaged")
+        with patch("gtp.cli.evaluate_issue", return_value=observed):
+            first_code, first = self.capture(["status", observed.issue_url])
+            second_code, second = self.capture(["status", observed.issue_url])
+        self.assertEqual(0, first_code)
+        self.assertEqual(first_code, second_code)
+        self.assertEqual(first, second)
+        self.assertLess(first.index("状態: unmanaged"), first.index("{\n"))
 
     def test_status_http_walking_skeleton_uses_production_path(self) -> None:
         code, output = self.call_http_fixture("walking-skeleton.json")
