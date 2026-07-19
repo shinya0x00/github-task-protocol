@@ -1,48 +1,31 @@
-# Walking skeleton acceptance status
+# GTP v1.0.0 release candidate status
 
 更新日: 2026-07-19
 
-この文書は実装進行のhandoffであり、GTP core specificationやDone Recordではない。
+この文書はrelease handoffであり、GTP core specificationやDone Recordではない。
 
 ## 観測済み
 
-| 要件 | 状態 | Evidence | Evidenceの限界 |
+| 項目 | 結果 | Evidence | 限界 |
 |---|---|---|---|
-| Exact Carrier認識 | local verified | `tests/test_carrier.py`、valid/normal/marker typo/malformed/duplicate key fixtures | GitHubがMarkdown bodyを返す全variantを網羅しない |
-| 4 Record type closed schema | local verified | `tests/fixtures/carriers/`、`tests/test_schema.py` | v1全repair routeの実装完了を意味しない |
-| Server Order prefix fold | local verified | `tests/test_reducer.py` | 実Issue上の複数page履歴では未発火 |
-| 6 state | local verified | reducer/status testsで`unmanaged`、`ready`、`in_progress`、`halt`、`done`、`stopped`を観測 | `done`と`stopped`はfake GitHub observationsによる |
-| 2-leaf Contract conflictと回復 | local verified | `conflicting_records`の両URLと2 URL supersessionのtest | 実comment URLでは未発火 |
-| branch / PR / Evidence / merge境界 | local verified | artifact、Check Run pending/failure、PR source head、merge前後のstatus tests | 実branch・PR・Check Runでは未発火 |
-| dependency-free package | isolated verified | PEP 517 wheel build、clean venv install、生成された`gtp check`実行成功 | release artifactの公開は未実施 |
-| production GitHub read wiring | live read verified | `cli/cli#13826`で`unmanaged`、`cli/cli#13919`で通常commentを無視、Issue形式のPR resourceを拒否 | GTP Carrierを含む実Issueでは未発火 |
-| 実repository E2E | in progress | Issue #1で`ready -> halt -> ready -> in_progress`、PR #2、fresh agent再開を観測 | Done、native merge、merge後`done`は未実施 |
+| 4 Record type / Exact Carrier / closed schema | verified | carrier、schema、CLI tests | GitHubが将来追加するMarkdown variantまでは保証しない |
+| alias / supersession / Repair Group | verified | v1 conformance fixture suite | destructive variantはfake GitHub boundaryであり実Issueへは投稿していない |
+| 6 state / terminal timeline | verified | Done／Stop、Late Done、pending Check、terminal dependency tests | fixture timestampより細かい外部resource順序は復元しない |
+| ADR-001〜ADR-026 coverage | verified | `tests/fixtures/adr-conformance.json`とcoverage test | 対応表は自然言語条件の真実性を自動証明しない |
+| Python 3.11〜3.13 / wheel / installed CLI | verified | GitHub Actions CI | OS matrixはUbuntuのみ |
+| 実repository E2E | verified | Issue #1、PR #2、`acceptance/run.json` | actor identityとauthorityはGTPの対象外 |
+| 完成作業dogfooding | in progress | Issue #3、`codex/gtp-v1-complete` | native mergeとtagはrelease candidate検証後に実施する |
 
-## 現在の検証command
+## Release transition
 
-```console
-PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python3 -m unittest discover -s tests
+1. release candidate commitでlocal tests、wheel install、Issue #1／#3のlive readを再実行する。
+2. completion PRの全Check Run成功を確認する。
+3. Issue #3へCheck Runとimmutable `acceptance/v1.0.0.json`をEvidenceとするDoneを投稿する。
+4. fresh processでmerge前`in_progress`を確認する。
+5. completion PRをnative mergeする。
+6. mainからIssue #3の`done`とIssue #1の`done`を確認する。
+7. 検証したmain merge commitへannotated tag `v1.0.0`を作成してpushする。
 
-python3 -m venv /tmp/gtp-verify
-/tmp/gtp-verify/bin/python -m pip install --no-build-isolation --no-deps .
-/tmp/gtp-verify/bin/gtp check tests/fixtures/carriers/contract-valid.md
-```
+## Unknown
 
-直近の観測結果は37 tests成功。実GitHub readでは、取得完了時に`unmanaged`とexit 0、存在しないIssueでは`state: null`とexit 2を観測した。
-
-## Resolved bootstrap
-
-`bootstrap_main_missing`は2026-07-19に解消した。
-
-- Operatorの明示指示に基づき、3正準文書だけを含む初期`main` commitを作成した。
-- local SHAとGitHub `refs/heads/main`はともに`af29a98be8b6666afe5fabfecdaac2a5a6f3ae13`である。
-- 実装branchはこのSHAから`codex/gtp-walking-skeleton`として作成した。
-
-このbootstrapはGTP Recordが付与したauthorityによるものではない。
-
-## Exact resume point
-
-1. `acceptance/run.json`、cache freshness header、関連testを最終source commitとしてpushする。
-2. PR #2のhead SHAと同SHAの`acceptance/run.json` immutable blob URLを取得する。
-3. artifact Evidence付きDoneを投稿し、merge前`in_progress`を確認する。
-4. PR #2をnative mergeし、Issue #1から`done`を観測する。
+release candidate時点では、completion PRの最終Check Run URL、native merge commit SHA、tag push結果は未観測である。これらを先取りして完了claimしない。
