@@ -11,6 +11,7 @@
   {"name": "done branch mismatch", "records": ["contract", "start", "done"], "pr_branch": "other", "state": "halt", "reason": "invalid_binding"},
   {"name": "check success merged", "records": ["contract", "start", "done"], "evidence_kind": "check", "merged_at": "2026-07-19T00:00:05Z", "state": "done"},
   {"name": "check pending", "records": ["contract", "start", "done"], "evidence_kind": "check", "check_status": "in_progress", "check_conclusion": null, "state": "halt", "reason": "invalid_evidence", "first_url": "https://github.com/o/r/issues/1#issuecomment-103"},
+  {"name": "evidence key missing", "records": ["contract", "start", "done"], "missing_evidence_key": true, "state": "halt", "reason": "invalid_evidence", "first_url": "https://github.com/o/r/issues/1#issuecomment-103"},
   {"name": "check failure", "records": ["contract", "start", "done"], "evidence_kind": "check", "check_conclusion": "failure", "state": "halt", "reason": "invalid_evidence"},
   {"name": "check stale", "records": ["contract", "start", "done"], "evidence_kind": "check", "check_sha": "ffffffffffffffffffffffffffffffffffffffff", "state": "halt", "reason": "stale_evidence"},
   {"name": "artifact missing", "records": ["contract", "start", "done"], "artifact_missing": true, "state": "halt", "reason": "invalid_evidence"},
