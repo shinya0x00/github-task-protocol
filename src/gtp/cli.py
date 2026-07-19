@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import sys
 
+from . import __version__
 from .carrier import classify_carrier
 from .github import GitHubClient
 from .presentation import present_check, present_input_error, present_status
@@ -33,6 +34,7 @@ def _check(path: str) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="gtp")
+    parser.add_argument("--version", action="version", version=__version__)
     subparsers = parser.add_subparsers(dest="command", required=True)
     check = subparsers.add_parser("check", help="validate one complete Markdown comment")
     check.add_argument("comment")

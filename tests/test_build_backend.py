@@ -90,12 +90,20 @@ class BuildBackendTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
+            version = subprocess.run(
+                [str(command), "--version"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
         self.assertEqual(0, checked.returncode)
         self.assertIn("offline schemaに適合", checked.stdout)
         self.assertIn('"command": "check"', checked.stdout)
         self.assertEqual(2, status.returncode)
         self.assertIn("状態: 不明", status.stdout)
         self.assertIn('"command": "status"', status.stdout)
+        self.assertEqual(0, version.returncode)
+        self.assertEqual(f"{gtp.__version__}\n", version.stdout)
 
 
 if __name__ == "__main__":
