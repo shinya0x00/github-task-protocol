@@ -89,9 +89,10 @@
   ],
   "installed_live_observation": {
     "observed_at": "2026-07-19",
-    "built_from_commit": "14250619f4d158f9b3afa34e8b48da612752566a",
+    "built_from_commit": "c43cc8838c16b349f8bab744b5e04d0a42b9015c",
+    "source_date_epoch": 1700000000,
     "wheel": "github_task_protocol-1.0.0-py3-none-any.whl",
-    "wheel_sha256": "d4abcfa86bd68626b17f04479616c7aba494e61ae32a59f9b7c2d2a6737b218c",
+    "wheel_sha256": "bde93e42544a19b75b6d9c0e4127aca8f4552255539dfceb8a4fbc9e3e1c365b",
     "python": "3.12.12",
     "gtp_version": "1.0.0",
     "issue_url": "https://github.com/shinya0x00/github-task-protocol/issues/31",
@@ -110,7 +111,7 @@
     },
     "limits": [
       "The installed run observes GitHub state and presentation, not actor identity.",
-      "The wheel was built before this observation-only fixture was appended; production sources are unchanged."
+      "The wheel was built before this updated observation was appended; only test evidence changed afterward, not production sources."
     ]
   }
 }
