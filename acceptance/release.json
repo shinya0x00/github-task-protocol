@@ -1,74 +1,64 @@
 {
-  "schema": "github-task-protocol-local-distribution/v1",
+  "schema": "github-task-protocol-release-plan/v1",
   "package_version": "1.0.1",
   "protocol_version": "1.0",
-  "status": "verified_locally_not_published",
-  "distribution_policy": {
-    "cli_required_for_gtp_use": false,
-    "public_registry": null,
-    "pypi": "not_published",
-    "npm": "not_published",
-    "github_release": "not_created",
-    "tag_v1_0_1": "not_created",
-    "future_distribution_method": "undecided"
-  },
-  "source_candidate": {
-    "commit_sha": "dbd7d32e33d8fb966380dd20934ce83f525ac70f",
-    "commit_url": "https://github.com/shinya0x00/github-task-protocol/commit/dbd7d32e33d8fb966380dd20934ce83f525ac70f",
-    "package_metadata_version": "1.0.1",
-    "runtime_version": "1.0.1",
-    "main_ci": "https://github.com/shinya0x00/github-task-protocol/actions/runs/29690589371",
-    "checks": {
-      "python_3_11": "https://github.com/shinya0x00/github-task-protocol/runs/88202476063",
-      "python_3_12": "https://github.com/shinya0x00/github-task-protocol/runs/88202476036",
-      "python_3_13": "https://github.com/shinya0x00/github-task-protocol/runs/88202476037"
-    }
-  },
-  "local_artifacts": {
-    "sdist": {
-      "filename": "github-task-protocol-1.0.1.tar.gz",
-      "sha256": "223ec99addd30960c59afa2aad661f2d6d7c09aa0bd6c7f3d1e45439b0786ee2"
+  "status": "prepared_not_published",
+  "version_selection": {
+    "selected": "1.0.1",
+    "reason": "v1.0.0 is an existing immutable tag; PyPI, GitHub tag, and GitHub Release did not contain 1.0.1 during preflight",
+    "existing_tag": {
+      "name": "v1.0.0",
+      "target_commit": "efb6536d55d4636fe7bfaea9788b7b86d48d730b"
     },
-    "wheel": {
-      "filename": "github_task_protocol-1.0.1-py3-none-any.whl",
-      "sha256": "0f1f51289cabd31a9be941423c54365ed31249472b1bf0045ef3afd4f046223a"
-    }
+    "pypi_project_before_first_publish": "not_found_http_404",
+    "tag_v1_0_1_before_publish": "not_found",
+    "github_release_v1_0_1_before_publish": "not_found"
   },
-  "local_validation": {
-    "clean_wheel_install": {
-      "exit_code": 0,
-      "installed_version": "1.0.1"
-    },
-    "gtp_check_valid_fixture": {
-      "exit_code": 0,
-      "schema_valid": true
-    },
-    "live_done": {
-      "issue": "https://github.com/shinya0x00/github-task-protocol/issues/12",
-      "state": "done",
-      "exit_code": 0
-    },
-    "live_stopped": {
-      "issue": "https://github.com/shinya0x00/github-task-protocol/issues/40",
-      "state": "stopped",
-      "exit_code": 0
-    }
+  "candidate": {
+    "commit_sha": "to_be_fixed_after_release_preparation_merge",
+    "required_checks": "to_be_fixed_after_release_preparation_merge",
+    "sdist": "to_be_built_once_from_fixed_candidate",
+    "wheel": "to_be_built_once_from_fixed_candidate"
   },
-  "acceptance_evidence": {
-    "specification": "https://github.com/shinya0x00/github-task-protocol/blob/dbd7d32e33d8fb966380dd20934ce83f525ac70f/GTP.md",
-    "level0": "https://github.com/shinya0x00/github-task-protocol/tree/dbd7d32e33d8fb966380dd20934ce83f525ac70f/acceptance/level0",
-    "level1": "https://github.com/shinya0x00/github-task-protocol/tree/dbd7d32e33d8fb966380dd20934ce83f525ac70f/acceptance/level1"
+  "publication_plan": {
+    "registry": "PyPI",
+    "npm": "not_in_scope",
+    "tag": "v1.0.1",
+    "github_release": "v1.0.1",
+    "order": [
+      "merge release preparation after Done",
+      "freeze main candidate and successful CI",
+      "build and verify sdist and wheel",
+      "create annotated tag and GitHub Release",
+      "human uploads the same artifacts to PyPI with hidden token input",
+      "install from public PyPI and rerun check plus live status",
+      "record final public Evidence in a separate Issue and PR"
+    ]
   },
-  "superseded_release_attempt": {
-    "issue": "https://github.com/shinya0x00/github-task-protocol/issues/14",
-    "state": "halt",
-    "halt_reason": "terminal_violation",
-    "closed_as": "not_planned",
-    "public_artifacts_created": false
+  "secret_boundary": {
+    "token_observed_by_repository": false,
+    "token_must_not_appear_in": [
+      "chat",
+      "Issue",
+      "commit",
+      "repository file",
+      "log",
+      "CLI argument"
+    ],
+    "manual_upload": "The human enters the token in a hidden prompt from their own terminal."
   },
+  "post_publish_verification": [
+    "PyPI JSON API returns version 1.0.1 and artifact hashes",
+    "clean environment installs github-task-protocol==1.0.1 from PyPI",
+    "gtp --version returns 1.0.1",
+    "gtp check accepts the valid Contract fixture",
+    "gtp status reconstructs a live done Issue",
+    "gtp status reconstructs a live stopped Issue",
+    "annotated tag, GitHub Release, PyPI metadata, and runtime version agree"
+  ],
   "evidence_limits": [
-    "Local artifact hash does not prove publication or availability to other users.",
-    "Check Run success does not grant change, completion, merge, or publication authority.",
-    "GTP does not prove actor identity, credential safety, code quality, or Evidence truthfulness."
+    "Preparation does not prove publication.",
+    "A successful upload does not prove code quality or credential safety.",
+    "GTP and CI do not grant publication, completion, or merge authority."
   ]
 }
