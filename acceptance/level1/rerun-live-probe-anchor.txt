@@ -1,0 +1,4 @@
+Level 1 rerun live probe anchor.
+
+Release candidate: c859172c97a1804642d77248673470f51af73a79
+Purpose: bind proof_a to the Issue #36 source head without changing production code, specification, or tests.
