@@ -1,30 +1,30 @@
 {
   "acceptance_level": 1,
-  "status": "blocked_plain_language_readability",
+  "status": "awaiting_third_human_probe",
   "candidate": {
-    "commit_sha": "c859172c97a1804642d77248673470f51af73a79",
-    "commit_url": "https://github.com/shinya0x00/github-task-protocol/commit/c859172c97a1804642d77248673470f51af73a79",
+    "commit_sha": "0b70b4f46ac090a59cfa02f00b67548bf5441d1e",
+    "commit_url": "https://github.com/shinya0x00/github-task-protocol/commit/0b70b4f46ac090a59cfa02f00b67548bf5441d1e",
     "wheel": "github_task_protocol-1.0.0-py3-none-any.whl",
-    "wheel_sha256": "b610a77a0cd19ed7018b5983477816197584d36eb3d56376814cbad79bae18cb",
-    "gtp_blob": "https://github.com/shinya0x00/github-task-protocol/blob/c859172c97a1804642d77248673470f51af73a79/GTP.md",
+    "wheel_sha256": "b3d0b27dea4f769a847a5e427a065bb47d9c2d15b883f3ff7f8698f3e2b18a76",
+    "gtp_blob": "https://github.com/shinya0x00/github-task-protocol/blob/0b70b4f46ac090a59cfa02f00b67548bf5441d1e/GTP.md",
     "python_version": "3.12.12",
     "installed_gtp_version": "1.0.0",
     "install_mode": "clean venv; pip install --no-index --no-deps"
   },
   "live_negative": {
-    "issue": "https://github.com/shinya0x00/github-task-protocol/issues/36",
-    "pr": "https://github.com/shinya0x00/github-task-protocol/pull/37",
-    "probe_source_head": "a05102cd7297ad54801ed5f79f64cff29efcf7a5",
-    "invalid_done": "https://github.com/shinya0x00/github-task-protocol/issues/36#issuecomment-5015811102",
+    "issue": "https://github.com/shinya0x00/github-task-protocol/issues/40",
+    "pr": "https://github.com/shinya0x00/github-task-protocol/pull/41",
+    "probe_source_head": "4f495ab6c0fdc7636800c85d9af737809349e406",
+    "invalid_done": "https://github.com/shinya0x00/github-task-protocol/issues/40#issuecomment-5015888880",
     "halt_observation": {
       "state": "halt",
       "halt_reason": "invalid_evidence",
-      "primary_url": "https://github.com/shinya0x00/github-task-protocol/issues/36#issuecomment-5015811102",
+      "primary_url": "https://github.com/shinya0x00/github-task-protocol/issues/40#issuecomment-5015888880",
       "next_action": "inspect_halt",
       "exit_code": 0,
       "stdout": "stdout/halt.txt"
     },
-    "stop": "https://github.com/shinya0x00/github-task-protocol/issues/36#issuecomment-5015812615",
+    "stop": "https://github.com/shinya0x00/github-task-protocol/issues/40#issuecomment-5015890386",
     "stopped_observation": {
       "state": "stopped",
       "next_action": "none_stopped",
@@ -95,31 +95,25 @@
   "repairs_before_final_run": [
     "https://github.com/shinya0x00/github-task-protocol/issues/25",
     "https://github.com/shinya0x00/github-task-protocol/issues/29",
-    "https://github.com/shinya0x00/github-task-protocol/issues/34"
+    "https://github.com/shinya0x00/github-task-protocol/issues/34",
+    "https://github.com/shinya0x00/github-task-protocol/issues/38"
   ],
   "discarded_probes": [
     "https://github.com/shinya0x00/github-task-protocol/issues/27",
-    "https://github.com/shinya0x00/github-task-protocol/issues/31"
+    "https://github.com/shinya0x00/github-task-protocol/issues/31",
+    "https://github.com/shinya0x00/github-task-protocol/issues/36"
   ],
   "human_probe": {
-    "status": "failed",
+    "status": "awaiting_owner_response",
     "artifact": "human-probe.md",
     "probe_input": "stdout/halt.txt",
-    "raw_response": "https://github.com/shinya0x00/github-task-protocol/pull/33#issuecomment-5015840434",
-    "understood": [
-      "work is stopped and requires human confirmation",
-      "next action",
-      "allowed mutation scope",
-      "branch and PR",
-      "proof_b is unproven"
-    ],
-    "not_understood": [
-      "which condition is already proven"
-    ],
-    "operator_assessment": "前回より見る場所は分かりやすいが、非エンジニアにはまだ負荷が高く、噛み砕いた説明がない。",
-    "verdict": "repair_then_rerun",
+    "raw_response": null,
+    "verdict": "pending",
     "repair_ref": "https://github.com/shinya0x00/github-task-protocol/issues/38",
-    "previous_failed_response": "https://github.com/shinya0x00/github-task-protocol/pull/33#issuecomment-5015751561"
+    "previous_failed_responses": [
+      "https://github.com/shinya0x00/github-task-protocol/pull/33#issuecomment-5015751561",
+      "https://github.com/shinya0x00/github-task-protocol/pull/33#issuecomment-5015840434"
+    ]
   },
   "evidence_limits": [
     "Artifact URLは指定commitにfileが存在することまでしか証明しない。",
