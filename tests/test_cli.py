@@ -450,8 +450,11 @@ class CliTests(unittest.TestCase):
         self.assertEqual("complete", output["acquisition"])
         self.assertEqual("HTTP fixture acceptance", output["task_context"]["goal"])
         self.assertIn("  結論: このIssueの完了を確認しました。", human)
-        self.assertIn("  目的: HTTP fixture acceptance", human)
-        self.assertIn("技術的な詳細（必要な人だけ）:", human)
+        self.assertIn("  この作業の目的: HTTP fixture acceptance", human)
+        self.assertIn(
+            "  ここまでが人向けの説明です。続くJSONは機械処理用です。",
+            human,
+        )
 
     def test_status_required_live_binding_http_matrix(self) -> None:
         matrix = json.loads(
@@ -483,7 +486,7 @@ class CliTests(unittest.TestCase):
                         context["conditions"]["proof_b"]["evidence_status"],
                     )
                     self.assertIn("proof_b: Evidence未提示", context["not_proven"])
-                    self.assertIn("  目的: HTTP matrix", human)
+                    self.assertIn("  この作業の目的: HTTP matrix", human)
                     self.assertIn("かんたんな説明:", human)
                     self.assertIn(
                         "  結論: このIssueの完了は確認できません。作業を止めて人が確認してください。",
@@ -507,12 +510,6 @@ class CliTests(unittest.TestCase):
                     )
                     self.assertTrue(
                         any("達成済みとはまだ断定しません" in line for line in human)
-                    )
-                    self.assertTrue(
-                        any(
-                            "proof_b:" in line and "Evidence: 未提示" in line
-                            for line in human
-                        )
                     )
                 if case.get("acquisition_code"):
                     self.assertEqual(

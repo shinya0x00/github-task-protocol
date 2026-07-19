@@ -237,14 +237,29 @@ def _plain_summary(machine: dict[str, Any], context: dict[str, Any]) -> list[str
             [
                 f"  次にすること: GitHub情報をもう一度取得してください。最初の確認先: {machine['primary_url']}",
                 "  大事な点: 情報を取得できないことと、記録に矛盾があることは別です。",
+                "  ここまでが人向けの説明です。続くJSONは機械処理用です。",
             ]
         )
         return lines
     if state == "halt":
         lines.append(f"  次にすること: 原因の記録を開いてください: {machine['primary_url']}")
 
+    goal = context.get("goal")
+    if isinstance(goal, str):
+        scope = context.get("scope")
+        scope_text = "、".join(scope) if isinstance(scope, list) and scope else "記録なし"
+        lines.extend(
+            [
+                f"  この作業の目的: {goal}",
+                f"  変更してよい場所: {scope_text}",
+                f"  作業場所: branch {context.get('branch') or '未確認'}"
+                f" / PR {context.get('pr') or '未確認'}",
+            ]
+        )
+
     conditions = context.get("conditions")
     if not isinstance(conditions, dict) or not conditions:
+        lines.append("  ここまでが人向けの説明です。続くJSONは機械処理用です。")
         return lines
     presented = [
         (condition_id, condition)
@@ -284,6 +299,7 @@ def _plain_summary(machine: dict[str, Any], context: dict[str, Any]) -> list[str
             "  大事な点: 足りない記録を推測で補わないでください。"
             "この表示だけでは変更・完了・mergeできません。"
         )
+    lines.append("  ここまでが人向けの説明です。続くJSONは機械処理用です。")
     return lines
 
 
@@ -344,53 +360,7 @@ def _status_text(machine: dict[str, Any]) -> list[str]:
     lines.extend(_plain_summary(machine, context))
     goal = context.get("goal")
     if not isinstance(goal, str):
-        lines.append(
-            "タスク情報: "
-            + (
-                "GitHub情報を完全に取得できないため未確認"
-                if machine["state"] is None
-                else "Contract未確認"
-            )
-        )
         return lines
-
-    scope = context.get("scope")
-    scope_text = "、".join(scope) if isinstance(scope, list) and scope else "未記録"
-    branch_text = context.get("branch") or "未確認"
-    pr_text = context.get("pr") or "未確認"
-    lines.extend(
-        [
-            "技術的な詳細（必要な人だけ）:",
-            f"  目的: {goal}",
-            f"  変更範囲: {scope_text}",
-            f"  作業先: branch {branch_text} / PR {pr_text}",
-            "  完了条件とEvidence:",
-        ]
-    )
-    conditions = context.get("conditions")
-    if isinstance(conditions, dict) and conditions:
-        for condition_id, condition in conditions.items():
-            evidence = (
-                condition["evidence_url"]
-                if condition.get("evidence_status") == "presented"
-                else "未提示"
-            )
-            lines.append(
-                f"    - {condition_id}: {condition.get('text') or '説明未記録'}"
-                f" / Evidence: {evidence}"
-            )
-    else:
-        lines.append("    - Contractに完了条件がありません")
-    not_proven = context.get("not_proven")
-    lines.append(
-        "  まだ証明されていないこと: "
-        + ("、".join(not_proven) if isinstance(not_proven, list) and not_proven else "なし")
-    )
-    limits = context.get("evidence_limits")
-    lines.append(
-        "  GTPが証明しないこと: "
-        + ("、".join(limits) if isinstance(limits, list) else "未確認")
-    )
     return lines
 
 
