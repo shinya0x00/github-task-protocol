@@ -321,6 +321,10 @@ class CliTests(unittest.TestCase):
         self.assertEqual(2, code)
         self.assertIsNone(output["state"])
         self.assertEqual("状態: 不明", human[0])
+        self.assertIn(
+            "  大事な点: 情報を取得できないことと、記録に矛盾があることは別です。",
+            human,
+        )
 
     def test_status_human_and_machine_matrix(self) -> None:
         matrix = json.loads((CLI_FIXTURES / "status-matrix.json").read_text(encoding="utf-8"))
@@ -432,7 +436,9 @@ class CliTests(unittest.TestCase):
         self.assertEqual("done", output["state"])
         self.assertEqual("complete", output["acquisition"])
         self.assertEqual("HTTP fixture acceptance", output["task_context"]["goal"])
+        self.assertIn("  結論: このIssueの完了を確認しました。", human)
         self.assertIn("  目的: HTTP fixture acceptance", human)
+        self.assertIn("技術的な詳細（必要な人だけ）:", human)
 
     def test_status_required_live_binding_http_matrix(self) -> None:
         matrix = json.loads(
@@ -465,6 +471,30 @@ class CliTests(unittest.TestCase):
                     )
                     self.assertIn("proof_b: Evidence未提示", context["not_proven"])
                     self.assertIn("  目的: HTTP matrix", human)
+                    self.assertIn("かんたんな説明:", human)
+                    self.assertIn(
+                        "  結論: このIssueの完了は確認できません。作業を止めて人が確認してください。",
+                        human,
+                    )
+                    self.assertTrue(
+                        any(
+                            "記録に確認資料へのリンクがある条件" in line
+                            for line in human
+                        )
+                    )
+                    self.assertTrue(
+                        any("proof exists（識別子: proof）" in line for line in human)
+                    )
+                    self.assertIn("  確認資料が足りない条件:", human)
+                    self.assertTrue(
+                        any("second proof exists（識別子: proof_b）" in line for line in human)
+                    )
+                    self.assertTrue(
+                        any("不足しているもの: 条件を確認するための証拠リンク" in line for line in human)
+                    )
+                    self.assertTrue(
+                        any("達成済みとはまだ断定しません" in line for line in human)
+                    )
                     self.assertTrue(
                         any(
                             "proof_b:" in line and "Evidence: 未提示" in line

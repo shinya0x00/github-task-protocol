@@ -216,6 +216,77 @@ def status_projection(result: StatusResult) -> dict[str, Any]:
     }
 
 
+def _plain_summary(machine: dict[str, Any], context: dict[str, Any]) -> list[str]:
+    state = machine["state"]
+    conclusion = (
+        "GitHub情報を最後まで取得できていないため、まだ判断できません。"
+        if state is None
+        else "このIssueの完了は確認できません。作業を止めて人が確認してください。"
+        if state == "halt"
+        else "このIssueの完了を確認しました。"
+        if state == "done"
+        else "このIssueは完了を主張せず終了しています。"
+        if state == "stopped"
+        else "完了条件の確認資料はそろっていますが、マージはまだです。"
+        if machine["next_action"] == "await_merge"
+        else "このIssueはまだ作業途中です。"
+    )
+    lines = ["かんたんな説明:", f"  結論: {conclusion}"]
+    if state is None:
+        lines.extend(
+            [
+                f"  次にすること: GitHub情報をもう一度取得してください。最初の確認先: {machine['primary_url']}",
+                "  大事な点: 情報を取得できないことと、記録に矛盾があることは別です。",
+            ]
+        )
+        return lines
+    if state == "halt":
+        lines.append(f"  次にすること: 原因の記録を開いてください: {machine['primary_url']}")
+
+    conditions = context.get("conditions")
+    if not isinstance(conditions, dict) or not conditions:
+        return lines
+    presented = [
+        (condition_id, condition)
+        for condition_id, condition in conditions.items()
+        if condition.get("evidence_status") == "presented"
+    ]
+    missing = [
+        (condition_id, condition)
+        for condition_id, condition in conditions.items()
+        if condition.get("evidence_status") == "not_presented"
+    ]
+    evidence_confirmed = state == "done" or machine["next_action"] == "await_merge"
+    if presented:
+        lines.append(
+            "  確認できた完了条件:"
+            if evidence_confirmed
+            else "  記録に確認資料へのリンクがある条件（達成済みとはまだ断定しません）:"
+        )
+        for condition_id, condition in presented:
+            lines.extend(
+                [
+                    f"    - {condition.get('text') or '説明未記録'}（識別子: {condition_id}）",
+                    f"      確認資料: {condition.get('evidence_url')}",
+                ]
+            )
+    if missing:
+        lines.append("  確認資料が足りない条件:")
+        for condition_id, condition in missing:
+            lines.extend(
+                [
+                    f"    - {condition.get('text') or '説明未記録'}（識別子: {condition_id}）",
+                    "      不足しているもの: 条件を確認するための証拠リンク",
+                ]
+            )
+    if state == "halt":
+        lines.append(
+            "  大事な点: 足りない記録を推測で補わないでください。"
+            "この表示だけでは変更・完了・mergeできません。"
+        )
+    return lines
+
+
 def _status_text(machine: dict[str, Any]) -> list[str]:
     state = machine["state"] if machine["state"] is not None else "不明"
     action = machine["next_action"]
@@ -270,6 +341,7 @@ def _status_text(machine: dict[str, Any]) -> list[str]:
         f"非許可表示: {AUTHORITY_NOTICE}",
     ]
     context = machine["task_context"]
+    lines.extend(_plain_summary(machine, context))
     goal = context.get("goal")
     if not isinstance(goal, str):
         lines.append(
@@ -288,7 +360,7 @@ def _status_text(machine: dict[str, Any]) -> list[str]:
     pr_text = context.get("pr") or "未確認"
     lines.extend(
         [
-            "タスク情報:",
+            "技術的な詳細（必要な人だけ）:",
             f"  目的: {goal}",
             f"  変更範囲: {scope_text}",
             f"  作業先: branch {branch_text} / PR {pr_text}",
