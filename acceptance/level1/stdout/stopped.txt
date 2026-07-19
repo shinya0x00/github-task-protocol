@@ -2,16 +2,23 @@
 停止要否: このIssueでは作業を再開しません
 次の行動: 必要なら新しいIssueでContractから開始してください
 理由: 有効なStop Recordを確認しました
-最初のURL: https://github.com/shinya0x00/github-task-protocol/issues/31#issuecomment-5015703719
+最初のURL: https://github.com/shinya0x00/github-task-protocol/issues/36#issuecomment-5015811102
 非許可表示: この出力は変更・完了・mergeの許可を与えません
+タスク情報:
+  目的: Issue #34を含むinstalled CLIがEvidence key不足を原因URL付きinvalid_evidence haltとして表示し、目的・範囲・作業先・Evidence不足・未証明事項を一つの出力で説明することを確認する
+  変更範囲: acceptance/level1/rerun-live-probe-anchor.txt
+  作業先: branch agent/issue-36-level1-halt / PR https://github.com/shinya0x00/github-task-protocol/pull/37
+  完了条件とEvidence:
+    - proof_a: 新candidate用のlive probe anchorがsource headに存在する / Evidence: https://github.com/shinya0x00/github-task-protocol/blob/a05102cd7297ad54801ed5f79f64cff29efcf7a5/acceptance/level1/rerun-live-probe-anchor.txt
+    - proof_b: 同じsource headに二つ目のartifact proofが存在する / Evidence: 未提示
+  まだ証明されていないこと: proof_b: Evidence未提示、このIssueは完了を証明せず停止済み
+  GTPが証明しないこと: actor本人性、credential安全性、GitHub外情報を参照しなかったこと
 {
   "acquisition": "complete",
   "authority": "none",
-  "command": "status",
-  "halt_reason": null,
-  "issue_url": "https://github.com/shinya0x00/github-task-protocol/issues/31",
+  "issue_url": "https://github.com/shinya0x00/github-task-protocol/issues/36",
   "next_action": "none_stopped",
-  "primary_url": "https://github.com/shinya0x00/github-task-protocol/issues/31#issuecomment-5015703719",
+  "primary_url": "https://github.com/shinya0x00/github-task-protocol/issues/36#issuecomment-5015811102",
   "state": "stopped"
 }
 [exit code: 0; observed again after PR close and branch deletion]

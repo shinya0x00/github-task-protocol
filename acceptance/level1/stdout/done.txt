@@ -4,15 +4,20 @@
 理由: Done Claimのsource head、Evidence、native mergeを確認しました
 最初のURL: https://github.com/shinya0x00/github-task-protocol/pull/24
 非許可表示: この出力は変更・完了・mergeの許可を与えません
+タスク情報:
+  目的: 利用者がREADMEから3手順で導入でき、agentが同じsdistとwheelをclean環境で再現できる最小公開面にする
+  変更範囲: README.md、LICENSE、pyproject.toml、build_backend.py、.github/workflows/ci.yml、DECISIONS.md、CONTEXT.md、GLOSSARY.md、acceptance/README.md、acceptance/STATUS.md、acceptance/run.json、acceptance/v1.0.0.json、acceptance/legacy/、tests/test_build_backend.py、tests/test_release_surface.py、tests/fixtures/release/
+  作業先: branch agent/issue-12-release-surface / PR https://github.com/shinya0x00/github-task-protocol/pull/24
+  完了条件とEvidence: prune_report、public_surface、release_ciの3件すべてにEvidence提示済み
+  まだ証明されていないこと: なし
+  GTPが証明しないこと: actor本人性、credential安全性、GitHub外情報を参照しなかったこと
 {
   "acquisition": "complete",
   "authority": "none",
   "bound_pr": "https://github.com/shinya0x00/github-task-protocol/pull/24",
-  "command": "status",
-  "halt_reason": null,
   "issue_url": "https://github.com/shinya0x00/github-task-protocol/issues/12",
   "next_action": "none_done",
   "primary_url": "https://github.com/shinya0x00/github-task-protocol/pull/24",
   "state": "done"
 }
-[exit code: 0; observed after source branch deletion]
+[exit code: 0; observed with authenticated acquisition after one earlier HTTP 403 acquisition error]
