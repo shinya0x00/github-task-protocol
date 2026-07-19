@@ -1,0 +1,35 @@
+{
+  "gtp_spec_sha": "8e9425a217218bb48aa710d4710b3d1fab23d9df",
+  "acceptance_issue": "https://github.com/shinya0x00/github-task-protocol/issues/7",
+  "contract_ref": "https://github.com/shinya0x00/github-task-protocol/issues/7#issuecomment-5015234969",
+  "start_ref": "https://github.com/shinya0x00/github-task-protocol/issues/7#issuecomment-5015236058",
+  "branch": "agent/issue-7-level0-handoff",
+  "pr_url": "https://github.com/shinya0x00/github-task-protocol/pull/16",
+  "agent_a": {
+    "runtime": "OpenAI Codex (codex-cli 0.141.0)",
+    "final_commit_sha": "721255ebc590f2aaf71af74e29e0baaee68e2eb7"
+  },
+  "agent_b": {
+    "runtime": "Claude Code (Sonnet 5)",
+    "input_given": "https://github.com/shinya0x00/github-task-protocol/issues/7",
+    "input_was_issue_url_only": true,
+    "chat_history_or_handoff_doc_read": false,
+    "first_next_action": "Read GTP.md as the sole spec, read Issue #7 comments in Server Order, reconstructed state as in_progress from the Contract+Start Records, then fetched and checked out the existing remote branch agent/issue-7-level0-handoff instead of creating a new branch or PR.",
+    "first_next_action_basis_urls": [
+      "https://github.com/shinya0x00/github-task-protocol/issues/7#issuecomment-5015234969",
+      "https://github.com/shinya0x00/github-task-protocol/issues/7#issuecomment-5015236058",
+      "https://github.com/shinya0x00/github-task-protocol/pull/16"
+    ],
+    "head_before_this_commit": "721255ebc590f2aaf71af74e29e0baaee68e2eb7",
+    "duplicate_branch_created": false,
+    "duplicate_pr_created": false,
+    "reused_existing_branch": "agent/issue-7-level0-handoff",
+    "reused_existing_pr": "https://github.com/shinya0x00/github-task-protocol/pull/16"
+  },
+  "tool_usage": {
+    "gtp_cli_used": false,
+    "gtp_status_used": false,
+    "gtp_check_used": false
+  },
+  "observed_ambiguity_for_human_review": "The invoking harness's default branch-naming convention (claude/github-task-protocol-issue-7-1s76g6) conflicted with the branch already bound by the Start Record (agent/issue-7-level0-handoff) and open PR #16. Continuing on a different branch would have violated GTP.md §9 (1 Issue = 1 branch = 1 PR). This was flagged and confirmed with the repository owner before any commit was made; no unattended decision was made to switch branches."
+}

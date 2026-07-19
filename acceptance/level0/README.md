@@ -12,13 +12,19 @@
 - Start: [issuecomment-5015236058](https://github.com/shinya0x00/github-task-protocol/issues/7#issuecomment-5015236058)
 - branch: `agent/issue-7-level0-handoff`
 - Agent A: OpenAI Codex（`codex-cli 0.141.0`）
-- Agent B: 実行前のため未確認
+- Agent B: Claude Code（Sonnet 5）
 
 ## Agent A時点の観測
 
 Agent AはContractとStartをGitHubへ投稿し、指定branch上にこの受け入れ記録の最小骨格を作成した。異なるruntimeによる再開、既存PRの選択、重複の有無、人間読解はまだ観測していない。
 
 この文書は受け入れ結果の正本であり、Agent B向けの専用handoff指示ではない。次のprotocol actionはIssue #7、GTP Record、branch、PRから判断する。
+
+## Agent B時点の観測
+
+Agent B（Claude Code, Sonnet 5）へ渡された入力は、Issue [#7](https://github.com/shinya0x00/github-task-protocol/issues/7)のURLのみであり、chat履歴、local checkpoint、専用handoff文書は一切参照していない。
+
+Agent Bはroot `GTP.md`をtask protocolの唯一の正本として読み、Issue commentをServer Orderで読んだ。有効なRecordはContract（[issuecomment-5015234969](https://github.com/shinya0x00/github-task-protocol/issues/7#issuecomment-5015234969)）とStart（[issuecomment-5015236058](https://github.com/shinya0x00/github-task-protocol/issues/7#issuecomment-5015236058)）の2件のみであり、GTP markerのない3件目のcommentは通常commentとして扱った。これによりstateを`in_progress`と再構成し、既存branch `agent/issue-7-level0-handoff`と既存draft PR [#16](https://github.com/shinya0x00/github-task-protocol/pull/16)を、新規branchや新規PRを作らずそのまま継続した。詳細は`run.json`を参照する。
 
 ## Evidenceの限界
 
