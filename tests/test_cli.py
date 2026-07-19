@@ -426,6 +426,11 @@ class CliTests(unittest.TestCase):
                 self.assertEqual(case["state"], output["state"])
                 if case.get("reason"):
                     self.assertEqual(case["reason"], output["diagnostics"][0]["token"])
+                if case.get("first_url"):
+                    self.assertEqual(case["first_url"], output["primary_url"])
+                    self.assertEqual(
+                        case["first_url"], output["diagnostics"][0]["urls"][0]
+                    )
                 if case.get("acquisition_code"):
                     self.assertEqual(
                         case["acquisition_code"], output["acquisition_errors"][0]["code"]

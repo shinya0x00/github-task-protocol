@@ -73,6 +73,9 @@ class ReducerTests(unittest.TestCase):
         fixture = json.loads((Path(__file__).parent / "fixtures" / "reducer-truth-table.json").read_text())
         builders = {
             "ordinary": lambda n: comment(n, None),
+            "malformed": lambda n: comment(
+                n, None, source="<!-- gtp-record:v1 -->\ninvalid"
+            ),
             "contract": lambda n: comment(n, contract(IDS[n - 1])),
             "start": lambda n: comment(n, start(IDS[n - 1])),
             "done": lambda n: comment(n, done(IDS[n - 1])),
@@ -84,6 +87,9 @@ class ReducerTests(unittest.TestCase):
                 result = fold_comments(comments)
                 self.assertEqual(case["state"], historical_state(result))
                 self.assertEqual(case["reasons"], [item.token for item in result.diagnostics])
+                if "first_url_comment" in case:
+                    expected = f"{ISSUE}#issuecomment-{case['first_url_comment']}"
+                    self.assertEqual(expected, result.diagnostics[0].urls[0])
 
     def test_retry_alias_is_one_logical_record(self) -> None:
         record = contract(IDS[0])
