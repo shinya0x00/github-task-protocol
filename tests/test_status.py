@@ -144,7 +144,7 @@ class StatusTests(unittest.TestCase):
         result = evaluate_issue(FakeGitHub(comments, branch=False), ISSUE)
         self.assertEqual("stopped", result.state)
 
-    def test_done_then_stop_ordering_is_explicitly_deferred(self) -> None:
+    def test_stop_before_done_terminal_wins(self) -> None:
         comments = [
             comment(1, contract(IDS[0])),
             comment(2, start(IDS[1])),
@@ -152,9 +152,7 @@ class StatusTests(unittest.TestCase):
             comment(4, stop(IDS[3])),
         ]
         result = evaluate_issue(FakeGitHub(comments, pr=pr(merged=False)), ISSUE)
-        self.assertIsNone(result.state)
-        self.assertEqual("unsupported_slice", result.diagnostics[0].token)
-        self.assertEqual("done_stop_terminal_ordering", result.diagnostics[0].detail["feature"])
+        self.assertEqual("stopped", result.state)
 
     def test_acquisition_error_has_no_state(self) -> None:
         class Broken(FakeGitHub):

@@ -1,12 +1,32 @@
-"""Server-ordered, prefix-local fold for the first GTP walking skeleton."""
+"""Intrinsic prepass and Server Order incremental prefix fold."""
 
 from __future__ import annotations
 
-from typing import Iterable
-
 from .carrier import classify_carrier
-from .model import Comment, Diagnostic, FoldResult, RecordObservation
+from .model import (
+    Comment,
+    ContextAcquisitionRequired,
+    Diagnostic,
+    DoneWindow,
+    FoldContext,
+    FoldResult,
+    RecordObservation,
+    RepairGroup,
+    IncompleteSnapshotError,
+)
 from .urls import parse_github_url
+
+
+REPAIRABLE_CONTEXT = {
+    "invalid_supersession",
+    "incomplete_repair_group",
+    "start_contract_binding_failed",
+    "done_before_start",
+    "done_condition_keys_mismatch",
+    "done_evidence_kind_mismatch",
+    "stop_without_contract",
+    "successor_order_invalid",
+}
 
 
 def _append_unique(result: FoldResult, diagnostic: Diagnostic) -> None:
@@ -14,174 +34,325 @@ def _append_unique(result: FoldResult, diagnostic: Diagnostic) -> None:
         result.diagnostics.append(diagnostic)
 
 
-def _unsupported(result: FoldResult, urls: Iterable[str], feature: str) -> None:
-    item = Diagnostic("unsupported_slice", tuple(urls), {"feature": feature})
-    if item not in result.unsupported:
-        result.unsupported.append(item)
+def _replace_diagnostic(result: FoldResult, token: str, urls: tuple[str, ...]) -> None:
+    result.diagnostics = [item for item in result.diagnostics if item.token != token or not set(item.urls) & set(urls)]
+    _append_unique(result, Diagnostic(token, urls))
 
 
-def _active_urls(result: FoldResult, record_type: str) -> tuple[str, ...]:
-    return tuple(item.comment.url for item in result.active[record_type])
+def _new_group(result: FoldResult, token: str, urls: list[str]) -> RepairGroup:
+    group = RepairGroup(token, list(dict.fromkeys(urls)))
+    result.repair_groups.append(group)
+    for url in group.urls:
+        result.invalid_urls.add(url)
+    _replace_diagnostic(result, token, tuple(group.urls))
+    return group
+
+
+def _group_for_url(result: FoldResult, url: str) -> RepairGroup | None:
+    for group in result.repair_groups:
+        if not group.resolved and url in group.urls:
+            return group
+    return None
+
+
+def _resolve_group(result: FoldResult, group: RepairGroup) -> None:
+    group.resolved = True
+    for url in group.urls:
+        result.invalid_urls.discard(url)
+    group_urls = set(group.urls)
+    result.diagnostics = [
+        item
+        for item in result.diagnostics
+        if not (item.token == group.token and bool(set(item.urls) & group_urls))
+    ]
+
+
+def _close_done_window(result: FoldResult, at: str) -> None:
+    if result.open_done_window is not None:
+        result.open_done_window.ended_at = at
+        result.open_done_window = None
+
+
+def _refresh_done_window(
+    result: FoldResult, before: tuple[int, ...], after: tuple[int, ...], at: str
+) -> None:
+    if before == after:
+        return
+    _close_done_window(result, at)
+    if len(after) == 1:
+        observation = result.active["done"][0]
+        window = DoneWindow(observation, at)
+        result.done_windows.append(window)
+        result.open_done_window = window
+
+
+def _remove_active(result: FoldResult, target: RecordObservation) -> None:
+    target.superseded = True
+    result.active[target.type] = [item for item in result.active[target.type] if item is not target]
+
+
+def _context_invalid(
+    result: FoldResult, observation: RecordObservation, token: str, extra_urls: tuple[str, ...] = ()
+) -> None:
+    urls = (observation.comment.url, *extra_urls)
+    _new_group(result, token, list(urls[:1]))
+    if extra_urls:
+        _replace_diagnostic(result, token, urls)
 
 
 def _validate_supersession(
-    result: FoldResult, observation: RecordObservation
-) -> list[RecordObservation] | None:
+    result: FoldResult, observation: RecordObservation, fresh_id: bool
+) -> tuple[list[RecordObservation], list[RepairGroup]] | None:
     urls = observation.record["supersedes"]
-    if len(urls) > 2:
-        _unsupported(result, urls + [observation.comment.url], "more_than_two_supersession_targets")
-        return None
     targets: list[RecordObservation] = []
+    groups: list[RepairGroup] = []
+    referenced = set(urls)
     for url in urls:
-        parsed = parse_github_url(url, "comment")
-        if parsed is None or url not in result.valid_by_url:
-            if url in result.invalid_urls:
-                _unsupported(result, [url, observation.comment.url], "invalid_carrier_repair")
-            else:
-                _append_unique(result, Diagnostic("invalid_supersession", (observation.comment.url, url)))
+        group = _group_for_url(result, url)
+        if group is not None:
+            if group not in groups:
+                groups.append(group)
+            continue
+        target = result.valid_by_url.get(url)
+        if target is None or target.comment.id >= observation.comment.id or target.type != observation.type:
+            _context_invalid(result, observation, "invalid_supersession", (url,))
             return None
-        target = result.valid_by_url[url]
-        if target.comment.id >= observation.comment.id or target.type != observation.type:
-            _append_unique(result, Diagnostic("invalid_supersession", (observation.comment.url, url)))
+        if target not in targets:
+            targets.append(target)
+
+    for group in groups:
+        required = {
+            url
+            for url in group.urls
+            if (item := result.observations_by_url.get(url)) is None
+            or item.comment.id < observation.comment.id
+        }
+        if not fresh_id or not required.issubset(referenced):
+            _context_invalid(
+                result,
+                observation,
+                "incomplete_repair_group",
+                tuple(sorted(required - referenced)),
+            )
             return None
-        targets.append(target)
-
-    if len(urls) == 2:
-        active_urls = set(_active_urls(result, observation.type))
-        if observation.type != "contract" or set(urls) != active_urls or len(active_urls) != 2:
-            _unsupported(result, urls + [observation.comment.url], "general_multiple_leaf_supersession")
-            return None
-    return targets
+    return targets, groups
 
 
-def _apply_supersession(result: FoldResult, targets: list[RecordObservation]) -> None:
+def _apply_supersession(
+    result: FoldResult,
+    observation: RecordObservation,
+    targets: list[RecordObservation],
+    groups: list[RepairGroup],
+) -> None:
+    before_done = tuple(id(item) for item in result.active["done"])
     for target in targets:
-        result.active[target.type] = [item for item in result.active[target.type] if item.id != target.id]
+        _remove_active(result, target)
+    for group in groups:
+        for url in group.urls:
+            target = result.observations_by_url.get(url)
+            if target is not None:
+                _remove_active(result, target)
+        _resolve_group(result, group)
+    after_done = tuple(id(item) for item in result.active["done"])
+    _refresh_done_window(result, before_done, after_done, observation.comment.created_at)
 
 
-def _record_context(result: FoldResult, observation: RecordObservation) -> bool:
+def _accept_record(result: FoldResult, observation: RecordObservation) -> None:
+    result.valid_by_url[observation.comment.url] = observation
+    result.observations_by_url[observation.comment.url] = observation
+
+
+def _record_context(
+    result: FoldResult,
+    observation: RecordObservation,
+    fresh_id: bool,
+    context: FoldContext,
+) -> bool:
     record = observation.record
     record_type = observation.type
     if result.terminal_stop is not None:
         _append_unique(result, Diagnostic("terminal_violation", (observation.comment.url,)))
         return False
-    targets = _validate_supersession(result, observation)
-    if targets is None:
+
+    if record_type == "contract" and result.started_once:
+        _append_unique(result, Diagnostic("contract_freeze_violation", (observation.comment.url,)))
+        return False
+    if record_type == "start" and result.started_once:
+        _append_unique(result, Diagnostic("start_redefinition", (observation.comment.url,)))
         return False
 
+    checked = _validate_supersession(result, observation, fresh_id)
+    if checked is None:
+        return False
+    targets, groups = checked
+
     if record_type == "contract":
-        if result.started_once:
-            _append_unique(result, Diagnostic("contract_freeze_violation", (observation.comment.url,)))
-            return False
-        _apply_supersession(result, targets)
+        _apply_supersession(result, observation, targets, groups)
+        result.had_valid_contract = True
         return True
 
     if record_type == "start":
-        if result.started_once:
-            _append_unique(result, Diagnostic("start_redefinition", (observation.comment.url,)))
-            return False
         contracts = result.active["contract"]
         if len(contracts) != 1:
-            urls = (observation.comment.url,) + tuple(item.comment.url for item in contracts)
-            _append_unique(result, Diagnostic("start_contract_binding_failed", urls))
+            _context_invalid(
+                result,
+                observation,
+                "start_contract_binding_failed",
+                tuple(item.comment.url for item in contracts),
+            )
             return False
+        _apply_supersession(result, observation, targets, groups)
         result.started_once = True
         result.bound_contract = contracts[0]
         result.bound_start = observation
-        _apply_supersession(result, targets)
         result.active["start"] = [observation]
         return False
 
     if record_type == "done":
         if not result.started_once or result.bound_contract is None:
-            _append_unique(result, Diagnostic("done_before_start", (observation.comment.url,)))
+            _context_invalid(result, observation, "done_before_start")
             return False
         expected = set(result.bound_contract.record["done_conditions"])
         actual = set(record["evidence"])
         if expected != actual:
-            _append_unique(result, Diagnostic("done_condition_keys_mismatch", (observation.comment.url,)))
+            _context_invalid(result, observation, "done_condition_keys_mismatch")
             return False
         for condition_id, url in record["evidence"].items():
             kind = result.bound_contract.record["done_conditions"][condition_id]["evidence_kind"]
             if parse_github_url(url, kind) is None:
-                _append_unique(result, Diagnostic("done_evidence_kind_mismatch", (observation.comment.url, url)))
+                _context_invalid(result, observation, "done_evidence_kind_mismatch", (url,))
                 return False
-        _apply_supersession(result, targets)
-        return True
+        before = tuple(id(item) for item in result.active["done"])
+        _apply_supersession(result, observation, targets, groups)
+        result.active["done"].append(observation)
+        after = tuple(id(item) for item in result.active["done"])
+        _refresh_done_window(result, before, after, observation.comment.created_at)
+        return False
 
     if record_type == "stop":
-        if not result.valid_by_url or not any(item.type == "contract" for item in result.valid_by_url.values()):
-            _append_unique(result, Diagnostic("stop_without_contract", (observation.comment.url,)))
+        if not result.had_valid_contract:
+            _context_invalid(result, observation, "stop_without_contract")
             return False
-        if result.terminal_stop is not None:
-            _append_unique(result, Diagnostic("terminal_violation", (observation.comment.url,)))
-            return False
-        if result.active["done"]:
-            _unsupported(
-                result,
-                [result.active["done"][0].comment.url, observation.comment.url],
-                "done_stop_terminal_ordering",
-            )
-        _apply_supersession(result, targets)
+        if record["reason"] == "superseded":
+            url = record["successor_ref"]
+            fact = context.successors.get(url)
+            if fact is None:
+                raise ContextAcquisitionRequired(url)
+            if fact.exists and (
+                fact.issue_id == context.issue_id
+                or context.issue_created_at is None
+                or fact.created_at is None
+                or not (context.issue_created_at < fact.created_at <= observation.comment.created_at)
+            ):
+                _context_invalid(result, observation, "successor_order_invalid", (url,))
+                return False
+        _apply_supersession(result, observation, targets, groups)
+        _close_done_window(result, observation.comment.created_at)
         result.terminal_stop = observation
         result.active["stop"] = [observation]
         return False
     return True
 
 
-def fold_comments(comments: list[Comment]) -> FoldResult:
-    result = FoldResult()
+def successor_refs(comments: list[Comment]) -> list[str]:
+    refs: list[str] = []
+    for comment in comments:
+        carrier = classify_carrier(comment.body)
+        if comment.updated_at != comment.created_at or not carrier.schema_valid or carrier.record is None:
+            continue
+        record = carrier.record
+        if record["type"] == "stop" and record["reason"] == "superseded":
+            refs.append(record["successor_ref"])
+    return list(dict.fromkeys(refs))
+
+
+def fold_comments(comments: list[Comment], context: FoldContext | None = None) -> FoldResult:
+    context = context or FoldContext()
     ids = [comment.id for comment in comments]
     if ids != sorted(ids) or len(ids) != len(set(ids)):
-        _unsupported(result, [comment.url for comment in comments], "incomplete_or_unordered_comment_snapshot")
-        return result
+        raise IncompleteSnapshotError("comment IDs must be strictly ascending and unique")
 
+    result = FoldResult()
     for comment in comments:
         carrier = classify_carrier(comment.body)
         if not carrier.recognized:
             continue
         result.recognized_count += 1
+        result.recognized_comments.append(comment)
         if comment.updated_at != comment.created_at:
-            _unsupported(result, [comment.url], "edited_carrier")
+            _new_group(result, "edited_carrier", [comment.url])
             continue
         if not carrier.schema_valid or carrier.record is None:
-            result.invalid_urls.add(comment.url)
-            _append_unique(result, Diagnostic("invalid_record", (comment.url,)))
+            _new_group(result, "invalid_record", [comment.url])
             continue
 
         observation = RecordObservation(carrier.record, comment)
-        prior_same_id = result.ids.get(observation.id, [])
-        if prior_same_id:
-            if any(item.record == observation.record for item in prior_same_id):
-                _unsupported(result, [item.comment.url for item in prior_same_id] + [comment.url], "api_retry_alias")
+        result.observations_by_url[comment.url] = observation
+        same_id = result.ids.get(observation.id, [])
+        identical = next((item for item in same_id if item.record == observation.record), None)
+        if identical is not None:
+            identical.add_alias(comment)
+            result.observations_by_url[comment.url] = identical
+            collision = next(
+                (group for group in result.repair_groups if group.token == "identity_collision" and any(url in group.urls for url in identical.alias_urls)),
+                None,
+            )
+            if collision is not None and not collision.resolved:
+                collision.urls.append(comment.url)
+                result.invalid_urls.add(comment.url)
+                _replace_diagnostic(result, "identity_collision", tuple(collision.urls))
+            elif identical.comment.url in result.valid_by_url:
+                result.valid_by_url[comment.url] = identical
+            continue
+
+        if same_id:
+            members = [url for item in same_id for url in item.alias_urls] + [comment.url]
+            group = next(
+                (item for item in result.repair_groups if item.token == "identity_collision" and not item.resolved and set(item.urls) & set(members)),
+                None,
+            )
+            if group is None:
+                group = _new_group(result, "identity_collision", members)
             else:
-                urls = tuple(item.comment.url for item in prior_same_id) + (comment.url,)
-                _append_unique(result, Diagnostic("identity_collision", urls))
+                for url in members:
+                    if url not in group.urls:
+                        group.urls.append(url)
+                _replace_diagnostic(result, "identity_collision", tuple(group.urls))
+            before = tuple(id(item) for item in result.active["done"])
+            for item in same_id:
+                _remove_active(result, item)
+                for url in item.alias_urls:
+                    result.invalid_urls.add(url)
+                    result.valid_by_url.pop(url, None)
+            result.invalid_urls.add(comment.url)
+            after = tuple(id(item) for item in result.active["done"])
+            _refresh_done_window(result, before, after, comment.created_at)
             result.ids.setdefault(observation.id, []).append(observation)
             continue
+
         result.ids.setdefault(observation.id, []).append(observation)
-        active_record = _record_context(result, observation)
+        accepted_active = _record_context(result, observation, True, context)
         accepted = (
-            active_record
+            accepted_active
             or result.bound_start is observation
             or result.terminal_stop is observation
+            or any(observation is item for items in result.active.values() for item in items)
         )
         if accepted:
-            result.valid_by_url[comment.url] = observation
-        if active_record:
+            _accept_record(result, observation)
+        if accepted_active:
             result.active[observation.type].append(observation)
-            if len(result.active[observation.type]) > 2:
-                _unsupported(result, _active_urls(result, observation.type), "more_than_two_active_leaves")
 
     for record_type, records in result.active.items():
         if record_type != "stop" and len(records) > 1:
-            _append_unique(result, Diagnostic("conflicting_records", tuple(item.comment.url for item in records)))
+            _append_unique(
+                result,
+                Diagnostic("conflicting_records", tuple(item.comment.url for item in records)),
+            )
     return result
 
 
-def historical_state(result: FoldResult) -> str | None:
-    if result.unsupported:
-        return None
+def historical_state(result: FoldResult) -> str:
     if result.recognized_count == 0:
         return "unmanaged"
     if result.terminal_stop is not None:
