@@ -1,0 +1,18 @@
+状態: done
+停止要否: 停止は不要です。完了状態です
+次の行動: 追加のprotocol actionはありません
+理由: Done Claimのsource head、Evidence、native mergeを確認しました
+最初のURL: https://github.com/shinya0x00/github-task-protocol/pull/24
+非許可表示: この出力は変更・完了・mergeの許可を与えません
+{
+  "acquisition": "complete",
+  "authority": "none",
+  "bound_pr": "https://github.com/shinya0x00/github-task-protocol/pull/24",
+  "command": "status",
+  "halt_reason": null,
+  "issue_url": "https://github.com/shinya0x00/github-task-protocol/issues/12",
+  "next_action": "none_done",
+  "primary_url": "https://github.com/shinya0x00/github-task-protocol/pull/24",
+  "state": "done"
+}
+[exit code: 0; observed after source branch deletion]
