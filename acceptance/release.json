@@ -1,0 +1,51 @@
+{
+  "schema": "github-task-protocol-release/v1",
+  "release_version": "1.0.1",
+  "protocol_version": "1.0",
+  "status": "release_preparation",
+  "version_selection": {
+    "reason": "v1.0.0 is an existing annotated tag and must remain immutable; 1.0.1 is the next unused package version observed during preflight",
+    "existing_tag": {
+      "name": "v1.0.0",
+      "target_commit": "efb6536d55d4636fe7bfaea9788b7b86d48d730b"
+    },
+    "github_release_for_1_0_1": "not_observed",
+    "pypi_json_for_project": {
+      "url": "https://pypi.org/pypi/github-task-protocol/json",
+      "observed_http_status": 404
+    }
+  },
+  "preparation": {
+    "base_commit": "8045948fe25fc6e94fa5cf839abd6c3d10de188e",
+    "candidate_commit": null,
+    "required_checks": [],
+    "artifacts": {
+      "sdist": null,
+      "wheel": null
+    },
+    "package_metadata_version": "1.0.1",
+    "runtime_version": "1.0.1",
+    "evidence": {
+      "specification": "https://github.com/shinya0x00/github-task-protocol/blob/8045948fe25fc6e94fa5cf839abd6c3d10de188e/GTP.md",
+      "level0": "https://github.com/shinya0x00/github-task-protocol/tree/8045948fe25fc6e94fa5cf839abd6c3d10de188e/acceptance/level0",
+      "level1": "https://github.com/shinya0x00/github-task-protocol/tree/8045948fe25fc6e94fa5cf839abd6c3d10de188e/acceptance/level1"
+    }
+  },
+  "publication": {
+    "authority": "unconfirmed",
+    "tag": null,
+    "github_release": null,
+    "pypi_release": null,
+    "published_artifact_hashes": null
+  },
+  "public_validation": {
+    "clean_install": null,
+    "gtp_check": null,
+    "live_done": null,
+    "live_halt_or_stopped": null
+  },
+  "safety": {
+    "secrets_recorded": false,
+    "note": "No token value, credential, or CLI secret argument belongs in this file, repository, Issue, or log."
+  }
+}
