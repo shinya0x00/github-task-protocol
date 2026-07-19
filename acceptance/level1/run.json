@@ -1,6 +1,6 @@
 {
   "acceptance_level": 1,
-  "status": "awaiting_human_probe",
+  "status": "blocked_human_readability",
   "candidate": {
     "commit_sha": "f0ad9f38f14a222771c6eb4ce86ab3c9a2c79deb",
     "commit_url": "https://github.com/shinya0x00/github-task-protocol/commit/f0ad9f38f14a222771c6eb4ce86ab3c9a2c79deb",
@@ -97,8 +97,17 @@
   ],
   "discarded_probe": "https://github.com/shinya0x00/github-task-protocol/issues/27",
   "human_probe": {
-    "status": "awaiting_owner_response",
-    "artifact": "human-probe.md"
+    "status": "failed",
+    "artifact": "human-probe.md",
+    "raw_response": "https://github.com/shinya0x00/github-task-protocol/pull/33#issuecomment-5015751561",
+    "observed_unknowns": [
+      "task goal",
+      "Done Condition to Evidence mapping",
+      "not-yet-proven claims"
+    ],
+    "operator_assessment": "全体的にわかりにくい。負荷が高い。",
+    "verdict": "repair_then_proceed",
+    "repair_ref": "https://github.com/shinya0x00/github-task-protocol/issues/34"
   },
   "evidence_limits": [
     "Artifact URLは指定commitにfileが存在することまでしか証明しない。",
