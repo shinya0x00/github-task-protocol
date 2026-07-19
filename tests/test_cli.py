@@ -6,13 +6,14 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from gtp.cli import main
 from gtp.status import StatusResult
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "carriers" / "contract-valid.md"
+HTTP_FIXTURES = Path(__file__).parent / "fixtures" / "http"
 
 
 class CliTests(unittest.TestCase):
@@ -52,6 +53,33 @@ class CliTests(unittest.TestCase):
             code, output = self.call(["status", observed.issue_url])
         self.assertEqual(2, code)
         self.assertIsNone(output["state"])
+
+    def test_status_http_walking_skeleton_uses_production_path(self) -> None:
+        fixture = json.loads(
+            (HTTP_FIXTURES / "walking-skeleton.json").read_text(encoding="utf-8")
+        )
+        pending = list(fixture["requests"])
+
+        def open_fixture(request, timeout):
+            self.assertEqual("GET", request.get_method())
+            self.assertEqual(30, timeout)
+            expected = pending.pop(0)
+            self.assertEqual(expected["url"], request.full_url)
+            response = MagicMock()
+            response.__enter__.return_value = response
+            response.read.return_value = json.dumps(expected["body"]).encode("utf-8")
+            response.headers.items.return_value = expected.get("headers", {}).items()
+            return response
+
+        with patch.dict("os.environ", {}, clear=True), patch(
+            "gtp.github.urlopen", side_effect=open_fixture
+        ):
+            code, output = self.call(["status", fixture["issue_url"]])
+
+        self.assertEqual([], pending)
+        self.assertEqual(0, code)
+        self.assertEqual("unmanaged", output["state"])
+        self.assertTrue(output["acquisition"]["complete"])
 
 
 if __name__ == "__main__":
