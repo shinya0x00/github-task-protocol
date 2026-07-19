@@ -114,5 +114,28 @@
       "The wheel archive timestamp is not normalized, so wheel_sha256 identifies the installed artifact while wheel_record_sha256 identifies its payload.",
       "The wheel was built before this updated observation was appended; only test evidence changed afterward, not production sources."
     ]
+  },
+  "plain_summary_installed_live_observation": {
+    "observed_at": "2026-07-19",
+    "built_from_commit": "b6d5acc641c13249513bdb1a10c625c62fbb077d",
+    "wheel": "github_task_protocol-1.0.0-py3-none-any.whl",
+    "wheel_sha256": "ed62f515dc1ea16e68a3c91a1c0ac232400fea3832f3ee8d2c42f1f0ded81de0",
+    "wheel_record_sha256": "fe17caa507603443f7485791b615106bcbbece4ff79833bac7677b354f6b5366",
+    "python": "3.12.12",
+    "gtp_version": "1.0.0",
+    "issue_url": "https://github.com/shinya0x00/github-task-protocol/issues/36",
+    "exit_code": 0,
+    "state": "stopped",
+    "plain_summary": {
+      "conclusion_presented": true,
+      "evidence_link_presented_without_completion_claim": ["proof_a"],
+      "missing_evidence_link_explained": ["proof_b"],
+      "human_machine_boundary_presented": true
+    },
+    "limits": [
+      "This installed run observes output against a stopped Issue; Issue #13 must create a fresh halt run after merge.",
+      "The run proves the plain summary fired, not that the repository owner understood it.",
+      "The wheel was built before this observation-only fixture was appended; production sources are unchanged."
+    ]
   }
 }
