@@ -18,6 +18,11 @@ HALT_MESSAGES = {
     "stale_evidence": "EvidenceがDoneのsource head SHAと一致しません",
     "terminal_violation": "terminal stateの前後関係に違反するRecordまたはmergeがあります",
 }
+EVIDENCE_LIMITS = [
+    "actor本人性",
+    "credential安全性",
+    "GitHub外情報を参照しなかったこと",
+]
 
 
 def _record(value: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -28,10 +33,87 @@ def _record(value: dict[str, Any] | None) -> dict[str, Any] | None:
         for key in ("url", "aliases", "comment_id")
         if key in value
     }
-    return {
+    result = {
         "type": value.get("type"),
         "id": value.get("id"),
         "observation": observation,
+    }
+    if isinstance(value.get("content"), dict):
+        result["content"] = value["content"]
+    return result
+
+
+def _content(record: dict[str, Any] | None) -> dict[str, Any]:
+    value = record.get("content") if isinstance(record, dict) else None
+    return value if isinstance(value, dict) else {}
+
+
+def _task_context(
+    *,
+    state: str | None,
+    acquisition_complete: bool,
+    contract: dict[str, Any] | None,
+    start: dict[str, Any] | None,
+    done: dict[str, Any] | None,
+    branch: dict[str, Any] | None,
+    pr: str | None,
+) -> dict[str, Any]:
+    contract_content = _content(contract)
+    start_content = _content(start)
+    done_content = _content(done)
+    done_conditions = contract_content.get("done_conditions")
+    evidence = done_content.get("evidence")
+    conditions: dict[str, dict[str, Any]] = {}
+    if isinstance(done_conditions, dict):
+        evidence_map = evidence if isinstance(evidence, dict) else {}
+        for condition_id in sorted(done_conditions):
+            condition = done_conditions[condition_id]
+            if not isinstance(condition, dict):
+                continue
+            evidence_url = evidence_map.get(condition_id)
+            conditions[condition_id] = {
+                "text": condition.get("text"),
+                "evidence_kind": condition.get("evidence_kind"),
+                "evidence_url": evidence_url if isinstance(evidence_url, str) else None,
+                "evidence_status": (
+                    "presented" if isinstance(evidence_url, str) else "not_presented"
+                ),
+            }
+
+    not_proven: list[str] = []
+    if not acquisition_complete:
+        not_proven.append("GitHub情報の取得が不完全なためtask context未確認")
+    elif not contract_content:
+        not_proven.append("Contract未確認")
+    else:
+        missing = [
+            f"{condition_id}: Evidence未提示"
+            for condition_id, condition in conditions.items()
+            if condition["evidence_status"] == "not_presented"
+        ]
+        not_proven.extend(missing)
+        if done is None:
+            not_proven.append("Done Claim未提示")
+        elif state == "in_progress":
+            not_proven.append("native merge未確認")
+        elif state == "halt" and not missing:
+            not_proven.append("protocol不適合が未解決")
+        elif state == "stopped":
+            not_proven.append("このIssueは完了を証明せず停止済み")
+
+    branch_name = branch.get("name") if isinstance(branch, dict) else None
+    if not isinstance(branch_name, str):
+        candidate = start_content.get("branch")
+        branch_name = candidate if isinstance(candidate, str) else None
+    scope = contract_content.get("scope")
+    return {
+        "goal": contract_content.get("goal"),
+        "scope": scope if isinstance(scope, list) else [],
+        "branch": branch_name,
+        "pr": pr,
+        "conditions": conditions,
+        "not_proven": not_proven,
+        "evidence_limits": list(EVIDENCE_LIMITS),
     }
 
 
@@ -86,6 +168,22 @@ def status_projection(result: StatusResult) -> dict[str, Any]:
     current = result.current
     candidates = current.get("pr_candidates")
     candidate = candidates[0] if isinstance(candidates, list) and len(candidates) == 1 else None
+    contract = _record(current.get("contract"))
+    start = _record(current.get("start"))
+    done = _record(current.get("done"))
+    stop = _record(current.get("stop"))
+    branch = _branch(current.get("branch"))
+    bound_pr = current.get("bound_pr")
+    done_pr = _content(done).get("pr_ref")
+    pr = (
+        bound_pr
+        if isinstance(bound_pr, str)
+        else candidate
+        if isinstance(candidate, str)
+        else done_pr
+        if isinstance(done_pr, str)
+        else None
+    )
     return {
         "gtp": "1.0",
         "command": "status",
@@ -97,15 +195,24 @@ def status_projection(result: StatusResult) -> dict[str, Any]:
         "primary_url": _primary_url(result),
         "authority": "none",
         "acquisition": "incomplete" if result.acquisition_errors else "complete",
-        "contract": _record(current.get("contract")),
-        "start": _record(current.get("start")),
-        "done": _record(current.get("done")),
-        "stop": _record(current.get("stop")),
-        "branch": _branch(current.get("branch")),
+        "contract": contract,
+        "start": start,
+        "done": done,
+        "stop": stop,
+        "branch": branch,
         "pr_candidate": candidate,
-        "bound_pr": current.get("bound_pr"),
+        "bound_pr": bound_pr,
         "diagnostics": diagnostics,
         "acquisition_errors": result.acquisition_errors,
+        "task_context": _task_context(
+            state=result.state,
+            acquisition_complete=not result.acquisition_errors,
+            contract=contract,
+            start=start,
+            done=done,
+            branch=branch,
+            pr=pr,
+        ),
     }
 
 
@@ -154,7 +261,7 @@ def _status_text(machine: dict[str, Any]) -> list[str]:
             "done": "Done Claimのsource head、Evidence、native mergeを確認しました",
             "stopped": "有効なStop Recordを確認しました",
         }[machine["state"]]
-    return [
+    lines = [
         f"状態: {state}",
         f"停止要否: {stop_text}",
         f"次の行動: {action_text}",
@@ -162,6 +269,57 @@ def _status_text(machine: dict[str, Any]) -> list[str]:
         f"最初のURL: {machine['primary_url']}",
         f"非許可表示: {AUTHORITY_NOTICE}",
     ]
+    context = machine["task_context"]
+    goal = context.get("goal")
+    if not isinstance(goal, str):
+        lines.append(
+            "タスク情報: "
+            + (
+                "GitHub情報を完全に取得できないため未確認"
+                if machine["state"] is None
+                else "Contract未確認"
+            )
+        )
+        return lines
+
+    scope = context.get("scope")
+    scope_text = "、".join(scope) if isinstance(scope, list) and scope else "未記録"
+    branch_text = context.get("branch") or "未確認"
+    pr_text = context.get("pr") or "未確認"
+    lines.extend(
+        [
+            "タスク情報:",
+            f"  目的: {goal}",
+            f"  変更範囲: {scope_text}",
+            f"  作業先: branch {branch_text} / PR {pr_text}",
+            "  完了条件とEvidence:",
+        ]
+    )
+    conditions = context.get("conditions")
+    if isinstance(conditions, dict) and conditions:
+        for condition_id, condition in conditions.items():
+            evidence = (
+                condition["evidence_url"]
+                if condition.get("evidence_status") == "presented"
+                else "未提示"
+            )
+            lines.append(
+                f"    - {condition_id}: {condition.get('text') or '説明未記録'}"
+                f" / Evidence: {evidence}"
+            )
+    else:
+        lines.append("    - Contractに完了条件がありません")
+    not_proven = context.get("not_proven")
+    lines.append(
+        "  まだ証明されていないこと: "
+        + ("、".join(not_proven) if isinstance(not_proven, list) and not_proven else "なし")
+    )
+    limits = context.get("evidence_limits")
+    lines.append(
+        "  GTPが証明しないこと: "
+        + ("、".join(limits) if isinstance(limits, list) else "未確認")
+    )
+    return lines
 
 
 def present_status(result: StatusResult) -> tuple[list[str], dict[str, Any]]:
