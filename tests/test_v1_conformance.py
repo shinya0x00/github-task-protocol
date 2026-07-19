@@ -97,6 +97,9 @@ class LiveGitHub:
         check: dict | None = None,
         artifact_missing: bool = False,
         candidates: list[dict] | None = None,
+        pr_repo_id: int = 99,
+        pr_branch: str = "codex/v1",
+        pr_sha: str = SHA,
     ) -> None:
         self._comments = comments
         self._merged_at = merged_at
@@ -104,6 +107,9 @@ class LiveGitHub:
         self._check = check
         self._artifact_missing = artifact_missing
         self._candidates = candidates or []
+        self._pr_repo_id = pr_repo_id
+        self._pr_branch = pr_branch
+        self._pr_sha = pr_sha
 
     def repository(self, owner, repo):
         return {"id": 99, "url": "https://api.github.com/repos/o/r"}
@@ -123,8 +129,8 @@ class LiveGitHub:
     def pull_request(self, owner, repo, number):
         return {
             "html_url": "https://github.com/o/r/pull/7",
-            "base": {"repo": {"id": 99}},
-            "head": {"repo": {"id": 99}, "ref": "codex/v1", "sha": SHA},
+            "base": {"repo": {"id": self._pr_repo_id}},
+            "head": {"repo": {"id": self._pr_repo_id}, "ref": self._pr_branch, "sha": self._pr_sha},
             "merged_at": self._merged_at,
         }
 
@@ -233,6 +239,34 @@ class PrefixFoldConformanceTests(unittest.TestCase):
         self.assertEqual("stopped", historical_state(result))
         self.assertFalse(result.diagnostics)
 
+    def test_contextual_reason_token_matrix(self) -> None:
+        missing = f"{ISSUE}#issuecomment-99"
+        invalid_supersession = fold_comments([observed(1, contract(1, [missing]))])
+        self.assertIn("invalid_supersession", [item.token for item in invalid_supersession.diagnostics])
+
+        start_without_contract = fold_comments([observed(1, start(1))])
+        self.assertIn("start_contract_binding_failed", [item.token for item in start_without_contract.diagnostics])
+
+        c = observed(1, contract(1))
+        s = observed(2, start(2))
+        wrong_keys_record = done(3)
+        wrong_keys_record["evidence"] = {"other": wrong_keys_record["evidence"]["release"]}
+        wrong_keys = fold_comments([c, s, observed(3, wrong_keys_record)])
+        self.assertIn("done_condition_keys_mismatch", [item.token for item in wrong_keys.diagnostics])
+
+        wrong_kind_record = done(3)
+        wrong_kind_record["evidence"]["release"] = "https://github.com/o/r/runs/8"
+        wrong_kind = fold_comments([c, s, observed(3, wrong_kind_record)])
+        self.assertIn("done_evidence_kind_mismatch", [item.token for item in wrong_kind.diagnostics])
+
+        without_contract = fold_comments([observed(1, stop(1))])
+        self.assertIn("stop_without_contract", [item.token for item in without_contract.diagnostics])
+
+    def test_start_redefinition_is_not_repairable(self) -> None:
+        comments = [observed(1, contract(1)), observed(2, start(2)), observed(3, start(3))]
+        result = fold_comments(comments)
+        self.assertIn("start_redefinition", [item.token for item in result.diagnostics])
+
 
 class TerminalConformanceTests(unittest.TestCase):
     def test_done_before_stop_wins(self) -> None:
@@ -244,6 +278,7 @@ class TerminalConformanceTests(unittest.TestCase):
         comments = [observed(1, contract(1)), observed(2, start(2)), observed(3, done(3)), observed(5, stop(5))]
         result = evaluate_issue(LiveGitHub(comments, merged_at="2026-07-19T00:00:05Z"), ISSUE)
         self.assertEqual("done", result.state)
+        self.assertIn("terminal_violation", [item.token for item in result.diagnostics])
 
     def test_check_completion_after_stop_keeps_stopped(self) -> None:
         comments = [
@@ -288,6 +323,26 @@ class TerminalConformanceTests(unittest.TestCase):
         )
         self.assertEqual("halt", result.state)
         self.assertEqual("terminal_dependency_mismatch", result.diagnostics[0].token)
+
+    def test_pr_and_head_live_mismatches_are_distinct(self) -> None:
+        comments = [observed(1, contract(1)), observed(2, start(2)), observed(3, done(3))]
+        binding = evaluate_issue(LiveGitHub(comments, pr_repo_id=100), ISSUE)
+        self.assertEqual("pr_binding_mismatch", binding.diagnostics[0].token)
+        head = evaluate_issue(LiveGitHub(comments, pr_sha="f" * 40), ISSUE)
+        self.assertEqual("done_head_sha_mismatch", head.diagnostics[0].token)
+
+    def test_multiple_pr_candidates_halt_until_done_selects_one(self) -> None:
+        comments = [observed(1, contract(1)), observed(2, start(2))]
+        candidate = {
+            "html_url": "https://github.com/o/r/pull/7",
+            "base": {"repo": {"id": 99}},
+            "head": {"repo": {"id": 99}, "ref": "codex/v1", "sha": SHA},
+            "merged_at": None,
+        }
+        second = copy.deepcopy(candidate)
+        second["html_url"] = "https://github.com/o/r/pull/8"
+        result = evaluate_issue(LiveGitHub(comments, candidates=[candidate, second]), ISSUE)
+        self.assertEqual("multiple_pr_candidates", result.diagnostics[0].token)
 
     def test_merge_before_stop_is_preserved_as_diagnostic(self) -> None:
         comments = [observed(1, contract(1)), observed(2, start(2)), observed(5, stop(5))]

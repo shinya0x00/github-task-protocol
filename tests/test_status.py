@@ -176,6 +176,28 @@ class StatusTests(unittest.TestCase):
         self.assertIsNone(result.state)
         self.assertEqual("invalid_issue_resource", result.acquisition_errors[0]["code"])
 
+    def test_repository_404_during_pr_binding_is_acquisition_failure(self) -> None:
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, start(IDS[1])),
+            comment(3, done(IDS[2])),
+        ]
+
+        class RepositoryDisappears(FakeGitHub):
+            def __init__(self):
+                super().__init__(comments, pr=pr(merged=False))
+                self.calls = 0
+
+            def repository(self, owner, repo):
+                self.calls += 1
+                if self.calls > 1:
+                    raise AcquisitionError("repository", "not visible", 404)
+                return super().repository(owner, repo)
+
+        result = evaluate_issue(RepositoryDisappears(), ISSUE)
+        self.assertIsNone(result.state)
+        self.assertEqual("acquisition_incomplete", result.acquisition_errors[0]["code"])
+
 
 if __name__ == "__main__":
     unittest.main()

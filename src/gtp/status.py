@@ -189,8 +189,8 @@ def _evaluate_done(
     result = _DoneLive(done)
     pr_url = parse_github_url(done.record["pr_ref"], "pr")
     assert pr_url is not None
+    pr_repo = client.repository(pr_url.owner, pr_url.repo)
     try:
-        pr_repo = client.repository(pr_url.owner, pr_url.repo)
         pr = client.pull_request(pr_url.owner, pr_url.repo, pr_url.number or 0)
     except AcquisitionError as error:
         if _missing_is_mismatch(error):
@@ -392,6 +392,9 @@ def evaluate_issue(client: GitHubClient, issue_url: str) -> StatusResult:
             diagnostics = _terminal_violations(
                 fold.diagnostics, fold.recognized_comments, terminal_at, terminal_done
             )
+            violation = _diagnostic("terminal_violation", stop.comment.url)
+            if violation not in diagnostics:
+                diagnostics.append(violation)
             return StatusResult(issue_url, "done", diagnostics, current)
         try:
             stop_diagnostics = _stop_diagnostics(
