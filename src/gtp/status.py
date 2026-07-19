@@ -50,12 +50,22 @@ class _DoneLive:
 def _record_projection(observation: RecordObservation | None) -> dict[str, Any] | None:
     if observation is None:
         return None
+    content_fields = {
+        "contract": ("goal", "scope", "done_conditions"),
+        "start": ("contract_ref", "branch"),
+        "done": ("pr_ref", "head_sha", "evidence"),
+        "stop": ("reason", "successor_ref"),
+    }
     return {
         "id": observation.id,
         "type": observation.type,
         "url": observation.comment.url,
         "aliases": list(observation.alias_urls),
         "comment_id": observation.comment.id,
+        "content": {
+            key: observation.record[key]
+            for key in content_fields[observation.type]
+        },
     }
 
 

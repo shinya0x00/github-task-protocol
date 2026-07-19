@@ -34,7 +34,7 @@ class CliTests(unittest.TestCase):
         human = [line.rstrip("\n") for line in lines[:json_line]]
         return code, human, json.loads("".join(lines[json_line:]))
 
-    def call_http_fixture(self, name: str) -> tuple[int, dict]:
+    def call_http_fixture(self, name: str) -> tuple[int, list[str], dict]:
         fixture = json.loads((HTTP_FIXTURES / name).read_text(encoding="utf-8"))
         pending = list(fixture["requests"])
 
@@ -78,11 +78,11 @@ class CliTests(unittest.TestCase):
         with patch.dict("os.environ", {}, clear=True), patch(
             "gtp.github._open", side_effect=open_fixture
         ):
-            code, _, output = self.call(["status", fixture["issue_url"]])
+            code, human, output = self.call(["status", fixture["issue_url"]])
         self.assertEqual([], pending)
-        return code, output
+        return code, human, output
 
-    def call_http_matrix_case(self, case: dict) -> tuple[int, dict]:
+    def call_http_matrix_case(self, case: dict) -> tuple[int, list[str], dict]:
         issue_url = "https://github.com/o/r/issues/1"
         sha = "0123456789abcdef0123456789abcdef01234567"
         contract = {
@@ -98,6 +98,11 @@ class CliTests(unittest.TestCase):
                 }
             },
         }
+        if case.get("missing_evidence_key"):
+            contract["done_conditions"]["proof_b"] = {
+                "text": "second proof exists",
+                "evidence_kind": "artifact",
+            }
         start = {
             "gtp": "1.0",
             "type": "start",
@@ -226,8 +231,8 @@ class CliTests(unittest.TestCase):
         with patch.dict("os.environ", {}, clear=True), patch(
             "gtp.github._open", side_effect=response
         ):
-            code, _, output = self.call(["status", issue_url])
-            return code, output
+            code, human, output = self.call(["status", issue_url])
+            return code, human, output
 
     def _matrix_pr(self, case: dict, sha: str, number: int) -> dict:
         return {
@@ -303,7 +308,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual("halt", output["state"])
         self.assertEqual("invalid_binding", output["halt_reason"])
         self.assertEqual("状態: halt", human[0])
-        self.assertTrue(human[-1].startswith("非許可表示:"))
+        self.assertTrue(human[5].startswith("非許可表示:"))
 
     def test_status_without_state_exits_two(self) -> None:
         observed = StatusResult(
@@ -340,10 +345,10 @@ class CliTests(unittest.TestCase):
             ):
                 code, human, output = self.call(["status", issue_url])
                 self.assertEqual(2 if case["state"] is None else 0, code)
-                self.assertEqual(6, len(human))
+                self.assertGreaterEqual(len(human), 7)
                 self.assertEqual(
                     ["状態", "停止要否", "次の行動", "理由", "最初のURL", "非許可表示"],
-                    [line.split(":", 1)[0] for line in human],
+                    [line.split(":", 1)[0] for line in human[:6]],
                 )
                 self.assertIn(case["reason_contains"], human[3])
                 self.assertEqual(case["state"], output["state"])
@@ -373,6 +378,16 @@ class CliTests(unittest.TestCase):
                         {"exists": True}, output["branch"]["observation"]
                     )
                     self.assertNotIn("exists", output["branch"])
+
+        installed = matrix["installed_live_observation"]
+        self.assertEqual(0, installed["exit_code"])
+        self.assertEqual("stopped", installed["state"])
+        self.assertTrue(installed["task_context"]["goal_presented"])
+        self.assertTrue(installed["task_context"]["scope_presented"])
+        self.assertEqual(
+            ["proof_b"], installed["task_context"]["missing_evidence_keys"]
+        )
+        self.assertTrue(installed["task_context"]["not_proven_presented"])
 
     def test_all_halt_reasons_have_specific_japanese_and_first_url(self) -> None:
         matrix = json.loads((CLI_FIXTURES / "status-matrix.json").read_text(encoding="utf-8"))
@@ -405,16 +420,19 @@ class CliTests(unittest.TestCase):
         self.assertLess(first.index("状態: unmanaged"), first.index("{\n"))
 
     def test_status_http_walking_skeleton_uses_production_path(self) -> None:
-        code, output = self.call_http_fixture("walking-skeleton.json")
+        code, human, output = self.call_http_fixture("walking-skeleton.json")
         self.assertEqual(0, code)
         self.assertEqual("unmanaged", output["state"])
         self.assertEqual("complete", output["acquisition"])
+        self.assertNotIn("タスクの目的", "\n".join(human))
 
     def test_status_done_http_fixture_uses_all_production_logic(self) -> None:
-        code, output = self.call_http_fixture("done-success.json")
+        code, human, output = self.call_http_fixture("done-success.json")
         self.assertEqual(0, code)
         self.assertEqual("done", output["state"])
         self.assertEqual("complete", output["acquisition"])
+        self.assertEqual("HTTP fixture acceptance", output["task_context"]["goal"])
+        self.assertIn("  目的: HTTP fixture acceptance", human)
 
     def test_status_required_live_binding_http_matrix(self) -> None:
         matrix = json.loads(
@@ -422,7 +440,7 @@ class CliTests(unittest.TestCase):
         )
         for case in matrix:
             with self.subTest(case=case["name"]):
-                code, output = self.call_http_matrix_case(case)
+                code, human, output = self.call_http_matrix_case(case)
                 self.assertEqual(case["state"], output["state"])
                 if case.get("reason"):
                     self.assertEqual(case["reason"], output["diagnostics"][0]["token"])
@@ -430,6 +448,28 @@ class CliTests(unittest.TestCase):
                     self.assertEqual(case["first_url"], output["primary_url"])
                     self.assertEqual(
                         case["first_url"], output["diagnostics"][0]["urls"][0]
+                    )
+                if case.get("missing_evidence_key"):
+                    context = output["task_context"]
+                    self.assertEqual("HTTP matrix", context["goal"])
+                    self.assertEqual(["src/"], context["scope"])
+                    self.assertEqual("agent/test", context["branch"])
+                    self.assertEqual("https://github.com/o/r/pull/7", context["pr"])
+                    self.assertEqual(
+                        "presented",
+                        context["conditions"]["proof"]["evidence_status"],
+                    )
+                    self.assertEqual(
+                        "not_presented",
+                        context["conditions"]["proof_b"]["evidence_status"],
+                    )
+                    self.assertIn("proof_b: Evidence未提示", context["not_proven"])
+                    self.assertIn("  目的: HTTP matrix", human)
+                    self.assertTrue(
+                        any(
+                            "proof_b:" in line and "Evidence: 未提示" in line
+                            for line in human
+                        )
                     )
                 if case.get("acquisition_code"):
                     self.assertEqual(
