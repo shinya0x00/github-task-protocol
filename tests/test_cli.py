@@ -405,6 +405,9 @@ class CliTests(unittest.TestCase):
             ["proof_b"],
             plain_installed["plain_summary"]["missing_evidence_link_explained"],
         )
+        self.assertTrue(
+            plain_installed["plain_summary"]["human_machine_boundary_presented"]
+        )
 
     def test_all_halt_reasons_have_specific_japanese_and_first_url(self) -> None:
         matrix = json.loads((CLI_FIXTURES / "status-matrix.json").read_text(encoding="utf-8"))
