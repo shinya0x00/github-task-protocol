@@ -1488,3 +1488,37 @@ protocol coreは次の4領域へ限定する。
 - Exact Carrier、closed schema、pure reducerを中間不整合なしに同時導入できる。
 - reducer truth tableとlegacy vocabulary prune reportをimmutable artifactとしてDone Evidenceに使用できる。
 - 旧ADRは設計履歴として残るが、現行動作の根拠は`GTP.md`、ADR-027、ADR-028になる。
+
+## ADR-029: GitHub live bindingをGET-only HTTP境界として固定する
+
+- Status: Accepted
+- Date: 2026-07-19
+
+### 観測事実
+
+- Issue #10開始時点の`GitHubClient`はGET、Link pagination、repository／Issue／comment／branch／PR／Check Run／artifact取得の骨格を持っていた。
+- 同時点のstatus adapterにはPR changed filesのscope検査、rename旧path検査、Issue snapshot再読、Bound PR head再読、successor時刻検査がなかった。
+- Check RunがpendingのときはDone Evidence不適合ではなく`in_progress`を返し、Doneなしmergeは`invalid_transition`へ分類していた。
+- 既存status testはin-memory clientを使い、HTTP responseからCLIまでの接続を証明していなかった。
+
+### 推論
+
+- pure reducerへnetwork処理を戻さず、GitHub REST adapterとstatus application serviceの境界でlive Observationを結合すれば、Historical stateとAcquisition Errorを分離できる。
+- 内部moduleをmockするだけではrequest method、pagination、host、redirect headerを検証できないため、外部HTTP境界だけを置換するfixtureが必要である。
+- branch、PR、Evidenceの個別取得が成功しても、読取中にIssueまたはBound PR headが変われば同一snapshotとはいえない。
+
+### 決定
+
+- production transportはPython standard libraryの`Request`と`HTTPRedirectHandler`を用いるGET-only adapterとする。
+- 初期requestと最終response URLを`https://api.github.com`へ限定し、cross-origin redirectでは`Authorization`を除去する。
+- Issue metadataをread前後で比較し、Bound PRはEvidenceとchanged files取得後にsource headを再読する。変化時はhaltではなくAcquisition Errorを返す。
+- PR changed filesを全page取得し、renameでは`filename`と`previous_filename`の両方をBound Contract scopeへ照合する。
+- fork、repository mismatch、branch mismatch、scope外pathを`invalid_binding`、SHA不一致を`stale_evidence`、Evidence resource不適合を`invalid_evidence`へ分類する。
+- pendingまたはfailureのCheck RunはDone条件を満たさないため`invalid_evidence`とする。Doneなしmerge、Doneより先のmerge、Stop後mergeは`terminal_violation`とする。
+- HTTP fixture suiteはCLI、URL admission、classifier、reducer、binding logicをproduction実装のまま通し、`_open`だけを外部境界として置換する。
+
+### 結果
+
+- 取得不能時にstateを推測せず、`state: null`と`acquisition: incomplete`を返せる。
+- GitHubへのwrite path、GraphQL、webhook、cache、database、fork、GHESを追加せず、Issue #10のlive binding規則を検証できる。
+- live HTTP matrixとprune reportをimmutable Done Evidenceとして利用できる。
