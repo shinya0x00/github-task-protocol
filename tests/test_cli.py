@@ -284,6 +284,13 @@ class CliTests(unittest.TestCase):
         self.assertEqual(1, len(actions))
         self.assertEqual({"status", "check"}, set(actions[0].choices))
 
+    def test_version_prints_package_version_and_exits_zero(self) -> None:
+        output = StringIO()
+        with redirect_stdout(output), self.assertRaises(SystemExit) as raised:
+            build_parser().parse_args(["--version"])
+        self.assertEqual(0, raised.exception.code)
+        self.assertEqual("1.0.0\n", output.getvalue())
+
     def test_status_halt_is_successful_observation(self) -> None:
         observed = StatusResult(
             "https://github.com/o/r/issues/1",
