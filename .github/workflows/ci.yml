@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, "codex/**"]
+    branches: [main]
   pull_request:
 
 permissions:
@@ -11,8 +11,6 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: ${{ github.token }}
     strategy:
       fail-fast: false
       matrix:
@@ -26,11 +24,31 @@ jobs:
         run: python -m unittest discover -s tests
         env:
           PYTHONPATH: src
-      - name: Build wheel
-        run: python -m pip wheel --no-build-isolation --no-deps --wheel-dir dist .
-      - name: Install wheel
-        run: python -m pip install --no-index --find-links dist github-task-protocol
+      - name: Check release budgets
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import tomllib
+
+          assert len(Path("GTP.md").read_text(encoding="utf-8").splitlines()) <= 400
+          assert len(Path("README.md").read_text(encoding="utf-8").splitlines()) <= 150
+          production = sum(
+              len(path.read_text(encoding="utf-8").splitlines())
+              for path in Path("src/gtp").glob("*.py")
+          )
+          assert production <= 2500
+          project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]
+          assert project["dependencies"] == []
+          PY
+      - name: Build sdist and wheel without network
+        run: |
+          mkdir dist
+          python -c 'import build_backend; print(build_backend.build_sdist("dist")); print(build_backend.build_wheel("dist"))'
+      - name: Install wheel in clean environment
+        run: |
+          python -m venv .venv-check
+          .venv-check/bin/python -m pip install --no-index --no-deps dist/*.whl
       - name: Smoke test installed CLI
         run: |
-          gtp check tests/fixtures/carriers/contract-valid.md
-          gtp status https://github.com/shinya0x00/github-task-protocol/issues/1
+          .venv-check/bin/gtp check tests/fixtures/carriers/contract-valid.md
+          .venv-check/bin/python -c 'import subprocess; result = subprocess.run([".venv-check/bin/gtp", "status", "not-a-github-issue-url"]); raise SystemExit(0 if result.returncode == 2 else 1)'

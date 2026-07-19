@@ -1,6 +1,14 @@
 # GTP decisions
 
-この文書は、GTP v1.0の設計判断をADR形式で簡潔に残す。各判断は、背景、決定、結果だけを記録する。
+> 現在のprotocolの唯一の正本は[`GTP.md`](GTP.md)である。この文書は採否理由と設計履歴を所有し、Record作成やstate判断の追加仕様ではない。意味が衝突する場合は`GTP.md`を優先する。
+
+## 現在の判断を読む順序
+
+1. ADR-027: `GTP.md`を唯一の公開正本とし、4 Record・6 state・7 halt reasonへ限定した理由。
+2. ADR-028: Exact Carrier、closed schema、pure reducerを中間不整合なく切り替えた理由。
+3. ADR-029: GitHub live bindingをGET-onlyとし、Acquisition Errorをhaltから分離した理由。
+
+ADR-001〜ADR-026は設計履歴として残す。現行`GTP.md`と矛盾する旧語彙や修復機構を、現在の公開仕様として使用しない。
 
 ## ADR-001: GTPを権限の根拠にしない
 

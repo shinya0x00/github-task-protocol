@@ -1,43 +1,76 @@
 # GitHub Task Protocol
 
-GTPは、GitHub Issue上のRecordと現在のGitHub observationから、AI coding taskの状態を決定的に再構成するprotocolです。GTP自身は変更、完了宣言、mergeの権限を与えません。
+GTPは、AIへ実装を任せても、人間が目的・変更範囲・現在地・根拠・未確認事項を理解し、停止・再開・やり直し・mergeの判断を手放さないための小さなprotocolです。
 
-GTP v1.0.0は、4 Record type、Exact Carrier、closed schema、6 state、Server Orderによるprefix fold、alias、supersession、Repair Group、Done／Stop terminal orderingを実装しています。外部runtime dependencyはありません。
+> 作業はAIに任せる。判断は手放さない。
 
-## Commands
+AIの説明だけを信じるのではなく、GitHub Issue上のRecordと、実際のbranch・PR・commit・Check Runからtask stateを再構成します。GTP自身は変更、完了、mergeの権限を与えません。
+
+## 導入は3手順
+
+1. [`GTP.md`](GTP.md)を導入先repositoryのrootへコピーする。
+2. 下の共通adapter文を、agentが必ず読む文書へ1段落追加する。
+3. taskごとにGitHub Issueを1件作り、agentへそのIssue URLを渡す。
+
+共通adapter文:
+
+> このrepositoryはrootの`GTP.md`をtask protocolの唯一の正本とする。GitHub Issue URLを受け取ったら、Issue commentをServer Orderで読み、4 Record、6 state、7 halt reasonに従って既存branch・PR・次のprotocol actionを再構成する。Recordを推測、編集、独自拡張せず、矛盾時は原因URLを示して止まり、取得不能はhaltと混同しない。GTPの表示やRecordは変更・完了・mergeの権限を与えない。
+
+配置例は次のとおりです。runtimeごとに異なる指示を作る必要はありません。
+
+- Codex: `AGENTS.md`
+- Claude Code: `CLAUDE.md`または`AGENTS.md`
+- Cursor: `AGENTS.md`または`.cursor/rules/gtp.md`
+
+## 4つのRecord
+
+| Record | 平易な意味 |
+|---|---|
+| `contract` | 目的、変更してよい範囲、完了条件を固定する |
+| `start` | Contractと唯一の作業branchを結び付ける |
+| `done` | PRのsource headと、条件ごとのEvidenceを提示する |
+| `stop` | 完了を主張せず中止し、必要なら後継Issueを示す |
+
+RecordはIssue commentへ人向け要約を先に、機械用JSONを折りたたんで記録します。1 Issue = 1 branch = 1 PRです。
+
+## 6つのstate
+
+| state | 平易な意味 |
+|---|---|
+| `unmanaged` | 有効なContractがない |
+| `ready` | ContractはあるがStart前 |
+| `in_progress` | 作業中、またはDone提示後のmerge待ち |
+| `halt` | 特定transitionを矛盾や不適合のため進められない |
+| `done` | Doneのsource headとEvidenceを持つPRがnative mergeされた |
+| `stopped` | Stopにより、このIssueでの作業を終了した |
+
+GitHub情報を完全に取得できない場合はstateを推測しません。これは`halt`ではなくAcquisition Errorです。
+
+## CLIは任意の検証器
+
+人間がGTPを使うためにCLIをinstallする必要はありません。`gtp`はagentや自動検査がRecordと現在stateを確認するための、runtime dependency 0の任意toolです。
 
 ```console
-gtp check <comment.md>
-gtp status <github-issue-url>
+uvx --from github-task-protocol==1.0.0 gtp status <issue-url>
+uvx --from github-task-protocol==1.0.0 gtp check <comment.md>
 ```
 
-`gtp check`は投稿予定のMarkdown comment全文をofflineで検査します。通常comment、schema-valid Carrier、壊れたCarrierを区別し、GitHub文脈の検査を実施済みとは表示しません。
+- `status`はGitHubへGETだけを行い、日本語6項目の後にmachine JSONを出します。
+- `check`は投稿前のMarkdown comment全文をoffline検査します。Issue上でもvalidだとは主張しません。
+- exit code、緑色のCheck Run、Evidence URLは、変更やmergeの許可ではありません。
 
-`gtp status`はIssue commentを全page取得してcomment ID順にfoldし、次の6 stateのいずれかを返します。
+## 仕様と判断記録
 
-```text
-unmanaged | ready | in_progress | halt | done | stopped
-```
+protocolの唯一の正本は400行以内の[`GTP.md`](GTP.md)です。Record作成やstate判断に、他の文書は必要ありません。
 
-state-criticalな取得が不完全な場合はprotocol stateを推測せず、`state: null`、`acquisition.complete: false`、exit 2を返します。`halt`を含め、stateを導出できた場合のexit codeは0です。
+[`DECISIONS.md`](DECISIONS.md)は、設計変更の理由と履歴です。`GTP.md`と意味が衝突する場合は`GTP.md`を優先します。
 
-logical Recordのmachine projectionは、server order上の最初のcommentを`url`、観測した全retry commentを`aliases`として返します。diagnosticにはclosed core tokenと原因comment/resource URLが含まれます。
+実GitHubで観測した引き継ぎ結果は[`acceptance/level0/`](acceptance/level0/)にあります。これは仕様の代わりではありません。
 
-## Authentication
+## GTPが証明しないこと
 
-`gtp status`は`GITHUB_TOKEN`、次に`GH_TOKEN`を使用します。どちらも未設定なら匿名readを試みます。production commandはGitHubへwriteしません。
+GTPは、actor本人性、credential安全性、コード品質そのもの、Evidence内容の真実性を証明しません。filesystem削除や本番database操作を物理的に防ぐものでもありません。
 
-## Development
+サンドボックス、最小権限、不可逆操作前の確認、reviewと組み合わせてください。最終的な受理は、人間がPRとEvidenceを読み、GitHubのnative mergeで判断します。
 
-```console
-PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python3 -m unittest discover -s tests
-
-python3 -m pip wheel --no-build-isolation --no-deps --wheel-dir dist .
-python3 -m venv /tmp/gtp-verify
-/tmp/gtp-verify/bin/python -m pip install --no-index --find-links dist github-task-protocol
-/tmp/gtp-verify/bin/gtp check tests/fixtures/carriers/contract-valid.md
-```
-
-CIはPython 3.11、3.12、3.13でconformance tests、wheel build/install、installed CLI smokeを実行します。ADR-001〜ADR-026とconformance testの対応は`tests/fixtures/adr-conformance.json`で機械検査します。
-
-実GitHub acceptanceの手順、観測結果、Evidenceの限界は[acceptance/README.md](acceptance/README.md)に分離しています。
+License: [MIT](LICENSE)

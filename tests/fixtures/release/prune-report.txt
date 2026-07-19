@@ -1,0 +1,36 @@
+Issue #12 release surface prune report
+======================================
+
+Observed before prune
+---------------------
+- README.md described removed Repair Group behavior and developer-oriented ADR coverage before the three-step user entry path.
+- CONTEXT.md and GLOSSARY.md presented legacy protocol vocabulary at repository root.
+- acceptance/README.md, STATUS.md, run.json, and v1.0.0.json described Issue #1 and an older release candidate as if they were the current release gate.
+- build_backend.py included CONTEXT.md and GLOSSARY.md in the sdist but omitted GTP.md and LICENSE.
+
+Prune decision
+--------------
+- Deleted root CONTEXT.md and GLOSSARY.md. Git history remains the recovery path.
+- Moved the Issue #1 and old v1.0.0 acceptance records under acceptance/legacy/ without treating them as current evidence.
+- Kept acceptance/level0/ as the current observed cross-runtime handoff evidence.
+- Kept DECISIONS.md as design history and added a current-reading guide that points to GTP.md as the sole protocol authority.
+- Kept the dependency-free custom build backend because it builds valid sdist/wheel artifacts and no accepted requirement needs a backend replacement.
+
+Excluded additions
+------------------
+- No PyPI publish, tag, GitHub Release, or publish workflow.
+- No docs site, GitHub Pages, badge, English README, bot, dashboard, Issue template, or Project.
+- No protocol, reducer, GitHub client, or CLI behavior change.
+- No runtime dependency.
+
+Validation
+----------
+- README.md: 76 lines (budget <= 150).
+- GTP.md: 353 lines (budget <= 400).
+- Production Python: 1,727 lines (budget <= 2,500).
+- Runtime dependencies: 0.
+- Public commands: status and check only.
+
+Evidence limit
+--------------
+This report records repository content and local validation. It does not prove GitHub Actions success, PyPI publication, user comprehension, package popularity, credential safety, or the truth of historical acceptance statements. GitHub Actions and immutable distribution evidence are acquired separately for the exact candidate head.

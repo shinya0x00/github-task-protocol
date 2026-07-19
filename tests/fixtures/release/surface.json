@@ -1,0 +1,42 @@
+{
+  "required_root": [
+    "README.md",
+    "GTP.md",
+    "DECISIONS.md",
+    "LICENSE",
+    "pyproject.toml",
+    "build_backend.py",
+    "src/gtp",
+    "tests",
+    "acceptance",
+    ".github/workflows/ci.yml"
+  ],
+  "forbidden_root": [
+    "CONTEXT.md",
+    "GLOSSARY.md"
+  ],
+  "budgets": {
+    "README.md": 150,
+    "GTP.md": 400,
+    "production_python": 2500
+  },
+  "distribution": "github-task-protocol",
+  "console_script": "gtp",
+  "python": ">=3.11",
+  "runtime_dependencies": 0,
+  "license": "MIT",
+  "required_sdist": [
+    "GTP.md",
+    "README.md",
+    "LICENSE",
+    "src",
+    "tests"
+  ],
+  "excluded": [
+    "publish workflow",
+    "docs site",
+    "GitHub Pages",
+    "bot",
+    "dashboard"
+  ]
+}

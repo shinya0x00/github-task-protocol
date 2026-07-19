@@ -7,8 +7,14 @@ backend-path = ["."]
 name = "github-task-protocol"
 version = "1.0.0"
 description = "Reconstruct AI coding task state from GitHub Issue records"
+readme = "README.md"
 requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = []
 
 [project.scripts]
 gtp = "gtp.cli:main"
+
+[project.urls]
+Repository = "https://github.com/shinya0x00/github-task-protocol"
