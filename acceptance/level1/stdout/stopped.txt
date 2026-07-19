@@ -1,0 +1,27 @@
+状態: stopped
+停止要否: このIssueでは作業を再開しません
+次の行動: 必要なら新しいIssueでContractから開始してください
+理由: 有効なStop Recordを確認しました
+最初のURL: https://github.com/shinya0x00/github-task-protocol/issues/40#issuecomment-5015888880
+非許可表示: この出力は変更・完了・mergeの許可を与えません
+かんたんな説明:
+  結論: このIssueは完了を主張せず終了しています。
+  この作業の目的: 完了に必要な確認資料が一つ足りないとき、作業を止める理由と、確認できるもの・できないものを非エンジニアが一つの表示から判断できるか確かめる
+  変更してよい場所: acceptance/level1/plain-live-probe-anchor.txt
+  作業場所: branch agent/issue-40-level1-plain-halt / PR https://github.com/shinya0x00/github-task-protocol/pull/41
+  記録に確認資料へのリンクがある条件（達成済みとはまだ断定しません）:
+    - テスト用ファイルが作業branchのsource headに存在する（識別子: anchor_file）
+      確認資料: https://github.com/shinya0x00/github-task-protocol/blob/4f495ab6c0fdc7636800c85d9af737809349e406/acceptance/level1/plain-live-probe-anchor.txt
+  確認資料が足りない条件:
+    - 二つ目のテスト用ファイルが同じsource headに存在する（識別子: second_file）
+      不足しているもの: 条件を確認するための証拠リンク
+  ここまでが人向けの説明です。続くJSONは機械処理用です。
+{
+  "acquisition": "complete",
+  "authority": "none",
+  "issue_url": "https://github.com/shinya0x00/github-task-protocol/issues/40",
+  "next_action": "none_stopped",
+  "primary_url": "https://github.com/shinya0x00/github-task-protocol/issues/40#issuecomment-5015888880",
+  "state": "stopped"
+}
+[exit code: 0; observed after PR close and branch deletion]

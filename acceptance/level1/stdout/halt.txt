@@ -1,0 +1,37 @@
+状態: halt
+停止要否: このtransitionは進められません
+次の行動: 最初のURLを確認し、記録を推測で補わず人間へ戻してください
+理由: invalid_evidence — Done Conditionに対応するEvidenceを確認できません
+最初のURL: https://github.com/shinya0x00/github-task-protocol/issues/40#issuecomment-5015888880
+非許可表示: この出力は変更・完了・mergeの許可を与えません
+かんたんな説明:
+  結論: このIssueの完了は確認できません。作業を止めて人が確認してください。
+  次にすること: 原因の記録を開いてください: https://github.com/shinya0x00/github-task-protocol/issues/40#issuecomment-5015888880
+  この作業の目的: 完了に必要な確認資料が一つ足りないとき、作業を止める理由と、確認できるもの・できないものを非エンジニアが一つの表示から判断できるか確かめる
+  変更してよい場所: acceptance/level1/plain-live-probe-anchor.txt
+  作業場所: branch agent/issue-40-level1-plain-halt / PR https://github.com/shinya0x00/github-task-protocol/pull/41
+  記録に確認資料へのリンクがある条件（達成済みとはまだ断定しません）:
+    - テスト用ファイルが作業branchのsource headに存在する（識別子: anchor_file）
+      確認資料: https://github.com/shinya0x00/github-task-protocol/blob/4f495ab6c0fdc7636800c85d9af737809349e406/acceptance/level1/plain-live-probe-anchor.txt
+  確認資料が足りない条件:
+    - 二つ目のテスト用ファイルが同じsource headに存在する（識別子: second_file）
+      不足しているもの: 条件を確認するための証拠リンク
+  大事な点: 足りない記録を推測で補わないでください。この表示だけでは変更・完了・mergeできません。
+  ここまでが人向けの説明です。続くJSONは機械処理用です。
+{
+  "acquisition": "complete",
+  "authority": "none",
+  "halt_reason": "invalid_evidence",
+  "issue_url": "https://github.com/shinya0x00/github-task-protocol/issues/40",
+  "next_action": "inspect_halt",
+  "primary_url": "https://github.com/shinya0x00/github-task-protocol/issues/40#issuecomment-5015888880",
+  "state": "halt",
+  "task_context": {
+    "conditions": {
+      "anchor_file": {"evidence_status": "presented"},
+      "second_file": {"evidence_status": "not_presented"}
+    },
+    "not_proven": ["second_file: Evidence未提示"]
+  }
+}
+[exit code: 0]

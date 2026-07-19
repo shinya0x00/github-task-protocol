@@ -1,0 +1,29 @@
+状態: done
+停止要否: 停止は不要です。完了状態です
+次の行動: 追加のprotocol actionはありません
+理由: Done Claimのsource head、Evidence、native mergeを確認しました
+最初のURL: https://github.com/shinya0x00/github-task-protocol/pull/24
+非許可表示: この出力は変更・完了・mergeの許可を与えません
+かんたんな説明:
+  結論: このIssueの完了を確認しました。
+  この作業の目的: 利用者がREADMEから3手順で導入でき、agentが同じsdistとwheelをclean環境で再現できる最小公開面にする
+  変更してよい場所: README.md、LICENSE、pyproject.toml、build_backend.py、.github/workflows/ci.yml、DECISIONS.md、CONTEXT.md、GLOSSARY.md、acceptance/README.md、acceptance/STATUS.md、acceptance/run.json、acceptance/v1.0.0.json、acceptance/legacy/、tests/test_build_backend.py、tests/test_release_surface.py、tests/fixtures/release/
+  作業場所: branch agent/issue-12-release-surface / PR https://github.com/shinya0x00/github-task-protocol/pull/24
+  確認できた完了条件:
+    - 旧root文書とlegacy acceptanceの整理、追加しなかった公開機構、Evidenceの限界を記録したreportが存在する（識別子: prune_report）
+      確認資料: https://github.com/shinya0x00/github-task-protocol/blob/67b9d786d54fb218de086fd3be88c53b3dc8cc86/tests/fixtures/release/prune-report.txt
+    - README、MIT License、metadata、sdist/wheel内容、line budget、dependency zeroを検査するrelease surface matrixが存在する（識別子: public_surface）
+      確認資料: https://github.com/shinya0x00/github-task-protocol/blob/67b9d786d54fb218de086fd3be88c53b3dc8cc86/tests/fixtures/release/surface.json
+    - Python 3.11から3.13の単一CI matrixがtest、budget、distribution build、clean install、両command smokeに成功する（識別子: release_ci）
+      確認資料: https://github.com/shinya0x00/github-task-protocol/runs/88190675716
+  ここまでが人向けの説明です。続くJSONは機械処理用です。
+{
+  "acquisition": "complete",
+  "authority": "none",
+  "bound_pr": "https://github.com/shinya0x00/github-task-protocol/pull/24",
+  "issue_url": "https://github.com/shinya0x00/github-task-protocol/issues/12",
+  "next_action": "none_done",
+  "primary_url": "https://github.com/shinya0x00/github-task-protocol/pull/24",
+  "state": "done"
+}
+[exit code: 0; observed after source branch deletion]
