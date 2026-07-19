@@ -31,13 +31,17 @@ def _dist_info() -> str:
 def _metadata() -> bytes:
     project = _project()
     lines = [
-        "Metadata-Version: 2.3",
+        "Metadata-Version: 2.4",
         f"Name: {project['name']}",
         f"Version: {project['version']}",
         f"Summary: {project['description']}",
         f"Requires-Python: {project['requires-python']}",
+        f"License-Expression: {project['license']}",
+        "License-File: LICENSE",
+        f"Project-URL: Repository, {project['urls']['Repository']}",
+        "Description-Content-Type: text/markdown",
         "",
-        "",
+        (ROOT / project["readme"]).read_text(encoding="utf-8"),
     ]
     return "\n".join(lines).encode("utf-8")
 
@@ -67,6 +71,7 @@ def _wheel_files() -> list[tuple[str, bytes]]:
             (f"{dist_info}/METADATA", _metadata()),
             (f"{dist_info}/WHEEL", _wheel_metadata()),
             (f"{dist_info}/entry_points.txt", _entry_points()),
+            (f"{dist_info}/licenses/LICENSE", (ROOT / "LICENSE").read_bytes()),
         ]
     )
     return files
@@ -131,9 +136,9 @@ def build_sdist(
         ROOT / "pyproject.toml",
         ROOT / "build_backend.py",
         ROOT / "README.md",
-        ROOT / "CONTEXT.md",
+        ROOT / "GTP.md",
         ROOT / "DECISIONS.md",
-        ROOT / "GLOSSARY.md",
+        ROOT / "LICENSE",
         ROOT / "src",
         ROOT / "tests",
         ROOT / "acceptance",
