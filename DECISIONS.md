@@ -1419,3 +1419,39 @@ protocol coreは次の4領域へ限定する。
 4. Supersession、retry、repair。
 
 この節はGTP利用者のprotocol semanticsやadmission ruleではなく、仕様書を肥大化させないための開発・文書分類である。
+
+## ADR-027: `GTP.md`を唯一の公開正本にし、複雑な同一Issue内修復を外す
+
+- Status: Accepted
+- Date: 2026-07-19
+- Supersedes: ADR-002〜ADR-026のうち`GTP.md`と矛盾する公開protocol semantics
+
+### 観測事実
+
+- 現行仕様は26件のADR、`CONTEXT.md`、実装、acceptance記録へ分散し、利用者が1ファイルだけをコピーしてRecordを作れる形ではない。
+- 現行実装にはRepair Group、任意数leafのjoin、Done Terminal成立時刻、Late Done、24個相当の細分化されたtransition tokenがある。
+- Issue #1とPR #2では、GitHub Issue、branch、PR、Evidence、native mergeから状態を再構成するwalking skeletonを実GitHubで観測した。
+- 比較対象の`gtp-test` PR #1と`gtp-test2` PR #1では、1ファイルの仕様正本、人向け日本語を先に出すCLI、仕様・pure reducer・GitHub取得・表示の責務分離が提案された。これらを本repositoryの公開candidateで受け入れた事実は、後続のLevel 0／Level 1 acceptanceまで未確認である。
+
+### 推論
+
+- 非エンジニアの個人開発者が導入し、異なるruntime間で引き継ぐ目的には、同一Issue内であらゆる壊れ方を修復する能力より、規則を1ファイルから一意に読めることの方が重要である。
+- 複雑な修復を残すと、producerとreaderの双方が理解・実装すべき分岐が増え、実際の事故URLがない機構まで公開契約になる。
+- pre-terminalな矛盾を最後のvalid Stopで閉じ、新Issueへ移る単一経路があれば、履歴を消さずに安全な再開先を作れる。
+
+### 決定
+
+- repository rootの`GTP.md`をprotocolの唯一の公開正本とする。意味が衝突する場合、`GTP.md`を優先する。
+- `DECISIONS.md`は採否理由と設計履歴を所有し、公開Recordを作るための追加仕様にはしない。
+- 公開v1を`contract`、`start`、`done`、`stop`の4 Record、6 state、7 halt reasonへ限定する。
+- Repair Group、任意数leafのjoin、同一Issue内のRecord置換、Done active interval、Late Done専用機構、細分化されたtransition token、`human` Evidenceを外す。
+- 訂正の正準経路を、最後のvalid Stopと新Issueへの移行へ一本化する。
+- ADR-001の「GTPを権限の根拠にしない」は`GTP.md`と整合するため、そのまま維持する。
+- ADR-002〜ADR-026は削除せず設計履歴として保持するが、`GTP.md`と矛盾する意味を現行仕様として使用しない。
+
+### 結果
+
+- 利用者は`GTP.md`と共通adapter文だけでprotocolへ参加できる。
+- 後続実装は`GTP.md`のclosed schemaと語彙へ適合させる必要があり、現行codeとtestsはこのADRだけでは適合済みにならない。
+- 旧acceptanceはwalking skeletonの回帰材料として残るが、新しい最小仕様のLevel 0／Level 1 acceptanceを証明しない。
+- 公開仕様から外した複雑な修復が必要になった場合は、実際のfailure URLを持つ新IssueとDecisionで再検討する。
