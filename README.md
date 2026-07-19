@@ -50,9 +50,11 @@ GitHub情報を完全に取得できない場合はstateを推測しません。
 
 人間がGTPを使うためにCLIをinstallする必要はありません。`gtp`はagentや自動検査がRecordと現在stateを確認するための、runtime dependency 0の任意toolです。
 
+CLIは現在、PyPI、npm、その他のpackage registryへ一般公開していません。repository内で仕様の受け入れと検証に使います。将来の配布方法は未決定です。
+
 ```console
-uvx --from github-task-protocol==1.0.1 gtp status <issue-url>
-uvx --from github-task-protocol==1.0.1 gtp check <comment.md>
+PYTHONPATH=src python3 -m gtp status <issue-url>
+PYTHONPATH=src python3 -m gtp check <comment.md>
 ```
 
 - `status`はGitHubへGETだけを行い、日本語6項目の後にmachine JSONを出します。
