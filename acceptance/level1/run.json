@@ -1,6 +1,6 @@
 {
   "acceptance_level": 1,
-  "status": "awaiting_human_probe_rerun",
+  "status": "blocked_plain_language_readability",
   "candidate": {
     "commit_sha": "c859172c97a1804642d77248673470f51af73a79",
     "commit_url": "https://github.com/shinya0x00/github-task-protocol/commit/c859172c97a1804642d77248673470f51af73a79",
@@ -102,12 +102,23 @@
     "https://github.com/shinya0x00/github-task-protocol/issues/31"
   ],
   "human_probe": {
-    "status": "awaiting_owner_response",
+    "status": "failed",
     "artifact": "human-probe.md",
     "probe_input": "stdout/halt.txt",
-    "raw_response": null,
-    "verdict": "pending",
-    "repair_ref": "https://github.com/shinya0x00/github-task-protocol/issues/34",
+    "raw_response": "https://github.com/shinya0x00/github-task-protocol/pull/33#issuecomment-5015840434",
+    "understood": [
+      "work is stopped and requires human confirmation",
+      "next action",
+      "allowed mutation scope",
+      "branch and PR",
+      "proof_b is unproven"
+    ],
+    "not_understood": [
+      "which condition is already proven"
+    ],
+    "operator_assessment": "前回より見る場所は分かりやすいが、非エンジニアにはまだ負荷が高く、噛み砕いた説明がない。",
+    "verdict": "repair_then_rerun",
+    "repair_ref": "https://github.com/shinya0x00/github-task-protocol/issues/38",
     "previous_failed_response": "https://github.com/shinya0x00/github-task-protocol/pull/33#issuecomment-5015751561"
   },
   "evidence_limits": [
