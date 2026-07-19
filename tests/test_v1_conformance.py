@@ -96,12 +96,14 @@ class LiveGitHub:
         branch: bool = True,
         check: dict | None = None,
         artifact_missing: bool = False,
+        candidates: list[dict] | None = None,
     ) -> None:
         self._comments = comments
         self._merged_at = merged_at
         self._branch = branch
         self._check = check
         self._artifact_missing = artifact_missing
+        self._candidates = candidates or []
 
     def repository(self, owner, repo):
         return {"id": 99, "url": "https://api.github.com/repos/o/r"}
@@ -116,7 +118,7 @@ class LiveGitHub:
         return {"name": branch} if self._branch else None
 
     def pull_requests(self, owner, repo, branch):
-        return []
+        return self._candidates
 
     def pull_request(self, owner, repo, number):
         return {
@@ -286,6 +288,18 @@ class TerminalConformanceTests(unittest.TestCase):
         )
         self.assertEqual("halt", result.state)
         self.assertEqual("terminal_dependency_mismatch", result.diagnostics[0].token)
+
+    def test_merge_before_stop_is_preserved_as_diagnostic(self) -> None:
+        comments = [observed(1, contract(1)), observed(2, start(2)), observed(5, stop(5))]
+        candidate = {
+            "html_url": "https://github.com/o/r/pull/7",
+            "base": {"repo": {"id": 99}},
+            "head": {"repo": {"id": 99}, "ref": "codex/v1", "sha": SHA},
+            "merged_at": "2026-07-19T00:00:04Z",
+        }
+        result = evaluate_issue(LiveGitHub(comments, candidates=[candidate]), ISSUE)
+        self.assertEqual("stopped", result.state)
+        self.assertIn("merge_before_stop", [item.token for item in result.diagnostics])
 
     def test_aliases_are_projected_in_server_order(self) -> None:
         record = contract(1)
