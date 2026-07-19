@@ -19,7 +19,6 @@ class RecordObservation:
     record: dict[str, Any]
     comment: Comment
     aliases: list[Comment] = field(default_factory=list)
-    superseded: bool = False
 
     @property
     def type(self) -> str:
@@ -50,20 +49,6 @@ class Diagnostic:
         return result
 
 
-@dataclass
-class RepairGroup:
-    token: str
-    urls: list[str]
-    resolved: bool = False
-
-
-@dataclass
-class DoneWindow:
-    observation: RecordObservation
-    started_at: str
-    ended_at: str | None = None
-
-
 @dataclass(frozen=True)
 class SuccessorFact:
     url: str
@@ -89,19 +74,13 @@ class FoldResult:
     active: dict[str, list[RecordObservation]] = field(
         default_factory=lambda: {kind: [] for kind in ("contract", "start", "done", "stop")}
     )
-    valid_by_url: dict[str, RecordObservation] = field(default_factory=dict)
     observations_by_url: dict[str, RecordObservation] = field(default_factory=dict)
-    invalid_urls: set[str] = field(default_factory=set)
     ids: dict[str, list[RecordObservation]] = field(default_factory=dict)
     diagnostics: list[Diagnostic] = field(default_factory=list)
-    repair_groups: list[RepairGroup] = field(default_factory=list)
     started_once: bool = False
-    had_valid_contract: bool = False
     bound_contract: RecordObservation | None = None
     bound_start: RecordObservation | None = None
     terminal_stop: RecordObservation | None = None
-    done_windows: list[DoneWindow] = field(default_factory=list)
-    open_done_window: DoneWindow | None = None
 
 
 class IncompleteSnapshotError(ValueError):

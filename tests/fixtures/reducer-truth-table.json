@@ -1,0 +1,9 @@
+[
+  {"name": "normal comments only", "records": ["ordinary"], "state": "unmanaged", "reasons": []},
+  {"name": "one contract", "records": ["contract"], "state": "ready", "reasons": []},
+  {"name": "contract start", "records": ["contract", "start"], "state": "in_progress", "reasons": []},
+  {"name": "done before start", "records": ["contract", "done"], "state": "halt", "reasons": ["invalid_transition"]},
+  {"name": "two contracts", "records": ["contract", "contract"], "state": "halt", "reasons": ["conflicting_records"]},
+  {"name": "final stop", "records": ["contract", "stop"], "state": "stopped", "reasons": []},
+  {"name": "record after stop", "records": ["stop", "contract"], "state": "halt", "reasons": ["terminal_violation"]}
+]

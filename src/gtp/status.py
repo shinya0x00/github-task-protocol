@@ -134,15 +134,15 @@ def _live_evidence(
         url = done.record["evidence"][condition_id]
         parsed = parse_github_url(url, kind)
         if parsed is None:
-            diagnostics.append(_diagnostic("evidence_live_mismatch", done.comment.url, url))
+            diagnostics.append(_diagnostic("invalid_evidence", done.comment.url, url))
             continue
         repository = client.repository(parsed.owner, parsed.repo)
         if not _repo_matches(repository, issue_repo_id):
-            diagnostics.append(_diagnostic("evidence_live_mismatch", done.comment.url, url))
+            diagnostics.append(_diagnostic("invalid_evidence", done.comment.url, url))
             continue
         if kind == "artifact":
             if parsed.sha != head_sha:
-                diagnostics.append(_diagnostic("evidence_live_mismatch", done.comment.url, url))
+                diagnostics.append(_diagnostic("invalid_evidence", done.comment.url, url))
                 continue
             try:
                 resource = client.artifact(
@@ -153,25 +153,25 @@ def _live_evidence(
                 )
             except AcquisitionError as error:
                 if _missing_is_mismatch(error):
-                    diagnostics.append(_diagnostic("evidence_live_mismatch", done.comment.url, url))
+                    diagnostics.append(_diagnostic("invalid_evidence", done.comment.url, url))
                     continue
                 raise
             if not isinstance(resource, dict) or resource.get("type") != "file":
-                diagnostics.append(_diagnostic("evidence_live_mismatch", done.comment.url, url))
+                diagnostics.append(_diagnostic("invalid_evidence", done.comment.url, url))
         else:
             try:
                 resource = client.check_run(parsed.owner, parsed.repo, parsed.number or 0)
             except AcquisitionError as error:
                 if _missing_is_mismatch(error):
-                    diagnostics.append(_diagnostic("evidence_live_mismatch", done.comment.url, url))
+                    diagnostics.append(_diagnostic("invalid_evidence", done.comment.url, url))
                     continue
                 raise
             if resource.get("head_sha") != head_sha:
-                diagnostics.append(_diagnostic("evidence_live_mismatch", done.comment.url, url))
+                diagnostics.append(_diagnostic("stale_evidence", done.comment.url, url))
             elif resource.get("status") != "completed":
                 pending = True
             elif resource.get("conclusion") != "success":
-                diagnostics.append(_diagnostic("evidence_live_mismatch", done.comment.url, url))
+                diagnostics.append(_diagnostic("invalid_evidence", done.comment.url, url))
             elif not isinstance(resource.get("completed_at"), str):
                 raise AcquisitionError(url, "completed Check Run is missing completed_at")
             else:
@@ -195,19 +195,19 @@ def _evaluate_done(
     except AcquisitionError as error:
         if _missing_is_mismatch(error):
             result.diagnostics.append(
-                _diagnostic("pr_binding_mismatch", done.comment.url, done.record["pr_ref"])
+                _diagnostic("invalid_binding", done.comment.url, done.record["pr_ref"])
             )
             return result
         raise
     result.pr = pr
     if not _repo_matches(pr_repo, repo_id) or not _pr_matches(pr, repo_id, branch_name):
         result.diagnostics.append(
-            _diagnostic("pr_binding_mismatch", done.comment.url, done.record["pr_ref"])
+            _diagnostic("invalid_binding", done.comment.url, done.record["pr_ref"])
         )
         return result
     if pr.get("head", {}).get("sha") != done.record["head_sha"]:
         result.diagnostics.append(
-            _diagnostic("done_head_sha_mismatch", done.comment.url, done.record["pr_ref"])
+            _diagnostic("stale_evidence", done.comment.url, done.record["pr_ref"])
         )
         return result
     evidence_diagnostics, pending, check_times = _live_evidence(
@@ -217,7 +217,7 @@ def _evaluate_done(
     if evidence_diagnostics:
         if pr.get("merged_at"):
             urls = [url for item in evidence_diagnostics for url in item.urls]
-            result.diagnostics.append(_diagnostic("terminal_dependency_mismatch", *urls))
+            result.diagnostics.append(_diagnostic("invalid_evidence", *urls))
         else:
             result.diagnostics.extend(evidence_diagnostics)
         return result
@@ -257,7 +257,7 @@ def _stop_diagnostics(
         fact = context.successors[stop.record["successor_ref"]]
         if not fact.exists or fact.repository_id != repo_id:
             diagnostics.append(
-                _diagnostic("terminal_dependency_mismatch", stop.comment.url, fact.url)
+                _diagnostic("invalid_binding", stop.comment.url, fact.url)
             )
             return diagnostics
     if start is None:
@@ -269,8 +269,7 @@ def _stop_diagnostics(
         if _pr_matches(pr, repo_id, branch_name) and isinstance(pr.get("merged_at"), str)
     ]
     for pr in candidates:
-        token = "merge_before_stop" if pr["merged_at"] <= stop.comment.created_at else "merge_after_stop"
-        diagnostics.append(_diagnostic(token, stop.comment.url, pr["html_url"]))
+        diagnostics.append(_diagnostic("terminal_violation", stop.comment.url, pr["html_url"]))
     return diagnostics
 
 
@@ -349,7 +348,7 @@ def evaluate_issue(client: GitHubClient, issue_url: str) -> StatusResult:
                 )
             except AcquisitionError as error:
                 return _acquisition(issue_url, error)
-            if stop_diagnostics and stop_diagnostics[0].token == "terminal_dependency_mismatch":
+            if stop_diagnostics:
                 return StatusResult(issue_url, "halt", stop_diagnostics, current)
             return StatusResult(
                 issue_url, "stopped", [*fold.diagnostics, *stop_diagnostics], current
@@ -358,84 +357,34 @@ def evaluate_issue(client: GitHubClient, issue_url: str) -> StatusResult:
 
     branch_name = fold.bound_start.record["branch"]
     current["branch"] = {"name": branch_name}
-    live_by_id: dict[int, _DoneLive] = {}
-    try:
-        for window in fold.done_windows:
-            key = id(window.observation)
-            if key not in live_by_id:
-                live_by_id[key] = _evaluate_done(
-                    client,
-                    repo_id,
-                    branch_name,
-                    fold.bound_contract,
-                    window.observation,
-                )
-    except AcquisitionError as error:
-        return _acquisition(issue_url, error)
-
-    done_candidates: list[tuple[str, RecordObservation, _DoneLive]] = []
-    for window in fold.done_windows:
-        live = live_by_id[id(window.observation)]
-        if live.terminal_at is not None and (
-            window.ended_at is None or live.terminal_at <= window.ended_at
-        ):
-            done_candidates.append((live.terminal_at, window.observation, live))
-    done_candidates.sort(key=lambda item: (item[0], item[1].comment.id))
-
-    stop = fold.terminal_stop
-    if stop is not None:
-        if done_candidates and done_candidates[0][0] <= stop.comment.created_at:
-            terminal_at, terminal_done, live = done_candidates[0]
-            current["done"] = _record_projection(terminal_done)
-            current["bound_pr"] = live.pr.get("html_url") if live.pr else terminal_done.record["pr_ref"]
-            current["bound_pr_head_sha"] = live.pr.get("head", {}).get("sha") if live.pr else None
-            diagnostics = _terminal_violations(
-                fold.diagnostics, fold.recognized_comments, terminal_at, terminal_done
-            )
-            violation = _diagnostic("terminal_violation", stop.comment.url)
-            if violation not in diagnostics:
-                diagnostics.append(violation)
-            return StatusResult(issue_url, "done", diagnostics, current)
+    if fold.terminal_stop is not None:
         try:
             stop_diagnostics = _stop_diagnostics(
-                client,
-                parsed.owner,
-                parsed.repo,
-                repo_id,
-                stop,
-                fold.bound_start,
-                context,
+                client, parsed.owner, parsed.repo, repo_id, fold.terminal_stop, fold.bound_start, context
             )
         except AcquisitionError as error:
             return _acquisition(issue_url, error)
-        if stop_diagnostics and stop_diagnostics[0].token == "terminal_dependency_mismatch":
-            return StatusResult(issue_url, "halt", stop_diagnostics, current)
-        return StatusResult(
-            issue_url, "stopped", [*fold.diagnostics, *stop_diagnostics], current
-        )
-
-    if done_candidates:
-        terminal_at, terminal_done, live = done_candidates[0]
-        current["done"] = _record_projection(terminal_done)
-        current["bound_pr"] = live.pr.get("html_url") if live.pr else terminal_done.record["pr_ref"]
-        current["bound_pr_head_sha"] = live.pr.get("head", {}).get("sha") if live.pr else None
-        diagnostics = _terminal_violations(
-            fold.diagnostics, fold.recognized_comments, terminal_at, terminal_done
-        )
-        return StatusResult(issue_url, "done", diagnostics, current)
+        if stop_diagnostics:
+            return StatusResult(issue_url, "halt", [*fold.diagnostics, *stop_diagnostics], current)
+        return StatusResult(issue_url, "stopped", list(fold.diagnostics), current)
 
     if fold.diagnostics:
         return StatusResult(issue_url, "halt", list(fold.diagnostics), current)
 
     try:
         if active_done is not None:
-            live = live_by_id[id(active_done)]
+            live = _evaluate_done(client, repo_id, branch_name, fold.bound_contract, active_done)
             if live.pr is not None:
                 current["bound_pr"] = live.pr.get("html_url")
                 current["bound_pr_head_sha"] = live.pr.get("head", {}).get("sha")
             if live.diagnostics:
                 return StatusResult(issue_url, "halt", live.diagnostics, current)
             current["evidence_pending"] = live.pending
+            if live.terminal_at is not None:
+                diagnostics = _terminal_violations(
+                    fold.diagnostics, fold.recognized_comments, live.terminal_at, active_done
+                )
+                return StatusResult(issue_url, "done", diagnostics, current)
             if live.pr and live.pr.get("merged_at"):
                 return StatusResult(issue_url, "in_progress", [], current)
             branch = client.branch(parsed.owner, parsed.repo, branch_name)
@@ -444,7 +393,7 @@ def evaluate_issue(client: GitHubClient, issue_url: str) -> StatusResult:
                 return StatusResult(
                     issue_url,
                     "halt",
-                    [_diagnostic("branch_binding_mismatch", fold.bound_start.comment.url)],
+                    [_diagnostic("invalid_binding", fold.bound_start.comment.url)],
                     current,
                 )
             return StatusResult(issue_url, "in_progress", [], current)
@@ -459,19 +408,19 @@ def evaluate_issue(client: GitHubClient, issue_url: str) -> StatusResult:
         current["pr_candidates"] = [pr.get("html_url") for pr in candidates]
         if len(candidates) > 1:
             urls = [fold.bound_start.comment.url] + [pr["html_url"] for pr in candidates]
-            return StatusResult(issue_url, "halt", [_diagnostic("multiple_pr_candidates", *urls)], current)
+            return StatusResult(issue_url, "halt", [_diagnostic("invalid_binding", *urls)], current)
         if len(candidates) == 1 and candidates[0].get("merged_at"):
             return StatusResult(
                 issue_url,
                 "halt",
-                [_diagnostic("merge_without_done", fold.bound_start.comment.url, candidates[0]["html_url"])],
+                [_diagnostic("invalid_transition", fold.bound_start.comment.url, candidates[0]["html_url"])],
                 current,
             )
         if branch is None:
             return StatusResult(
                 issue_url,
                 "halt",
-                [_diagnostic("branch_binding_mismatch", fold.bound_start.comment.url)],
+                [_diagnostic("invalid_binding", fold.bound_start.comment.url)],
                 current,
             )
         return StatusResult(issue_url, "in_progress", [], current)

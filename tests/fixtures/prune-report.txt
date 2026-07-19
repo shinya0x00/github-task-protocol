@@ -1,0 +1,20 @@
+GTP v1 legacy vocabulary prune report
+=====================================
+
+Scope: src/
+Result: PASS (zero matches)
+
+Rejected production terms:
+- RepairGroup / DoneWindow / done_windows / repair_groups
+- supersedes
+- invalid_supersession / incomplete_repair_group / identity_collision
+- contract_freeze_violation / start_redefinition / done_before_start
+- done_condition_keys_mismatch / done_evidence_kind_mismatch / stop_without_contract
+- branch_binding_mismatch / pr_binding_mismatch / done_head_sha_mismatch
+- evidence_live_mismatch / terminal_dependency_mismatch
+- merge_before_stop / merge_after_stop / multiple_pr_candidates / merge_without_done
+
+Verification command:
+rg -n '<terms above joined by |>' src
+
+Expected and observed output: empty

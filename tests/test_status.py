@@ -16,7 +16,6 @@ def done(record_id: str) -> dict:
         "gtp": "1.0",
         "type": "done",
         "id": record_id,
-        "supersedes": [],
         "pr_ref": "https://github.com/o/r/pull/7",
         "head_sha": SHA,
         "evidence": {"artifact": f"https://github.com/o/r/blob/{SHA}/acceptance/run.json"},
@@ -28,7 +27,6 @@ def stop(record_id: str) -> dict:
         "gtp": "1.0",
         "type": "stop",
         "id": record_id,
-        "supersedes": [],
         "reason": "abandoned",
         "successor_ref": None,
     }
@@ -89,14 +87,14 @@ class StatusTests(unittest.TestCase):
         comments = [comment(1, contract(IDS[0])), comment(2, start(IDS[1]))]
         result = evaluate_issue(FakeGitHub(comments, branch=False), ISSUE)
         self.assertEqual("halt", result.state)
-        self.assertEqual("branch_binding_mismatch", result.diagnostics[0].token)
+        self.assertEqual("invalid_binding", result.diagnostics[0].token)
         self.assertEqual(comments[1].url, result.diagnostics[0].urls[0])
 
     def test_merge_without_done_halts(self) -> None:
         comments = [comment(1, contract(IDS[0])), comment(2, start(IDS[1]))]
         result = evaluate_issue(FakeGitHub(comments, candidates=[pr(merged=True)]), ISSUE)
         self.assertEqual("halt", result.state)
-        self.assertEqual("merge_without_done", result.diagnostics[0].token)
+        self.assertEqual("invalid_transition", result.diagnostics[0].token)
 
     def test_done_before_merge_remains_in_progress(self) -> None:
         comments = [
@@ -137,7 +135,7 @@ class StatusTests(unittest.TestCase):
         check = {"head_sha": SHA, "status": "completed", "conclusion": "failure"}
         result = evaluate_issue(FakeGitHub(comments, pr=pr(merged=False), check=check), ISSUE)
         self.assertEqual("halt", result.state)
-        self.assertEqual("evidence_live_mismatch", result.diagnostics[0].token)
+        self.assertEqual("invalid_evidence", result.diagnostics[0].token)
 
     def test_stop_is_stopped_without_branch_reads(self) -> None:
         comments = [comment(1, contract(IDS[0])), comment(2, stop(IDS[1]))]
