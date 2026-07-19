@@ -34,9 +34,16 @@ def _append_unique(result: FoldResult, diagnostic: Diagnostic) -> None:
         result.diagnostics.append(diagnostic)
 
 
-def _replace_diagnostic(result: FoldResult, token: str, urls: tuple[str, ...]) -> None:
-    result.diagnostics = [item for item in result.diagnostics if item.token != token or not set(item.urls) & set(urls)]
-    _append_unique(result, Diagnostic(token, urls))
+def _set_group_diagnostic(
+    result: FoldResult, group: RepairGroup, urls: tuple[str, ...]
+) -> None:
+    anchor = group.urls[0]
+    result.diagnostics = [
+        item
+        for item in result.diagnostics
+        if not (item.token == group.token and item.urls and item.urls[0] == anchor)
+    ]
+    _append_unique(result, Diagnostic(group.token, urls))
 
 
 def _new_group(result: FoldResult, token: str, urls: list[str]) -> RepairGroup:
@@ -44,7 +51,7 @@ def _new_group(result: FoldResult, token: str, urls: list[str]) -> RepairGroup:
     result.repair_groups.append(group)
     for url in group.urls:
         result.invalid_urls.add(url)
-    _replace_diagnostic(result, token, tuple(group.urls))
+    _append_unique(result, Diagnostic(token, tuple(group.urls)))
     return group
 
 
@@ -59,11 +66,11 @@ def _resolve_group(result: FoldResult, group: RepairGroup) -> None:
     group.resolved = True
     for url in group.urls:
         result.invalid_urls.discard(url)
-    group_urls = set(group.urls)
+    anchor = group.urls[0]
     result.diagnostics = [
         item
         for item in result.diagnostics
-        if not (item.token == group.token and bool(set(item.urls) & group_urls))
+        if not (item.token == group.token and item.urls and item.urls[0] == anchor)
     ]
 
 
@@ -95,9 +102,9 @@ def _context_invalid(
     result: FoldResult, observation: RecordObservation, token: str, extra_urls: tuple[str, ...] = ()
 ) -> None:
     urls = (observation.comment.url, *extra_urls)
-    _new_group(result, token, list(urls[:1]))
+    group = _new_group(result, token, list(urls[:1]))
     if extra_urls:
-        _replace_diagnostic(result, token, urls)
+        _set_group_diagnostic(result, group, urls)
 
 
 def _validate_supersession(
@@ -300,7 +307,7 @@ def fold_comments(comments: list[Comment], context: FoldContext | None = None) -
             if collision is not None and not collision.resolved:
                 collision.urls.append(comment.url)
                 result.invalid_urls.add(comment.url)
-                _replace_diagnostic(result, "identity_collision", tuple(collision.urls))
+                _set_group_diagnostic(result, collision, tuple(collision.urls))
             elif identical.comment.url in result.valid_by_url:
                 result.valid_by_url[comment.url] = identical
             continue
@@ -317,7 +324,7 @@ def fold_comments(comments: list[Comment], context: FoldContext | None = None) -
                 for url in members:
                     if url not in group.urls:
                         group.urls.append(url)
-                _replace_diagnostic(result, "identity_collision", tuple(group.urls))
+                _set_group_diagnostic(result, group, tuple(group.urls))
             before = tuple(id(item) for item in result.active["done"])
             for item in same_id:
                 _remove_active(result, item)

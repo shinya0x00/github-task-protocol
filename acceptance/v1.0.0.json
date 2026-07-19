@@ -16,7 +16,7 @@
   },
   "local_validation": {
     "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python3 -m unittest discover -s tests",
-    "observed_tests": 62,
+    "observed_tests": 63,
     "result": "success"
   },
   "adr_conformance": {

@@ -206,6 +206,23 @@ class PrefixFoldConformanceTests(unittest.TestCase):
         self.assertEqual("ready", historical_state(result))
         self.assertFalse(result.diagnostics)
 
+    def test_repairing_one_incomplete_attempt_does_not_hide_another(self) -> None:
+        first = observed(1, contract(1))
+        second = observed(2, start(1))
+        partial_a = observed(3, contract(3, [first.url]))
+        partial_b = observed(4, contract(4, [first.url]))
+        repair = observed(
+            5,
+            contract(5, [first.url, second.url, partial_b.url]),
+        )
+        result = fold_comments([first, second, partial_a, partial_b, repair])
+        self.assertEqual("halt", historical_state(result))
+        remaining = [
+            item for item in result.diagnostics if item.token == "incomplete_repair_group"
+        ]
+        self.assertEqual(1, len(remaining))
+        self.assertEqual(partial_a.url, remaining[0].urls[0])
+
     def test_contextual_invalid_done_can_be_repaired_after_start(self) -> None:
         c = observed(1, contract(1))
         early = observed(2, done(2))
