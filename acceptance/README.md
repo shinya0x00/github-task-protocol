@@ -1,37 +1,47 @@
 # Real GitHub acceptance run
 
-このdirectoryは、walking skeletonを実GitHubで1回だけ通す受け入れ記録を置く。GTP coreの正準仕様ではない。
+このdirectoryは、walking skeletonを実GitHubで1回だけ通した受け入れ記録を置く。GTP coreの正準仕様ではない。
 
-## Preconditions
+## Scenario
 
-- `main`に`CONTEXT.md`、`DECISIONS.md`、`GLOSSARY.md`を含む初期commitがあり、exact SHAを記録できる。
-- 実装はそのSHAから作った`codex/` branchにあり、default branchへ直接pushしない。
-- Issue comment作成、branch push、PR作成、native mergeのauthorityを各mutation前にGTP外部で確認する。
-- `gtp`は実装branchのsourceから実行できる。
+実リポジトリで実行する受け入れシナリオはIssue #1の1件だけとする。
 
-## Phase A: seed and fire
+```text
+Contract A
+→ 競合するContract B
+→ Contract Cによるsupersession回復
+→ Start
+→ branch・commit・PR
+→ GitHubだけを入力としたfresh process再開
+→ immutable artifact Evidence付きDone
+→ native merge
+→ done
+```
 
-1. `shinya0x00/github-task-protocol`に専用Issueを1件作る。
-2. Contract Aを投稿し、`gtp status`が`ready`を返すことを記録する。
-3. fresh IDのContract Bを投稿する。`halt`、`conflicting_records`、A/B両comment URLを記録する。
-4. fresh IDのContract CからA/B両URLを`supersedes`し、`ready`への回復を記録する。
-5. Contract CへbindingするStartを投稿する。
-6. 実装branchをpushしてPRを作り、`status`がbranchとPR CandidateをGitHubから導出して`in_progress`を返すことを記録する。
-7. test command、結果、Issue/Record/PR URL、実装branchのsource head SHAを`acceptance/run.json`へ記録して最後のcommitに含める。Done投稿後はheadを変更しない。
+alias、複数leaf、malformed、edited、collision、terminal resource消失、Done／Stop orderingなどの破壊的variantは、GitHub API境界のfixtureと実reducer/statusを用いて検証する。実Issueへ追加の破壊的Recordは投稿しない。
 
-## Phase B: clean-agent resume
+## Observed result
 
-fresh agentへtask stateとして渡すのはIssue URLだけとする。CLI sourceとGitHub credentialはtask stateではなく実行環境として与えてよい。
+- Issue: https://github.com/shinya0x00/github-task-protocol/issues/1
+- PR: https://github.com/shinya0x00/github-task-protocol/pull/2
+- PR source head: `618aa6f26e08c1e496ff1ac790f8a2e46288fc99`
+- native merge commit: `537601111c5559dedf7cbd75fad9cd10fcc10ee6`
+- final observation: `state: done`、diagnosticなし、acquisition complete
 
-1. `gtp status <issue-url>`からBound Contract、Start branch、PR Candidateを再構成する。
-2. PR source head SHAと、同SHAを含む`acceptance/run.json`のimmutable blob permalinkを取得する。
-3. Contract Cのcondition IDへartifact URLを対応付けたDoneを投稿する。
-4. merge前のstateが`in_progress`であることを記録する。
-5. live authorityを再確認してPRをnative mergeする。
-6. 同じIssue URLから`done`を観測し、比較対象がmerge commitではなくPR source head SHAであることを記録する。
+production CLIは、Bound Contract、Start、Done、Bound PR、PR source head、immutable artifactをGitHubから再取得して上記結果を導出した。Issue #1はterminal済みであり、今後の検証はread-onlyで行う。
+
+## Verification
+
+```console
+GITHUB_TOKEN=<token> PYTHONPATH=src python3 -m gtp status \
+  https://github.com/shinya0x00/github-task-protocol/issues/1
+```
+
+release candidateのlocal/CI検証結果は`acceptance/v1.0.0.json`へ記録する。
 
 ## Evidence limits
 
 - artifact bindingが証明するのは、指定source SHAにfileが存在することまでである。file内容の真実性は証明しない。
-- clean-agent手順はlocal checkpointなしの再構成を実演するが、GitHub accountの本人性や操作権限をGTPが証明したことにはならない。
-- API取得不能時の`state: null`はprotocol stateではない。
+- Check Runが証明するのは、指定SHAに対してGitHubがsuccessを返したことまでである。Done Conditionの自然言語全体を証明しない。
+- clean-process再開はlocal checkpointなしの再構成を実演するが、GitHub accountの本人性やmutation authorityをGTPが証明したことにはならない。
+- GitHubが返さない削除済みCarrierやmarker除去編集を、v1 readerが検出できるとは主張しない。

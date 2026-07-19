@@ -30,7 +30,7 @@ class GitHubClient:
         headers = {
             "Accept": "application/vnd.github+json",
             "Cache-Control": "no-cache",
-            "User-Agent": "github-task-protocol/0.1",
+            "User-Agent": "github-task-protocol/1.0",
             "X-GitHub-Api-Version": "2022-11-28",
         }
         if self.token:

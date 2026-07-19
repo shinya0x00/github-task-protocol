@@ -1,0 +1,38 @@
+{
+  "release_candidate": "1.0.0",
+  "date": "2026-07-19",
+  "repository": "shinya0x00/github-task-protocol",
+  "completion_issue": "https://github.com/shinya0x00/github-task-protocol/issues/3",
+  "branch": "codex/gtp-v1-complete",
+  "protocol_authority": [
+    "CONTEXT.md",
+    "DECISIONS.md",
+    "GLOSSARY.md"
+  ],
+  "doctrine_boundary": {
+    "use": "implementation order only",
+    "included_in_gtp": false,
+    "ref": "https://github.com/shinya-reiji/doctrine/blob/c183533cd2f2fd686aad7f6557bf6fa759bd744e/DOCTRINE.md"
+  },
+  "local_validation": {
+    "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python3 -m unittest discover -s tests",
+    "observed_tests": 62,
+    "result": "success"
+  },
+  "adr_conformance": {
+    "range": "ADR-001..ADR-026",
+    "coverage_manifest": "tests/fixtures/adr-conformance.json",
+    "unsupported_slice_occurrences": 0
+  },
+  "live_acceptance": {
+    "issue": "https://github.com/shinya0x00/github-task-protocol/issues/1",
+    "acquisition_complete": true,
+    "state": "done",
+    "diagnostics": []
+  },
+  "evidence_limits": [
+    "The immutable blob URL in the Done Record proves file existence at the selected source commit, not the truth of this file's statements.",
+    "The Check Run proves GitHub reported success for the selected source commit, not that every natural-language condition is exhaustively tested.",
+    "GTP does not prove actor identity or mutation authority."
+  ]
+}
