@@ -379,6 +379,16 @@ class CliTests(unittest.TestCase):
                     )
                     self.assertNotIn("exists", output["branch"])
 
+        installed = matrix["installed_live_observation"]
+        self.assertEqual(0, installed["exit_code"])
+        self.assertEqual("stopped", installed["state"])
+        self.assertTrue(installed["task_context"]["goal_presented"])
+        self.assertTrue(installed["task_context"]["scope_presented"])
+        self.assertEqual(
+            ["proof_b"], installed["task_context"]["missing_evidence_keys"]
+        )
+        self.assertTrue(installed["task_context"]["not_proven_presented"])
+
     def test_all_halt_reasons_have_specific_japanese_and_first_url(self) -> None:
         matrix = json.loads((CLI_FIXTURES / "status-matrix.json").read_text(encoding="utf-8"))
         issue_url = "https://github.com/o/r/issues/1"

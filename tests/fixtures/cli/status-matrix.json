@@ -86,5 +86,31 @@
     {"token": "invalid_evidence", "message": "Done Conditionに対応するEvidenceを確認できません"},
     {"token": "stale_evidence", "message": "EvidenceがDoneのsource head SHAと一致しません"},
     {"token": "terminal_violation", "message": "terminal stateの前後関係に違反するRecordまたはmergeがあります"}
-  ]
+  ],
+  "installed_live_observation": {
+    "observed_at": "2026-07-19",
+    "built_from_commit": "14250619f4d158f9b3afa34e8b48da612752566a",
+    "wheel": "github_task_protocol-1.0.0-py3-none-any.whl",
+    "wheel_sha256": "d4abcfa86bd68626b17f04479616c7aba494e61ae32a59f9b7c2d2a6737b218c",
+    "python": "3.12.12",
+    "gtp_version": "1.0.0",
+    "issue_url": "https://github.com/shinya0x00/github-task-protocol/issues/31",
+    "exit_code": 0,
+    "state": "stopped",
+    "primary_url": "https://github.com/shinya0x00/github-task-protocol/issues/31#issuecomment-5015703719",
+    "task_context": {
+      "goal_presented": true,
+      "scope_presented": true,
+      "branch": "agent/issue-31-level1-halt",
+      "pr": "https://github.com/shinya0x00/github-task-protocol/pull/32",
+      "presented_evidence_keys": ["proof_a"],
+      "missing_evidence_keys": ["proof_b"],
+      "not_proven_presented": true,
+      "evidence_limits_presented": true
+    },
+    "limits": [
+      "The installed run observes GitHub state and presentation, not actor identity.",
+      "The wheel was built before this observation-only fixture was appended; production sources are unchanged."
+    ]
+  }
 }
