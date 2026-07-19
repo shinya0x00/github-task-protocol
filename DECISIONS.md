@@ -1455,3 +1455,36 @@ protocol coreは次の4領域へ限定する。
 - 後続実装は`GTP.md`のclosed schemaと語彙へ適合させる必要があり、現行codeとtestsはこのADRだけでは適合済みにならない。
 - 旧acceptanceはwalking skeletonの回帰材料として残るが、新しい最小仕様のLevel 0／Level 1 acceptanceを証明しない。
 - 公開仕様から外した複雑な修復が必要になった場合は、実際のfailure URLを持つ新IssueとDecisionで再検討する。
+
+## ADR-028: Carrier、closed schema、pure reducerをatomicに切り替える
+
+- Status: Accepted
+- Date: 2026-07-19
+- Supersedes: ADR-002〜ADR-026のうちRepair Group、Record supersession、DoneWindow、旧diagnostic tokenに依存する実装判断
+
+### 観測事実
+
+- Issue #8の途中実装ではExact Carrierとclosed schemaのtargeted tests 24件が成功した。
+- 同じ候補でfull suite 76件を実行すると、旧reducerとstatusが`supersedes`、Repair Group、DoneWindowを要求するため36 failures、2 errorsになった。
+- `GTP.md`はこれらを公開v1へ含めず、4 Record、6 state、7 halt reasonだけを定義している。
+- Issue #18ではContract Recordの必須fieldを欠く投稿ミスがあり、そのRecordを編集せずStopしてIssue #20へ移行した。
+
+### 推論
+
+- Carrier/schemaだけを先にmainへ入れると、同じrepository内に互いに矛盾するreaderが共存する。
+- legacy compatibility layerを足すと、`GTP.md`から削除した意味をproduction codeへ温存することになる。
+- pure reducerを既存CLIから検証するには、GitHub取得全体を再設計せず、status adapterの接続点だけを同じ変更で更新する必要がある。
+
+### 決定
+
+- Issue #8と#9を一つのatomic変更として後継Issue #20とPRで実装する。
+- `src/gtp/model.py`と`src/gtp/reducer.py`からRepair Group、Record supersession、DoneWindowを削除する。
+- reducerのdiagnostic tokenを`GTP.md`の7 halt reasonだけに限定する。
+- `src/gtp/status.py`は新reducerへ接続する最小限のadapter変更を許可し、GitHub取得・live判定の全面整理はIssue #10へ残す。
+- safe retryは同一`id`かつ構造的に同じRecordのaliasだけとし、同じIssue内の修復はfinal Stopと新Issueで行う。
+
+### 結果
+
+- Exact Carrier、closed schema、pure reducerを中間不整合なしに同時導入できる。
+- reducer truth tableとlegacy vocabulary prune reportをimmutable artifactとしてDone Evidenceに使用できる。
+- 旧ADRは設計履歴として残るが、現行動作の根拠は`GTP.md`、ADR-027、ADR-028になる。

@@ -1,13 +1,13 @@
+<!-- gtp-record:v1 -->
 実装範囲と完了条件を固定します
 
-<!-- gtp-record:v1 -->
+<details><summary>記録(JSON)</summary>
 
 ```json
 {
   "gtp": "1.0",
   "type": "contract",
   "id": "01234567-89ab-4def-8123-456789abcdef",
-  "supersedes": [],
   "goal": "walking skeletonを実装する",
   "scope": ["src/", "tests/"],
   "done_conditions": {
@@ -18,3 +18,5 @@
   }
 }
 ```
+
+</details>
