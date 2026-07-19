@@ -1,51 +1,74 @@
 {
-  "schema": "github-task-protocol-release/v1",
-  "release_version": "1.0.1",
+  "schema": "github-task-protocol-local-distribution/v1",
+  "package_version": "1.0.1",
   "protocol_version": "1.0",
-  "status": "release_preparation",
-  "version_selection": {
-    "reason": "v1.0.0 is an existing annotated tag and must remain immutable; 1.0.1 is the next unused package version observed during preflight",
-    "existing_tag": {
-      "name": "v1.0.0",
-      "target_commit": "efb6536d55d4636fe7bfaea9788b7b86d48d730b"
-    },
-    "github_release_for_1_0_1": "not_observed",
-    "pypi_json_for_project": {
-      "url": "https://pypi.org/pypi/github-task-protocol/json",
-      "observed_http_status": 404
-    }
+  "status": "verified_locally_not_published",
+  "distribution_policy": {
+    "cli_required_for_gtp_use": false,
+    "public_registry": null,
+    "pypi": "not_published",
+    "npm": "not_published",
+    "github_release": "not_created",
+    "tag_v1_0_1": "not_created",
+    "future_distribution_method": "undecided"
   },
-  "preparation": {
-    "base_commit": "8045948fe25fc6e94fa5cf839abd6c3d10de188e",
-    "candidate_commit": null,
-    "required_checks": [],
-    "artifacts": {
-      "sdist": null,
-      "wheel": null
-    },
+  "source_candidate": {
+    "commit_sha": "dbd7d32e33d8fb966380dd20934ce83f525ac70f",
+    "commit_url": "https://github.com/shinya0x00/github-task-protocol/commit/dbd7d32e33d8fb966380dd20934ce83f525ac70f",
     "package_metadata_version": "1.0.1",
     "runtime_version": "1.0.1",
-    "evidence": {
-      "specification": "https://github.com/shinya0x00/github-task-protocol/blob/8045948fe25fc6e94fa5cf839abd6c3d10de188e/GTP.md",
-      "level0": "https://github.com/shinya0x00/github-task-protocol/tree/8045948fe25fc6e94fa5cf839abd6c3d10de188e/acceptance/level0",
-      "level1": "https://github.com/shinya0x00/github-task-protocol/tree/8045948fe25fc6e94fa5cf839abd6c3d10de188e/acceptance/level1"
+    "main_ci": "https://github.com/shinya0x00/github-task-protocol/actions/runs/29690589371",
+    "checks": {
+      "python_3_11": "https://github.com/shinya0x00/github-task-protocol/runs/88202476063",
+      "python_3_12": "https://github.com/shinya0x00/github-task-protocol/runs/88202476036",
+      "python_3_13": "https://github.com/shinya0x00/github-task-protocol/runs/88202476037"
     }
   },
-  "publication": {
-    "authority": "unconfirmed",
-    "tag": null,
-    "github_release": null,
-    "pypi_release": null,
-    "published_artifact_hashes": null
+  "local_artifacts": {
+    "sdist": {
+      "filename": "github-task-protocol-1.0.1.tar.gz",
+      "sha256": "223ec99addd30960c59afa2aad661f2d6d7c09aa0bd6c7f3d1e45439b0786ee2"
+    },
+    "wheel": {
+      "filename": "github_task_protocol-1.0.1-py3-none-any.whl",
+      "sha256": "0f1f51289cabd31a9be941423c54365ed31249472b1bf0045ef3afd4f046223a"
+    }
   },
-  "public_validation": {
-    "clean_install": null,
-    "gtp_check": null,
-    "live_done": null,
-    "live_halt_or_stopped": null
+  "local_validation": {
+    "clean_wheel_install": {
+      "exit_code": 0,
+      "installed_version": "1.0.1"
+    },
+    "gtp_check_valid_fixture": {
+      "exit_code": 0,
+      "schema_valid": true
+    },
+    "live_done": {
+      "issue": "https://github.com/shinya0x00/github-task-protocol/issues/12",
+      "state": "done",
+      "exit_code": 0
+    },
+    "live_stopped": {
+      "issue": "https://github.com/shinya0x00/github-task-protocol/issues/40",
+      "state": "stopped",
+      "exit_code": 0
+    }
   },
-  "safety": {
-    "secrets_recorded": false,
-    "note": "No token value, credential, or CLI secret argument belongs in this file, repository, Issue, or log."
-  }
+  "acceptance_evidence": {
+    "specification": "https://github.com/shinya0x00/github-task-protocol/blob/dbd7d32e33d8fb966380dd20934ce83f525ac70f/GTP.md",
+    "level0": "https://github.com/shinya0x00/github-task-protocol/tree/dbd7d32e33d8fb966380dd20934ce83f525ac70f/acceptance/level0",
+    "level1": "https://github.com/shinya0x00/github-task-protocol/tree/dbd7d32e33d8fb966380dd20934ce83f525ac70f/acceptance/level1"
+  },
+  "superseded_release_attempt": {
+    "issue": "https://github.com/shinya0x00/github-task-protocol/issues/14",
+    "state": "halt",
+    "halt_reason": "terminal_violation",
+    "closed_as": "not_planned",
+    "public_artifacts_created": false
+  },
+  "evidence_limits": [
+    "Local artifact hash does not prove publication or availability to other users.",
+    "Check Run success does not grant change, completion, merge, or publication authority.",
+    "GTP does not prove actor identity, credential safety, code quality, or Evidence truthfulness."
+  ]
 }

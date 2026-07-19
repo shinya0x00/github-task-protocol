@@ -26,10 +26,10 @@ class ReleaseSurfaceTests(unittest.TestCase):
         steps = re.findall(r"^[1-3]\. ", introduction, flags=re.MULTILINE)
         self.assertEqual(3, len(steps))
         self.assertIn("[`GTP.md`](GTP.md)", readme)
-        self.assertIn(
-            f"uvx --from github-task-protocol=={PROJECT['version']} gtp status",
-            readme,
-        )
+        self.assertIn("人間がGTPを使うためにCLIをinstallする必要はありません", readme)
+        self.assertIn("package registryへ一般公開していません", readme)
+        self.assertIn("PYTHONPATH=src python3 -m gtp status", readme)
+        self.assertNotIn("uvx --from github-task-protocol==", readme)
         self.assertNotIn("![", readme)
 
     def test_readme_copies_the_canonical_adapter_exactly(self) -> None:
