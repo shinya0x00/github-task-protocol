@@ -137,6 +137,20 @@ class StatusTests(unittest.TestCase):
         self.assertEqual("halt", result.state)
         self.assertEqual("invalid_evidence", result.diagnostics[0].token)
 
+    def test_artifact_from_another_head_is_stale(self) -> None:
+        stale_done = done(IDS[2])
+        stale_done["evidence"]["artifact"] = (
+            "https://github.com/o/r/blob/ffffffffffffffffffffffffffffffffffffffff/acceptance/run.json"
+        )
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, start(IDS[1])),
+            comment(3, stale_done),
+        ]
+        result = evaluate_issue(FakeGitHub(comments, pr=pr(merged=False)), ISSUE)
+        self.assertEqual("halt", result.state)
+        self.assertEqual("stale_evidence", result.diagnostics[0].token)
+
     def test_stop_is_stopped_without_branch_reads(self) -> None:
         comments = [comment(1, contract(IDS[0])), comment(2, stop(IDS[1]))]
         result = evaluate_issue(FakeGitHub(comments, branch=False), ISSUE)

@@ -142,7 +142,7 @@ def _live_evidence(
             continue
         if kind == "artifact":
             if parsed.sha != head_sha:
-                diagnostics.append(_diagnostic("invalid_evidence", done.comment.url, url))
+                diagnostics.append(_diagnostic("stale_evidence", done.comment.url, url))
                 continue
             try:
                 resource = client.artifact(
