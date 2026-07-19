@@ -9,10 +9,13 @@ import sys
 
 from .carrier import classify_carrier
 from .github import GitHubClient
+from .presentation import present_check, present_input_error, present_status
 from .status import evaluate_issue
 
 
-def _emit(value: object) -> None:
+def _emit(lines: list[str], value: object) -> None:
+    for line in lines:
+        sys.stdout.write(f"{line}\n")
     json.dump(value, sys.stdout, ensure_ascii=False, sort_keys=True, indent=2)
     sys.stdout.write("\n")
 
@@ -21,10 +24,10 @@ def _check(path: str) -> int:
     try:
         body = Path(path).read_text(encoding="utf-8")
     except (OSError, UnicodeError) as error:
-        _emit({"error": {"code": "input_error", "message": str(error)}})
+        _emit(*present_input_error(str(error)))
         return 2
     result = classify_carrier(body)
-    _emit(result.projection())
+    _emit(*present_check(result))
     return 0 if result.recognized and result.schema_valid else 1
 
 
@@ -43,5 +46,5 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "check":
         return _check(args.comment)
     result = evaluate_issue(GitHubClient(), args.issue_url)
-    _emit(result.projection())
+    _emit(*present_status(result))
     return 0 if result.state is not None else 2
