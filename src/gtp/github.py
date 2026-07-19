@@ -29,6 +29,7 @@ class GitHubClient:
     def _request(self, url: str) -> tuple[Any, dict[str, str]]:
         headers = {
             "Accept": "application/vnd.github+json",
+            "Cache-Control": "no-cache",
             "User-Agent": "github-task-protocol/0.1",
             "X-GitHub-Api-Version": "2022-11-28",
         }

@@ -1,11 +1,23 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import MagicMock, patch
 
 from gtp.github import GitHubClient, _next_link
 
 
 class GitHubAdapterTests(unittest.TestCase):
+    def test_requests_disable_intermediate_cache_reuse(self) -> None:
+        client = GitHubClient(token="token")
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.read.return_value = b"{}"
+        response.headers.items.return_value = []
+        with patch("gtp.github.urlopen", return_value=response) as mocked:
+            client._request("https://api.github.com/resource")
+        request = mocked.call_args.args[0]
+        self.assertEqual("no-cache", request.get_header("Cache-control"))
+
     def test_next_link_is_selected_from_multi_link_header(self) -> None:
         header = (
             '<https://api.github.com/resource?page=2>; rel="next", '

@@ -16,7 +16,7 @@
 | branch / PR / Evidence / merge境界 | local verified | artifact、Check Run pending/failure、PR source head、merge前後のstatus tests | 実branch・PR・Check Runでは未発火 |
 | dependency-free package | isolated verified | PEP 517 wheel build、clean venv install、生成された`gtp check`実行成功 | release artifactの公開は未実施 |
 | production GitHub read wiring | live read verified | `cli/cli#13826`で`unmanaged`、`cli/cli#13919`で通常commentを無視、Issue形式のPR resourceを拒否 | GTP Carrierを含む実Issueでは未発火 |
-| 実repository E2E | ready to start | 初期`main` SHA `af29a98be8b6666afe5fabfecdaac2a5a6f3ae13`をlocal treeとGitHub APIの両方で照合 | Issue、Record、実装PR、native mergeは未作成 |
+| 実repository E2E | in progress | Issue #1で`ready -> halt -> ready -> in_progress`、PR #2、fresh agent再開を観測 | Done、native merge、merge後`done`は未実施 |
 
 ## 現在の検証command
 
@@ -28,7 +28,7 @@ python3 -m venv /tmp/gtp-verify
 /tmp/gtp-verify/bin/gtp check tests/fixtures/carriers/contract-valid.md
 ```
 
-直近の観測結果は36 tests成功。実GitHub readでは、取得完了時に`unmanaged`とexit 0、存在しないIssueでは`state: null`とexit 2を観測した。
+直近の観測結果は37 tests成功。実GitHub readでは、取得完了時に`unmanaged`とexit 0、存在しないIssueでは`state: null`とexit 2を観測した。
 
 ## Resolved bootstrap
 
@@ -42,7 +42,7 @@ python3 -m venv /tmp/gtp-verify
 
 ## Exact resume point
 
-1. 現在のuntracked実装を`codex/gtp-walking-skeleton`へcommitする。
-2. [README.md](README.md)のPhase Aを実Issueで実行し、`halt`と両原因comment URL、superseding Contractによる`ready`回復を記録する。
-3. 実装branch/commit/PRを接続し、fresh agentへIssue URLだけを引き渡す。
-4. `acceptance/run.json`をsource headへ固定し、artifact Evidence付きDone、merge前`in_progress`、native merge後`done`を観測する。
+1. `acceptance/run.json`、cache freshness header、関連testを最終source commitとしてpushする。
+2. PR #2のhead SHAと同SHAの`acceptance/run.json` immutable blob URLを取得する。
+3. artifact Evidence付きDoneを投稿し、merge前`in_progress`を確認する。
+4. PR #2をnative mergeし、Issue #1から`done`を観測する。

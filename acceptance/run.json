@@ -1,0 +1,59 @@
+{
+  "run": "gtp-walking-skeleton-2026-07-19",
+  "repository": "shinya0x00/github-task-protocol",
+  "bootstrap_main_sha": "af29a98be8b6666afe5fabfecdaac2a5a6f3ae13",
+  "implementation_commit_before_acceptance_artifact": "165629421d0ce3809471f2de356585f7697bdc50",
+  "issue_url": "https://github.com/shinya0x00/github-task-protocol/issues/1",
+  "records": {
+    "contract_a": "https://github.com/shinya0x00/github-task-protocol/issues/1#issuecomment-5014918526",
+    "contract_b": "https://github.com/shinya0x00/github-task-protocol/issues/1#issuecomment-5014919779",
+    "contract_c": "https://github.com/shinya0x00/github-task-protocol/issues/1#issuecomment-5014922459",
+    "start": "https://github.com/shinya0x00/github-task-protocol/issues/1#issuecomment-5014924991"
+  },
+  "pull_request_url": "https://github.com/shinya0x00/github-task-protocol/pull/2",
+  "observations": [
+    {
+      "after": "contract_a",
+      "state": "ready"
+    },
+    {
+      "after": "contract_b",
+      "state": "halt",
+      "token": "conflicting_records",
+      "cause_urls": [
+        "https://github.com/shinya0x00/github-task-protocol/issues/1#issuecomment-5014918526",
+        "https://github.com/shinya0x00/github-task-protocol/issues/1#issuecomment-5014919779"
+      ]
+    },
+    {
+      "after": "contract_c",
+      "state": "ready"
+    },
+    {
+      "after": "start_branch_pr",
+      "state": "in_progress",
+      "branch": "codex/gtp-walking-skeleton",
+      "pr_candidate": "https://github.com/shinya0x00/github-task-protocol/pull/2"
+    }
+  ],
+  "fresh_agent_resume": {
+    "task_state_input": "https://github.com/shinya0x00/github-task-protocol/issues/1",
+    "acquisition_complete": true,
+    "state": "in_progress",
+    "bound_contract_id": "c1234567-89ab-4cde-8123-456789abcdef",
+    "start_id": "d1234567-89ab-4cde-8123-456789abcdef",
+    "branch": "codex/gtp-walking-skeleton",
+    "pr_candidate": "https://github.com/shinya0x00/github-task-protocol/pull/2"
+  },
+  "validation": {
+    "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python3 -m unittest discover -s tests",
+    "observed_tests": 37,
+    "result": "success"
+  },
+  "source_head_binding": "The Done Record and immutable blob permalink added after this file is committed own the final source-head SHA binding.",
+  "evidence_limits": [
+    "This artifact proves only that this file exists at the source commit selected by the immutable blob URL.",
+    "The recorded command result does not by itself prove the natural-language Done Condition.",
+    "The fresh-agent probe does not prove actor identity or GitHub mutation authority."
+  ]
+}
