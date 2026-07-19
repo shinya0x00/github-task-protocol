@@ -1,0 +1,6 @@
+{
+  "contract": ["gtp", "type", "id", "goal", "scope", "done_conditions"],
+  "start": ["gtp", "type", "id", "contract_ref", "branch"],
+  "done": ["gtp", "type", "id", "pr_ref", "head_sha", "evidence"],
+  "stop": ["gtp", "type", "id", "reason", "successor_ref"]
+}
