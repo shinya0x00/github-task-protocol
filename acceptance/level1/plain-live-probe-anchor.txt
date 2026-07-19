@@ -1,0 +1,4 @@
+Level 1 plain-language live probe anchor.
+
+Release candidate: 0b70b4f46ac090a59cfa02f00b67548bf5441d1e
+This file supplies the one recorded confirmation link used by Issue #40.
