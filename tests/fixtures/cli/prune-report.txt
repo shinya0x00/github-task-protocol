@@ -1,0 +1,38 @@
+Issue #11 plain-first CLI prune report
+======================================
+
+Candidate scope
+---------------
+- pyproject.toml
+- src/gtp/cli.py
+- src/gtp/presentation.py
+- tests/test_cli.py
+- tests/test_build_backend.py
+- tests/fixtures/cli/
+
+Observed result
+---------------
+- Public subcommands are exactly status and check.
+- Runtime dependencies remain empty.
+- No protocol Record, state, halt reason, reducer, or GitHub acquisition rule changed.
+- No check --issue, dry-run, mutation command, configuration command, TUI, color, emoji, interactive prompt, or English message catalog was added.
+- authority is always none and the Japanese notice says the output grants no change, completion, or merge permission.
+- Observation metadata from Record comments is nested under observation in machine JSON.
+- Machine JSON is emitted with deterministic key ordering after the Japanese summary.
+
+Verification
+------------
+- PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests
+  Observed: 91 tests, OK.
+- clean venv wheel install and installed console script E2E
+  Observed: gtp check exit 0; invalid-URL gtp status exit 2; both commands emitted Japanese first and parseable machine JSON second.
+- rg search for public add_parser calls
+  Observed: status and check only.
+- rg search for dependency and forbidden CLI terms in candidate production files
+  Observed: dependencies = []; no forbidden production path found.
+- git diff --check
+  Observed: success.
+
+Evidence limit
+--------------
+This local report proves the listed source and test observations only. GitHub Actions success, live GitHub behavior, and human comprehension are separate observations. Human comprehension is accepted in Issue #13, not inferred from this report.

@@ -1,0 +1,90 @@
+{
+  "states": [
+    {
+      "name": "unmanaged",
+      "state": "unmanaged",
+      "next_action": "post_contract",
+      "reason_contains": "有効なContractがありません"
+    },
+    {
+      "name": "ready",
+      "state": "ready",
+      "next_action": "post_start",
+      "reason_contains": "Startはまだありません"
+    },
+    {
+      "name": "in_progress",
+      "state": "in_progress",
+      "current": {
+        "branch": {"name": "agent/test", "exists": true}
+      },
+      "next_action": "continue_work",
+      "reason_contains": "作業branch agent/test"
+    },
+    {
+      "name": "in_progress with PR",
+      "state": "in_progress",
+      "current": {
+        "branch": {"name": "agent/test", "exists": true},
+        "pr_candidates": ["https://github.com/o/r/pull/7"]
+      },
+      "next_action": "post_done",
+      "reason_contains": "作業branch agent/test、PR candidate"
+    },
+    {
+      "name": "in_progress awaiting merge",
+      "state": "in_progress",
+      "current": {
+        "done": {
+          "type": "done",
+          "id": "21234567-89ab-4def-8123-456789abcdef",
+          "url": "https://github.com/o/r/issues/1#issuecomment-3",
+          "aliases": ["https://github.com/o/r/issues/1#issuecomment-3"],
+          "comment_id": 3
+        },
+        "bound_pr": "https://github.com/o/r/pull/7"
+      },
+      "next_action": "await_merge",
+      "reason_contains": "Done Claimは確認済み"
+    },
+    {
+      "name": "halt",
+      "state": "halt",
+      "diagnostic": "invalid_binding",
+      "next_action": "inspect_halt",
+      "reason_contains": "束縛が一致しません"
+    },
+    {
+      "name": "done",
+      "state": "done",
+      "next_action": "none_done",
+      "reason_contains": "native mergeを確認しました"
+    },
+    {
+      "name": "stopped",
+      "state": "stopped",
+      "next_action": "none_stopped",
+      "reason_contains": "有効なStop Recordを確認しました"
+    },
+    {
+      "name": "acquisition incomplete",
+      "state": null,
+      "acquisition_error": {
+        "code": "acquisition_incomplete",
+        "resource": "https://api.github.com/repos/o/r/issues/1",
+        "message": "timeout"
+      },
+      "next_action": "retry_acquisition",
+      "reason_contains": "stateを決定していません"
+    }
+  ],
+  "halt_reasons": [
+    {"token": "invalid_record", "message": "GTP Recordの形式、内容、編集状態のいずれかが不正です"},
+    {"token": "conflicting_records", "message": "同じ役割のRecordが競合しています"},
+    {"token": "invalid_transition", "message": "Recordの順序または参照関係が成立していません"},
+    {"token": "invalid_binding", "message": "Issue、branch、PR、scopeの束縛が一致しません"},
+    {"token": "invalid_evidence", "message": "Done Conditionに対応するEvidenceを確認できません"},
+    {"token": "stale_evidence", "message": "EvidenceがDoneのsource head SHAと一致しません"},
+    {"token": "terminal_violation", "message": "terminal stateの前後関係に違反するRecordまたはmergeがあります"}
+  ]
+}
