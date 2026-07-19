@@ -15,6 +15,7 @@ MATRIX = json.loads(
         encoding="utf-8"
     )
 )
+PROJECT = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
 
 
 class ReleaseSurfaceTests(unittest.TestCase):
@@ -25,7 +26,10 @@ class ReleaseSurfaceTests(unittest.TestCase):
         steps = re.findall(r"^[1-3]\. ", introduction, flags=re.MULTILINE)
         self.assertEqual(3, len(steps))
         self.assertIn("[`GTP.md`](GTP.md)", readme)
-        self.assertIn("uvx --from github-task-protocol==1.0.0 gtp status", readme)
+        self.assertIn(
+            f"uvx --from github-task-protocol=={PROJECT['version']} gtp status",
+            readme,
+        )
         self.assertNotIn("![", readme)
 
     def test_readme_copies_the_canonical_adapter_exactly(self) -> None:
@@ -54,9 +58,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertLessEqual(production, MATRIX["budgets"]["production_python"])
 
     def test_package_metadata_and_runtime_version_are_consistent(self) -> None:
-        project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))[
-            "project"
-        ]
+        project = PROJECT
         self.assertEqual(MATRIX["distribution"], project["name"])
         self.assertEqual(MATRIX["python"], project["requires-python"])
         self.assertEqual(MATRIX["license"], project["license"])
