@@ -393,6 +393,19 @@ class CliTests(unittest.TestCase):
         )
         self.assertTrue(installed["task_context"]["not_proven_presented"])
 
+        plain_installed = matrix["plain_summary_installed_live_observation"]
+        self.assertEqual(0, plain_installed["exit_code"])
+        self.assertEqual("stopped", plain_installed["state"])
+        self.assertTrue(plain_installed["plain_summary"]["conclusion_presented"])
+        self.assertEqual(
+            ["proof_a"],
+            plain_installed["plain_summary"]["evidence_link_presented_without_completion_claim"],
+        )
+        self.assertEqual(
+            ["proof_b"],
+            plain_installed["plain_summary"]["missing_evidence_link_explained"],
+        )
+
     def test_all_halt_reasons_have_specific_japanese_and_first_url(self) -> None:
         matrix = json.loads((CLI_FIXTURES / "status-matrix.json").read_text(encoding="utf-8"))
         issue_url = "https://github.com/o/r/issues/1"
