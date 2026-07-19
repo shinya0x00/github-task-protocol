@@ -1,0 +1,33 @@
+Issue #10 GET-only live binding prune report
+============================================
+
+Candidate scope
+---------------
+- src/gtp/github.py
+- src/gtp/status.py
+- src/gtp/urls.py
+
+Observed result
+---------------
+- Production Request construction uses method="GET" only.
+- API admission accepts https://api.github.com without credentials, port, or fragment.
+- Cross-origin redirect requests remove Authorization; non-API final URLs are rejected.
+- Collections use Link rel="next" pagination until exhaustion.
+- No POST, PATCH, PUT, DELETE, GraphQL, webhook, sqlite, or database path was found.
+- No cache or persistent store was added.
+- Fork and GHES support were not added.
+- evidence_pending and the unreachable ContextAcquisitionRequired status adapter path were removed.
+
+Verification
+------------
+- PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests
+  Observed: 85 tests, OK.
+- rg search for removed/forbidden terms in the candidate production files
+  Observed: zero matches.
+- git diff --check
+  Observed: success.
+
+Evidence limit
+--------------
+This local report does not prove GitHub Actions success or live repository behavior.
+Those are acquired separately against the exact pushed head SHA.
