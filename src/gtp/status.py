@@ -299,12 +299,11 @@ def _terminal_violations(
     diagnostics: list[Diagnostic],
     recognized_comments: list[Any],
     terminal_at: str,
-    terminal_record: RecordObservation,
+    safe_retry_urls: set[str],
 ) -> list[Diagnostic]:
     result = list(diagnostics)
-    terminal_aliases = set(terminal_record.alias_urls)
     for comment in recognized_comments:
-        if comment.created_at > terminal_at and comment.url not in terminal_aliases:
+        if comment.created_at > terminal_at and comment.url not in safe_retry_urls:
             item = _diagnostic("terminal_violation", comment.url)
             if item not in result:
                 result.append(item)
@@ -447,8 +446,18 @@ def _evaluate_acquired(
             if live.diagnostics:
                 return StatusResult(issue_url, "halt", live.diagnostics, current)
             if live.terminal_at is not None:
+                safe_retry_urls = {
+                    url
+                    for observations in fold.ids.values()
+                    for observation in observations
+                    if len(observation.alias_urls) > 1
+                    for url in observation.alias_urls
+                }
                 diagnostics = _terminal_violations(
-                    fold.diagnostics, fold.recognized_comments, live.terminal_at, active_done
+                    fold.diagnostics,
+                    fold.recognized_comments,
+                    live.terminal_at,
+                    safe_retry_urls,
                 )
                 return StatusResult(issue_url, "done", diagnostics, current)
             if live.pr and live.pr.get("merged_at"):

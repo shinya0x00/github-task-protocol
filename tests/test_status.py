@@ -141,6 +141,26 @@ class StatusTests(unittest.TestCase):
         result = evaluate_issue(FakeGitHub(comments, branch=False, pr=pr(merged=True)), ISSUE)
         self.assertEqual("done", result.state)
 
+    def test_identical_contract_and_start_retries_after_terminal_are_safe(self) -> None:
+        contract_record = contract(IDS[0])
+        start_record = start(IDS[1])
+        merged = pr(merged=True)
+        merged["merged_at"] = "2026-07-19T00:00:03Z"
+
+        for retried_record in (contract_record, start_record):
+            with self.subTest(record_type=retried_record["type"]):
+                comments = [
+                    comment(1, contract_record),
+                    comment(2, start_record),
+                    comment(3, done(IDS[2])),
+                    comment(4, retried_record),
+                ]
+                result = evaluate_issue(
+                    FakeGitHub(comments, branch=False, pr=merged), ISSUE
+                )
+                self.assertEqual("done", result.state)
+                self.assertEqual([], result.diagnostics)
+
     def test_check_evidence_pending_is_invalid(self) -> None:
         check_contract = contract(IDS[0])
         check_contract["done_conditions"]["artifact"]["evidence_kind"] = "check"
