@@ -47,16 +47,24 @@ class BuildBackendTests(unittest.TestCase):
                 self.assertIn("# GitHub Task Protocol", metadata)
 
     def test_sdist_contains_public_spec_license_source_and_tests(self) -> None:
+        project = build_backend._project()
+        root = f"github-task-protocol-{project['version']}"
         with tempfile.TemporaryDirectory() as directory:
             filename = build_backend.build_sdist(directory)
             with tarfile.open(Path(directory) / filename, "r:gz") as archive:
                 names = set(archive.getnames())
-        root = f"github-task-protocol-{build_backend._project()['version']}"
+                extracted = archive.extractfile(f"{root}/PKG-INFO")
+                self.assertIsNotNone(extracted)
+                pkg_info = extracted.read().decode("utf-8")
         for required in ("GTP.md", "README.md", "LICENSE", "src", "tests"):
             self.assertTrue(
                 any(name == f"{root}/{required}" or name.startswith(f"{root}/{required}/") for name in names),
                 required,
             )
+        self.assertIn(f"{root}/PKG-INFO", names)
+        self.assertIn("Metadata-Version: 2.4", pkg_info)
+        self.assertIn(f"Name: {project['name']}", pkg_info)
+        self.assertIn(f"Version: {project['version']}", pkg_info)
 
     def test_installed_console_script_runs_status_and_check(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

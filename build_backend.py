@@ -5,7 +5,7 @@ from __future__ import annotations
 import base64
 import csv
 from hashlib import sha256
-from io import StringIO
+from io import BytesIO, StringIO
 from pathlib import Path
 import tarfile
 import tomllib
@@ -146,4 +146,10 @@ def build_sdist(
     with tarfile.open(Path(sdist_directory) / filename, "w:gz", format=tarfile.PAX_FORMAT) as archive:
         for path in include:
             archive.add(path, arcname=f"{base}/{path.relative_to(ROOT)}")
+        metadata = _metadata()
+        pkg_info = tarfile.TarInfo(f"{base}/PKG-INFO")
+        pkg_info.size = len(metadata)
+        pkg_info.mode = 0o644
+        pkg_info.mtime = int((ROOT / "pyproject.toml").stat().st_mtime)
+        archive.addfile(pkg_info, BytesIO(metadata))
     return filename
