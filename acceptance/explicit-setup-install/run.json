@@ -1,6 +1,6 @@
 {
   "schema": "github-task-protocol-explicit-setup-acceptance/v1",
-  "status": "pending_issue_url_probe",
+  "status": "passed",
   "source_issue": "https://github.com/shinya0x00/github-task-protocol/issues/91",
   "predecessor_acceptance_issue": "https://github.com/shinya0x00/github-task-protocol/issues/87",
   "predecessor_delivery_issue": "https://github.com/shinya0x00/github-task-protocol/issues/89",
@@ -67,26 +67,63 @@
     }
   },
   "issue_probe": {
-    "status": "pending",
-    "input": "target Issue URL only",
-    "provider": "separate_clean_agent",
+    "status": "passed",
+    "input": "https://github.com/agent-operated/gtptest1/issues/2",
+    "input_boundary": "target Issue URL only",
+    "provider_model": "Cursor / Grok 4.5",
+    "provider_evidence_source": "user report",
+    "target_repository": "https://github.com/agent-operated/gtptest1",
+    "target_visibility": "public",
     "required_evidence": [
       "reconstructed state",
       "first action",
       "referenced Contract, Start, and pull request",
       "existing branch and pull request reuse",
       "absence of duplicate branch and pull request"
-    ]
+    ],
+    "preflight": {
+      "contract": "https://github.com/agent-operated/gtptest1/issues/2#issuecomment-5022804541",
+      "start": "https://github.com/agent-operated/gtptest1/issues/2#issuecomment-5022808817",
+      "branch": "issue-2-url-only-probe",
+      "branch_head": "02ea9d5596e9e11a4bb6b99eec887a35141b3ba5",
+      "draft_pull_request": "https://github.com/agent-operated/gtptest1/pull/3",
+      "default_branch_head": "68afc1c343ad8d394b79f9d34e9be2b7118cb04d",
+      "state": "in_progress",
+      "done_present": false,
+      "default_branch_protected": false,
+      "default_branch_rules": []
+    },
+    "observed_result": {
+      "reconstructed_state_reported": "in_progress",
+      "reported_first_task_action": "add the second required line to issue-url-probe.txt",
+      "referenced_contract": "https://github.com/agent-operated/gtptest1/issues/2#issuecomment-5022804541",
+      "referenced_start": "https://github.com/agent-operated/gtptest1/issues/2#issuecomment-5022808817",
+      "referenced_pull_request": "https://github.com/agent-operated/gtptest1/pull/3",
+      "existing_branch_reused": true,
+      "existing_pull_request_reused": true,
+      "duplicate_branch_created": false,
+      "duplicate_pull_request_created": false,
+      "source_head": "590626464a7fed90f44a059fa3ca87a0f3b2ade2",
+      "artifact": "https://github.com/agent-operated/gtptest1/blob/590626464a7fed90f44a059fa3ca87a0f3b2ade2/issue-url-probe.txt",
+      "artifact_exact_lines_observed": true,
+      "done": "https://github.com/agent-operated/gtptest1/issues/2#issuecomment-5022862120",
+      "done_binding_valid": true,
+      "default_branch_unchanged": true,
+      "live_state": "in_progress",
+      "live_next_action": "await_merge",
+      "native_merge_complete": false,
+      "verdict": "passed"
+    }
   },
   "privacy": {
     "dedicated_acceptance_repository": false,
     "target_visibility": "public_for_attempt_1",
     "record_private_values": false,
-    "required_user_decision": "new target Evidence disclosure for each later attempt"
+    "required_user_decision": "user disclosed the public target URLs, provider/model, prompt boundary, and agent output for this attempt"
   },
   "claim_boundary": {
     "external_setup_success": true,
-    "issue_url_only_success": false,
+    "issue_url_only_success": true,
     "version_1_0_2_published": false,
     "merge_authority": false
   },
@@ -98,9 +135,11 @@
     "attempt 1 proves stable binding and Draft PR creation but also observed a transient default-branch direct push before restoration",
     "this acceptance does not evaluate whether GTP alone can enforce the boundary",
     "branch-first guidance and GitHub branch protection or rulesets are recorded as complementary risk reductions",
-    "no post-setup Issue URL-only probe has been observed",
+    "the Issue URL-only input boundary and provider/model depend on the user report and cannot be proven from GitHub resources alone",
+    "the Issue URL-only probe proves reuse through a valid Done Claim; target PR native merge remains a separate human decision",
+    "target branch protection and rulesets were not configured; GTP enforcement strength was not evaluated",
     "private target values will not be published without user disclosure approval",
     "this artifact does not authorize merge or publication"
   ],
-  "next_action": "user prepares a target Issue with Contract, Start, existing branch, and existing Draft PR, then gives only the Issue URL to a separate clean agent"
+  "next_action": "validate this acceptance pull request at its final source head, post Done, and wait for human native merge before starting the publication lane"
 }
