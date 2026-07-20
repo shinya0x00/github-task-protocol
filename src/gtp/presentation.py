@@ -21,6 +21,7 @@ HALT_MESSAGES = {
 EVIDENCE_LIMITS = [
     "Check RunがDone Conditionの内容を十分に検査したこと",
     "Artifactの内容がDone Conditionを満たすこと",
+    "Issue本文・通常commentに未解決事項がないこと",
     "actor本人性",
     "credential安全性",
     "GitHub外情報を参照しなかったこと",
@@ -52,6 +53,7 @@ def _content(record: dict[str, Any] | None) -> dict[str, Any]:
 
 def _task_context(
     *,
+    issue_url: str,
     state: str | None,
     acquisition_complete: bool,
     contract: dict[str, Any] | None,
@@ -116,6 +118,8 @@ def _task_context(
     return {
         "goal": contract_content.get("goal"),
         "scope": scope if isinstance(scope, list) else [],
+        "handoff_url": issue_url,
+        "handoff_semantics": "Issue本文・通常commentの意味は自動判定しない",
         "branch": branch_name,
         "pr": pr,
         "conditions": conditions,
@@ -212,6 +216,7 @@ def status_projection(result: StatusResult) -> dict[str, Any]:
         "diagnostics": diagnostics,
         "acquisition_errors": result.acquisition_errors,
         "task_context": _task_context(
+            issue_url=result.issue_url,
             state=result.state,
             acquisition_complete=not result.acquisition_errors,
             contract=contract,
@@ -267,6 +272,9 @@ def _plain_summary(machine: dict[str, Any], context: dict[str, Any]) -> list[str
                 f"  変更してよい場所: {scope_text}",
                 f"  作業場所: branch {context.get('branch') or '未確認'}"
                 f" / PR {context.get('pr') or '未確認'}",
+                "  未確認事項の確認先: "
+                f"{context.get('handoff_url') or machine['issue_url']}"
+                "（Issue本文・通常commentの意味は自動判定していません）",
             ]
         )
 
@@ -334,7 +342,10 @@ def _status_text(machine: dict[str, Any]) -> list[str]:
         "post_contract": "目的・変更範囲・完了条件をContractとして記録してください",
         "post_start": "Contractと作業branchをStartで束縛してください",
         "continue_work": "束縛されたbranchで作業を続けてください",
-        "post_done": "完了条件を確認し、source headとEvidenceをDoneで提示してください",
+        "post_done": (
+            "Issue本文・通常commentの未確認事項と完了条件を確認し、"
+            "source headとEvidenceをDoneで提示してください"
+        ),
         "await_merge": "Done ClaimとEvidenceを確認し、人間のnative merge判断を待ってください",
         "inspect_halt": "最初のURLを確認し、記録を推測で補わず人間へ戻してください",
         "none_done": "追加のprotocol actionはありません",

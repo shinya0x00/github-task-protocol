@@ -10,11 +10,6 @@
     "DECISIONS.md",
     "GLOSSARY.md"
   ],
-  "doctrine_boundary": {
-    "use": "implementation order only",
-    "included_in_gtp": false,
-    "ref": "https://github.com/shinya-reiji/doctrine/blob/c183533cd2f2fd686aad7f6557bf6fa759bd744e/DOCTRINE.md"
-  },
   "local_validation": {
     "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python3 -m unittest discover -s tests",
     "observed_tests": 63,

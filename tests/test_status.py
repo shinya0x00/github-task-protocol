@@ -42,7 +42,12 @@ class FakeGitHub:
         self._files = files or [{"filename": "acceptance/run.json", "status": "added"}]
 
     def repository(self, owner, repo):
-        return {"id": 99, "full_name": "o/r", "url": "https://api.github.com/repos/o/r"}
+        return {
+            "id": 99,
+            "full_name": "o/r",
+            "url": "https://api.github.com/repos/o/r",
+            "default_branch": "main",
+        }
 
     def issue(self, owner, repo, number):
         return {
@@ -56,13 +61,18 @@ class FakeGitHub:
         return self._comments
 
     def branch(self, owner, repo, branch):
-        return {"name": branch} if self._branch else None
+        return {"name": branch, "commit": {"sha": SHA}} if self._branch else None
 
     def pull_requests(self, owner, repo, branch):
         return self._candidates
 
     def pull_request(self, owner, repo, number):
-        return self._pr
+        if self._pr is not None:
+            return self._pr
+        return next(
+            (candidate for candidate in self._candidates if candidate.get("number") == number),
+            None,
+        )
 
     def pull_request_files(self, owner, repo, number):
         return self._files
@@ -80,6 +90,9 @@ def pr(*, merged: bool) -> dict:
     return {
         "number": 7,
         "html_url": "https://github.com/o/r/pull/7",
+        "created_at": "2026-07-19T00:00:02Z",
+        "updated_at": "2026-07-19T00:00:02Z",
+        "changed_files": 1,
         "base": {"repo": {"id": 99}},
         "head": {"repo": {"id": 99}, "ref": "codex/walking", "sha": SHA},
         "merged_at": "2026-07-19T01:00:00Z" if merged else None,
@@ -161,6 +174,24 @@ class StatusTests(unittest.TestCase):
                 self.assertEqual("done", result.state)
                 self.assertEqual([], result.diagnostics)
 
+    def test_fresh_record_after_done_terminal_halts_at_fresh_comment(self) -> None:
+        merged = pr(merged=True)
+        merged["merged_at"] = "2026-07-19T00:00:03Z"
+        for fresh in (contract(IDS[3]), start(IDS[3]), done(IDS[3])):
+            with self.subTest(record_type=fresh["type"]):
+                comments = [
+                    comment(1, contract(IDS[0])),
+                    comment(2, start(IDS[1])),
+                    comment(3, done(IDS[2])),
+                    comment(4, fresh),
+                ]
+                result = evaluate_issue(
+                    FakeGitHub(comments, branch=False, pr=merged), ISSUE
+                )
+                self.assertEqual("halt", result.state)
+                self.assertEqual("terminal_violation", result.diagnostics[0].token)
+                self.assertEqual(comments[3].url, result.diagnostics[0].urls[0])
+
     def test_check_evidence_pending_is_invalid(self) -> None:
         check_contract = contract(IDS[0])
         check_contract["done_conditions"]["artifact"]["evidence_kind"] = "check"
@@ -238,7 +269,7 @@ class StatusTests(unittest.TestCase):
         result = evaluate_issue(ForeignRepository(comments, pr=pr(merged=False)), ISSUE)
         self.assertEqual("invalid_evidence", result.diagnostics[0].token)
 
-    def test_missing_artifact_is_invalid_evidence(self) -> None:
+    def test_artifact_404_is_acquisition_incomplete_when_absence_is_not_proven(self) -> None:
         comments = [
             comment(1, contract(IDS[0])),
             comment(2, start(IDS[1])),
@@ -250,7 +281,8 @@ class StatusTests(unittest.TestCase):
                 raise AcquisitionError("artifact", "not found", 404)
 
         result = evaluate_issue(MissingArtifact(comments, pr=pr(merged=False)), ISSUE)
-        self.assertEqual("invalid_evidence", result.diagnostics[0].token)
+        self.assertIsNone(result.state)
+        self.assertEqual("acquisition_incomplete", result.acquisition_errors[0]["code"])
 
     def test_artifact_from_another_head_is_stale(self) -> None:
         stale_done = done(IDS[2])
@@ -281,6 +313,24 @@ class StatusTests(unittest.TestCase):
         self.assertEqual("halt", result.state)
         self.assertEqual("invalid_binding", result.diagnostics[0].token)
         self.assertEqual(["README.md"], result.diagnostics[0].detail["paths"])
+
+    def test_incomplete_pr_file_collection_is_acquisition_error(self) -> None:
+        scoped_contract = contract(IDS[0])
+        scoped_contract["scope"] = ["src/"]
+        comments = [comment(1, scoped_contract), comment(2, start(IDS[1]))]
+        candidate = pr(merged=False)
+        candidate["changed_files"] = 3001
+        result = evaluate_issue(
+            FakeGitHub(
+                comments,
+                candidates=[candidate],
+                pr=candidate,
+                files=[{"filename": "src/a.py", "status": "modified"}],
+            ),
+            ISSUE,
+        )
+        self.assertIsNone(result.state)
+        self.assertEqual("acquisition_incomplete", result.acquisition_errors[0]["code"])
 
     def test_rename_checks_previous_and_current_paths(self) -> None:
         scoped_contract = contract(IDS[0])
@@ -325,6 +375,29 @@ class StatusTests(unittest.TestCase):
         self.assertIsNone(result.state)
         self.assertEqual("acquisition_incomplete", result.acquisition_errors[0]["code"])
 
+    def test_bound_branch_change_during_done_read_is_acquisition_error(self) -> None:
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, start(IDS[1])),
+            comment(3, done(IDS[2])),
+        ]
+
+        class MovingBranch(FakeGitHub):
+            def __init__(self):
+                super().__init__(comments, pr=pr(merged=False))
+                self.branch_reads = 0
+
+            def branch(self, owner, repo, branch):
+                self.branch_reads += 1
+                value = super().branch(owner, repo, branch)
+                if self.branch_reads > 1 and value is not None:
+                    value = {"name": branch, "commit": {"sha": "f" * 40}}
+                return value
+
+        result = evaluate_issue(MovingBranch(), ISSUE)
+        self.assertIsNone(result.state)
+        self.assertEqual("acquisition_incomplete", result.acquisition_errors[0]["code"])
+
     def test_issue_change_during_read_is_acquisition_error(self) -> None:
         comments = [comment(1, contract(IDS[0]))]
 
@@ -341,6 +414,22 @@ class StatusTests(unittest.TestCase):
                 return value
 
         result = evaluate_issue(MovingIssue(), ISSUE)
+        self.assertIsNone(result.state)
+        self.assertEqual("acquisition_incomplete", result.acquisition_errors[0]["code"])
+
+    def test_pr_candidate_collection_change_during_read_is_acquisition_error(self) -> None:
+        comments = [comment(1, contract(IDS[0])), comment(2, start(IDS[1]))]
+
+        class MovingCandidates(FakeGitHub):
+            def __init__(self):
+                super().__init__(comments)
+                self.candidate_reads = 0
+
+            def pull_requests(self, owner, repo, branch):
+                self.candidate_reads += 1
+                return [] if self.candidate_reads == 1 else [pr(merged=False)]
+
+        result = evaluate_issue(MovingCandidates(), ISSUE)
         self.assertIsNone(result.state)
         self.assertEqual("acquisition_incomplete", result.acquisition_errors[0]["code"])
 
@@ -389,6 +478,70 @@ class StatusTests(unittest.TestCase):
         result = evaluate_issue(FakeGitHub(comments, branch=False), ISSUE)
         self.assertEqual("stopped", result.state)
 
+    def test_fresh_record_after_stop_is_terminal_violation(self) -> None:
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, stop(IDS[1])),
+            comment(3, contract(IDS[2])),
+        ]
+        result = evaluate_issue(FakeGitHub(comments), ISSUE)
+        self.assertEqual("halt", result.state)
+        self.assertEqual("terminal_violation", result.diagnostics[0].token)
+        self.assertEqual(comments[2].url, result.diagnostics[0].urls[0])
+
+    def test_irrelevant_successor_after_stop_is_not_acquired(self) -> None:
+        fresh_stop = stop(IDS[2])
+        fresh_stop["reason"] = "superseded"
+        fresh_stop["successor_ref"] = "https://github.com/x/y/issues/9"
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, stop(IDS[1])),
+            comment(3, fresh_stop),
+        ]
+
+        class InaccessibleSuccessor(FakeGitHub):
+            def repository(self, owner, repo):
+                if (owner, repo) == ("x", "y"):
+                    raise AcquisitionError("successor", "not visible", 404)
+                return super().repository(owner, repo)
+
+        result = evaluate_issue(InaccessibleSuccessor(comments), ISSUE)
+        self.assertEqual("halt", result.state)
+        self.assertEqual("terminal_violation", result.diagnostics[0].token)
+        self.assertEqual(comments[2].url, result.diagnostics[0].urls[0])
+
+    def test_future_pr_reusing_stopped_branch_is_irrelevant(self) -> None:
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, start(IDS[1])),
+            comment(3, stop(IDS[2])),
+        ]
+        reused = pr(merged=True)
+        reused["created_at"] = "2026-07-19T00:00:05Z"
+        reused["merged_at"] = "2026-07-19T00:00:06Z"
+        result = evaluate_issue(FakeGitHub(comments, candidates=[reused]), ISSUE)
+        self.assertEqual("stopped", result.state)
+        self.assertEqual([], result.diagnostics)
+
+    def test_default_branch_start_halts_without_continue_work(self) -> None:
+        start_record = start(IDS[1])
+        start_record["branch"] = "main"
+        comments = [comment(1, contract(IDS[0])), comment(2, start_record)]
+        result = evaluate_issue(FakeGitHub(comments), ISSUE)
+        self.assertEqual("halt", result.state)
+        self.assertEqual("invalid_binding", result.diagnostics[0].token)
+
+    def test_stop_safely_closes_default_branch_binding(self) -> None:
+        start_record = start(IDS[1])
+        start_record["branch"] = "main"
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, start_record),
+            comment(3, stop(IDS[2])),
+        ]
+        result = evaluate_issue(FakeGitHub(comments), ISSUE)
+        self.assertEqual("stopped", result.state)
+
     def test_stop_before_done_terminal_wins(self) -> None:
         comments = [
             comment(1, contract(IDS[0])),
@@ -397,6 +550,31 @@ class StatusTests(unittest.TestCase):
             comment(4, stop(IDS[3])),
         ]
         result = evaluate_issue(FakeGitHub(comments, pr=pr(merged=False)), ISSUE)
+        self.assertEqual("stopped", result.state)
+
+    def test_stop_after_done_terminal_is_terminal_violation(self) -> None:
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, start(IDS[1])),
+            comment(3, done(IDS[2])),
+            comment(4, stop(IDS[3])),
+        ]
+        merged = pr(merged=True)
+        merged["merged_at"] = "2026-07-19T00:00:03Z"
+        result = evaluate_issue(FakeGitHub(comments, pr=merged), ISSUE)
+        self.assertEqual("halt", result.state)
+        self.assertEqual("terminal_violation", result.diagnostics[0].token)
+        self.assertEqual(comments[3].url, result.diagnostics[0].urls[0])
+
+    def test_stop_closes_merge_without_done_when_merge_precedes_stop(self) -> None:
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, start(IDS[1])),
+            comment(3, stop(IDS[2])),
+        ]
+        merged = pr(merged=True)
+        merged["merged_at"] = "2026-07-19T00:00:02Z"
+        result = evaluate_issue(FakeGitHub(comments, candidates=[merged]), ISSUE)
         self.assertEqual("stopped", result.state)
 
     def test_merge_after_final_stop_is_terminal_violation(self) -> None:

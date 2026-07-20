@@ -56,3 +56,5 @@ jobs:
         run: |
           .venv-check/bin/gtp check tests/fixtures/carriers/contract-valid.md
           .venv-check/bin/python -c 'import subprocess; result = subprocess.run([".venv-check/bin/gtp", "status", "not-a-github-issue-url"]); raise SystemExit(0 if result.returncode == 2 else 1)'
+      - name: Run installed status E2E
+        run: .venv-check/bin/python -m unittest discover -s tests -p 'test_cli.py'

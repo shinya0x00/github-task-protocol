@@ -1599,7 +1599,6 @@ protocol coreは次の4領域へ限定する。
 - `task_context.not_proven`と`evidence_limits`へsemantic fulfillmentの限界を投影する。task固有のunknown field、state、Record typeは追加しない。
 - terminal後の同一ID・同一JSON retryはContract、Start、Done、Stopの別なくsafe aliasとして扱う。fresh Recordは従来どおり`terminal_violation`とする。
 - Level 1のIssue #12を歴史的な完了再構成Evidenceとして保持し、現行のexact-head CI受入はIssue #65を参照する。
-- runtime変更の実装順はSafe-to-Fail Doctrine `a5ad793c7c8bc52eae82645799b621356e3e6650`へ固定し、real CLI pathを通るwalking skeleton、desired E2E、behavior fill、受入記録の順で行う。
 
 ### 不採用案
 
@@ -1614,3 +1613,44 @@ protocol coreは次の4領域へ限定する。
 - ContractとStartの遅延retryがterminal resultを壊さず、fresh Recordだけが違反になる。
 - task固有の未確認事項はGitHub上の通常proseへ残り、protocol coreのstate判断へ暗黙に混入しない。
 - clean readerは歴史的な完了再構成と現行のexact-head CI受入を区別して辿れる。
+
+## ADR-032: terminal identityと取得完全性をfail-closedにする
+
+- Status: Accepted
+- Date: 2026-07-20
+
+### 観測事実
+
+- Stop後のfresh Recordを`terminal_violation`として検出しても、live statusは`stopped`と`none_stopped`を表示していた。
+- Stop再読時に同名branchの全PR履歴を対象としていたため、Stop後に別taskが同名branchを再利用してmergeすると、過去Issueが`stopped`から`halt`へ変化した。
+- GitHub RESTの404はresource不在と権限不足を一意に区別できないが、branch、PR、Check Run、artifact、successor Issueの404をprotocol不適合へ変換していた。
+- Issueだけを再読していたため、取得中のbranch、PR candidate、merge factの変化を検出しない経路があった。
+- List Pull Request Filesには取得上限があるが、返却fileを完全なPR差分としてscope判定していた。
+- Startはrepository default branchも受理し、`continue_work`を提示できた。
+- sourceは公開1.0.1後にruntime挙動を変更したが、package versionとREADME commandは1.0.1のままだった。
+
+### 決定
+
+- Stop後のfresh Recordはpublic stateを`halt`、reasonを`terminal_violation`とし、最初のfresh comment URLを原因とする。pre-terminal diagnosticを持つvalid Stopの非常口は維持する。
+- Stop後mergeの対象は、Start以後かつStop以前に作成されたsame-repository・same-branch PRへ限定する。Stop後に作成された同名branch PRは過去Issueへ影響させない。
+- 汎用404からresource不在を推測せず、十分な取得を証明できない場合はAcquisition Errorとする。
+- branch、PR candidate collection、Bound PRを再読し、stateを左右するsnapshotが変化した場合はAcquisition Errorとする。
+- PR detailの`changed_files`と取得したfile数を照合し、完全な差分を取得できない場合はscope適合をClaimしない。
+- Start branchがrepository default branchと一致する場合は`halt / invalid_binding`とする。valid Stopはこのpre-terminal不適合を安全に閉じられる。
+- task固有の自由文はIssue本文・通常commentがcanonical ownerであり、CLIはその意味を自動判定しない。開始前から完了判断に必要な不明点はDone Conditionとし、開始後にContract変更が必要ならStopと後継Issueへ移る。CLIはDone提示前の確認先としてIssue URLを表示する。
+- Record grammarは変更しない。runtime修復candidateのpackage versionを1.0.2とし、公開完了前はpublic packageとして案内しない。
+
+### 不採用案
+
+- unknown専用Recordまたは自由文parserの追加は、4 Recordと決定的reducerの境界を広げるため採用しない。
+- 404を常にresource不在とする案は、権限不足をprotocol不適合へ変換するため採用しない。
+- branch名をrepository全体で永久に再利用禁止とする案は、Stop comment時刻でtask対象PRを限定できるため採用しない。
+- 既に公開済みの1.0.1 tagまたはartifactを移動・置換する案は、immutableなrelease identityを壊すため採用しない。
+
+### 結果
+
+- terminal resultはfresh Recordと将来の無関係なbranch再利用を区別できる。
+- 取得不能、取得中変化、file一覧打ち切りをprotocol haltと混同しない。
+- default branchへの作業継続をGTP statusが案内しない。
+- clean readerはIssue URLからtask固有の未確認事項を確認する必要と、CLIが意味評価しない限界を同時に確認できる。
+- source candidateと次のpublic package identityを1.0.1から分離できる。

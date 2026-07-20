@@ -164,13 +164,10 @@ class GitHubClient:
             )
         return comments
 
-    def branch(self, owner: str, repo: str, branch: str) -> dict[str, Any] | None:
-        try:
-            return self._get(f"/repos/{quote(owner)}/{quote(repo)}/branches/{quote(branch, safe='')}")
-        except AcquisitionError as error:
-            if error.status == 404:
-                return None
-            raise
+    def branch(self, owner: str, repo: str, branch: str) -> dict[str, Any]:
+        return self._get(
+            f"/repos/{quote(owner)}/{quote(repo)}/branches/{quote(branch, safe='')}"
+        )
 
     def pull_requests(self, owner: str, repo: str, branch: str) -> list[dict[str, Any]]:
         resources = self._pages(

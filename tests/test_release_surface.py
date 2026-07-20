@@ -19,6 +19,24 @@ PROJECT = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["
 
 
 class ReleaseSurfaceTests(unittest.TestCase):
+    def test_private_planning_metadata_is_absent(self) -> None:
+        marker = "doc" + "trine"
+        forbidden = (
+            marker,
+            "a5ad793c" + "7c8bc52eae82645799b621356e3e6650",
+            f"github.com/shinya0x00/{marker}",
+            f"github.com/shinya-reiji/{marker}",
+        )
+        for path in ROOT.rglob("*"):
+            if not path.is_file() or ".git" in path.parts or "__pycache__" in path.parts:
+                continue
+            try:
+                text = path.read_text(encoding="utf-8").lower()
+            except UnicodeError:
+                continue
+            for value in forbidden:
+                self.assertNotIn(value, text, str(path.relative_to(ROOT)))
+
     def test_readme_is_plain_first_three_step_entry_to_canonical_spec(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertLessEqual(len(readme.splitlines()), MATRIX["budgets"]["README.md"])
@@ -96,6 +114,11 @@ class ReleaseSurfaceTests(unittest.TestCase):
         )
         self.assertTrue(public_evidence["github_release"]["published"])
         self.assertTrue(public_evidence["pypi"]["files_redownloaded_and_hashed"])
+        self.assertNotEqual(PROJECT["version"], public_evidence["pypi"]["package_version"])
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("現在のsource candidateは`1.0.2`", readme)
+        self.assertIn("公開確認前", readme)
+        self.assertTrue((ROOT / "acceptance" / "release-notes-v1.0.2.md").exists())
         decisions = (ROOT / "DECISIONS.md").read_text(encoding="utf-8")
         self.assertIn(
             "## ADR-030: CLIを任意validatorとしてPyPIへ公開する",
@@ -109,6 +132,11 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn('python-version: ["3.11", "3.12", "3.13"]', workflow)
         self.assertIn("Build sdist and wheel without network", workflow)
         self.assertIn("Install wheel in clean environment", workflow)
+        self.assertIn("Run installed status E2E", workflow)
+        self.assertIn(
+            ".venv-check/bin/python -m unittest discover -s tests -p 'test_cli.py'",
+            workflow,
+        )
         self.assertNotIn("publish", workflow.lower())
 
 

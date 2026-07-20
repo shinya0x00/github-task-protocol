@@ -2,11 +2,6 @@
   "acceptance": "purpose_alignment",
   "issue": "https://github.com/shinya0x00/github-task-protocol/issues/69",
   "pr": "https://github.com/shinya0x00/github-task-protocol/pull/70",
-  "doctrine": {
-    "canonical_commit": "a5ad793c7c8bc52eae82645799b621356e3e6650",
-    "exact_ref": "https://github.com/shinya0x00/doctrine/blob/a5ad793c7c8bc52eae82645799b621356e3e6650/DOCTRINE.md",
-    "plan_lint": "proceed"
-  },
   "walking_skeleton": {
     "source_head": "66cea6efda44c7bca20adb2159dab77617071155",
     "workflow_run": "https://github.com/shinya0x00/github-task-protocol/actions/runs/29722779901",

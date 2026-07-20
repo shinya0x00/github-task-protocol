@@ -7,7 +7,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from urllib.error import HTTPError
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 from unittest.mock import MagicMock, patch
 
 import gtp
@@ -109,7 +109,7 @@ class CliTests(unittest.TestCase):
             "type": "start",
             "id": "11234567-89ab-4def-8123-456789abcdef",
             "contract_ref": f"{issue_url}#issuecomment-101",
-            "branch": "agent/test",
+            "branch": case.get("start_branch", "agent/test"),
         }
         evidence = (
             "https://github.com/o/r/runs/8"
@@ -160,9 +160,10 @@ class CliTests(unittest.TestCase):
 
         issue_reads = 0
         pr_reads = 0
+        pull_reads = 0
 
         def response(request, timeout):
-            nonlocal issue_reads, pr_reads
+            nonlocal issue_reads, pr_reads, pull_reads
             self.assertEqual("GET", request.get_method())
             self.assertEqual(30, timeout)
             url = request.full_url
@@ -170,7 +171,7 @@ class CliTests(unittest.TestCase):
             body = None
             headers = {}
             if parsed.path == "/repos/o/r":
-                body = {"id": 99, "full_name": "o/r"}
+                body = {"id": 99, "full_name": "o/r", "default_branch": "main"}
             elif parsed.path == "/repos/x/y":
                 body = {"id": 100, "full_name": "x/y"}
             elif parsed.path == "/repos/o/r/issues/1":
@@ -194,13 +195,21 @@ class CliTests(unittest.TestCase):
                 }
             elif parsed.path == "/repos/o/r/issues/1/comments":
                 body = comments
-            elif parsed.path == "/repos/o/r/branches/agent%2Ftest":
+            elif parsed.path == (
+                "/repos/o/r/branches/"
+                + quote(start["branch"], safe="")
+            ):
                 if case.get("branch_exists", True):
-                    body = {"name": "agent/test"}
+                    body = {"name": start["branch"], "commit": {"sha": sha}}
                 else:
                     raise HTTPError(url, 404, "not found", {}, None)
             elif parsed.path == "/repos/o/r/pulls":
-                count = case.get("candidate_count", 0)
+                pull_reads += 1
+                count = (
+                    1
+                    if case.get("candidate_moves") and pull_reads > 1
+                    else case.get("candidate_count", 0)
+                )
                 body = [self._matrix_pr(case, sha, number) for number in range(7, 7 + count)]
             elif parsed.path == "/repos/o/r/pulls/7":
                 pr_reads += 1
@@ -239,10 +248,18 @@ class CliTests(unittest.TestCase):
         return {
             "number": number,
             "html_url": f"https://github.com/o/r/pull/{number}",
+            "created_at": case.get("pr_created_at", "2026-07-19T00:00:02Z"),
+            "updated_at": "2026-07-19T00:00:02Z",
+            "changed_files": case.get(
+                "changed_files",
+                len(case.get("files", [{"filename": "src/a.py", "status": "added"}])),
+            ),
             "base": {"repo": {"id": 99}},
             "head": {
                 "repo": {"id": 100 if case.get("fork") else 99},
-                "ref": case.get("pr_branch", "agent/test"),
+                "ref": case.get(
+                    "pr_branch", case.get("start_branch", "agent/test")
+                ),
                 "sha": case.get("pr_sha", sha),
             },
             "merged_at": case.get("merged_at"),
@@ -479,6 +496,7 @@ class CliTests(unittest.TestCase):
             [
                 "Check RunがDone Conditionの内容を十分に検査したこと",
                 "Artifactの内容がDone Conditionを満たすこと",
+                "Issue本文・通常commentに未解決事項がないこと",
                 "actor本人性",
                 "credential安全性",
                 "GitHub外情報を参照しなかったこと",
@@ -491,9 +509,26 @@ class CliTests(unittest.TestCase):
         self.assertTrue(
             any("条件内容の充足は自動判定していません" in line for line in human)
         )
+        self.assertEqual(
+            "https://github.com/o/r/issues/1",
+            output["task_context"]["handoff_url"],
+        )
+        self.assertTrue(any("未確認事項の確認先" in line for line in human))
         self.assertEqual([], output["diagnostics"])
         self.assertIsNone(output["halt_reason"])
         self.assertEqual("none_done", output["next_action"])
+
+    def test_purpose_safety_walking_skeleton_halts_after_stop(self) -> None:
+        code, human, output = self.call_http_fixture(
+            "purpose-safety-walking-skeleton.json"
+        )
+        cause = "https://github.com/o/r/issues/1#issuecomment-103"
+        self.assertEqual(0, code)
+        self.assertEqual("halt", output["state"])
+        self.assertEqual("terminal_violation", output["halt_reason"])
+        self.assertEqual("inspect_halt", output["next_action"])
+        self.assertEqual(cause, output["primary_url"])
+        self.assertEqual(f"最初のURL: {cause}", human[4])
 
     def test_status_required_live_binding_http_matrix(self) -> None:
         matrix = json.loads(

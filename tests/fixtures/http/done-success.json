@@ -3,7 +3,7 @@
   "requests": [
     {
       "url": "https://api.github.com/repos/o/r",
-      "body": {"id": 99, "full_name": "o/r", "url": "https://api.github.com/repos/o/r"}
+      "body": {"id": 99, "full_name": "o/r", "url": "https://api.github.com/repos/o/r", "default_branch": "main"}
     },
     {
       "url": "https://api.github.com/repos/o/r/issues/1",
@@ -45,7 +45,7 @@
     },
     {
       "url": "https://api.github.com/repos/o/r/pulls/7",
-      "body": {"number": 7, "html_url": "https://github.com/o/r/pull/7", "base": {"repo": {"id": 99}}, "head": {"repo": {"id": 99}, "ref": "agent/test", "sha": "0123456789abcdef0123456789abcdef01234567"}, "merged_at": "2026-07-19T00:00:04Z"}
+      "body": {"number": 7, "html_url": "https://github.com/o/r/pull/7", "changed_files": 1, "base": {"repo": {"id": 99}}, "head": {"repo": {"id": 99}, "ref": "agent/test", "sha": "0123456789abcdef0123456789abcdef01234567"}, "merged_at": "2026-07-19T00:00:04Z"}
     },
     {
       "url": "https://api.github.com/repos/o/r/pulls/7/files?per_page=100",
@@ -61,7 +61,7 @@
     },
     {
       "url": "https://api.github.com/repos/o/r/pulls/7",
-      "body": {"number": 7, "html_url": "https://github.com/o/r/pull/7", "base": {"repo": {"id": 99}}, "head": {"repo": {"id": 99}, "ref": "agent/test", "sha": "0123456789abcdef0123456789abcdef01234567"}, "merged_at": "2026-07-19T00:00:04Z"}
+      "body": {"number": 7, "html_url": "https://github.com/o/r/pull/7", "changed_files": 1, "base": {"repo": {"id": 99}}, "head": {"repo": {"id": 99}, "ref": "agent/test", "sha": "0123456789abcdef0123456789abcdef01234567"}, "merged_at": "2026-07-19T00:00:04Z"}
     },
     {
       "url": "https://api.github.com/repos/o/r/issues/1",
