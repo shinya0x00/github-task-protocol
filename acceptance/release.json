@@ -2,7 +2,8 @@
   "schema": "github-task-protocol-release-plan/v1",
   "package_version": "1.0.1",
   "protocol_version": "1.0",
-  "status": "prepared_not_published",
+  "status": "superseded_by_public_release_evidence",
+  "superseded_by": "acceptance/public-release-v1.0.1.json",
   "version_selection": {
     "selected": "1.0.1",
     "reason": "v1.0.0 is an existing immutable tag; PyPI, GitHub tag, and GitHub Release did not contain 1.0.1 during preflight",

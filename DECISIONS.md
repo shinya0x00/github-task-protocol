@@ -1530,3 +1530,45 @@ protocol coreは次の4領域へ限定する。
 - 取得不能時にstateを推測せず、`state: null`と`acquisition: incomplete`を返せる。
 - GitHubへのwrite path、GraphQL、webhook、cache、database、fork、GHESを追加せず、Issue #10のlive binding規則を検証できる。
 - live HTTP matrixとprune reportをimmutable Done Evidenceとして利用できる。
+
+## ADR-030: CLIを任意validatorとしてPyPIへ公開する
+
+- Status: Accepted
+- Date: 2026-07-20
+- Supersedes: Issue #5完了時のCLI非公開方針
+
+### 観測事実
+
+- [Issue #5の完了コメント](https://github.com/shinya0x00/github-task-protocol/issues/5#issuecomment-5016145451)は、`v1.0.1` tag、GitHub Release、PyPI packageを作成せず、CLI配布方式を未決定とする境界で親Issueを閉じた。
+- 利用者の新しい判断を受け、Issue #49で1.0.1公開candidateを準備し、Issue #52でsdistの`PKG-INFO`を修復した。
+- Issue #54では固定candidateからannotated tag、GitHub Release、PyPI公開、public PyPIからのclean install、live `done`／`stopped`再読を行った。
+- `README.md`は、GTP利用にCLI installは不要であり、使う場合だけ固定versionを指定できると説明している。
+- 最終公開結果とEvidenceの限界は`acceptance/public-release-v1.0.1.json`が所有する。一方、`acceptance/release.json`は公開前計画の`prepared_not_published`とplaceholderを保持していた。
+
+### 推論
+
+- CLIをPyPIから取得可能にすると、任意validatorを試す利用者の導入負担を下げられるが、GTPの参加条件へCLIを追加する必要はない。
+- packageの公開factは、Level 0のtoolなし引き継ぎ、人間のnative merge判断、GTPが権限を与えない境界を変更しない。
+- 公開前計画と最終Evidenceが異なる役割を持つことを明示しなければ、clean readerは`prepared_not_published`を現在状態と誤読できる。
+- `acceptance/release.json`をrenameすると過去のIssueとPRからのpath参照を壊すため、同じpathでsupersessionを明示する方が履歴を追いやすい。
+
+### 決定
+
+- CLIはGTP利用の必須条件ではないが、任意の参照validatorとしてPyPIへ公開する。
+- 公開によってRecord、state、halt reason、Level 0の価値、人間の受理権限、GTPが証明する範囲を変更しない。
+- `acceptance/release.json`は1.0.1公開前計画のhistorical artifactとして残し、statusを`superseded_by_public_release_evidence`とする。
+- 同fileの`superseded_by`から`acceptance/public-release-v1.0.1.json`へ解決可能な関係を持たせる。最終公開factはsuccessor Evidenceが所有し、公開前placeholderを遡及的な実績値へ書き換えない。
+- npm公開、自動publish workflow、CLI必須化はこのDecisionへ含めない。
+
+### 不採用案
+
+- CLI非公開方針の維持は、新しい利用者判断と実際の1.0.1公開factに一致しないため採用しない。
+- `acceptance/release.json`の削除またはrenameは、公開前判断の履歴と既存path参照を弱めるため採用しない。
+- 公開後の値でplaceholderを全面更新する案は、計画時点の観測と実行後Evidenceのownerを混同するため採用しない。
+
+### 結果
+
+- clean readerは、公開前計画から最終public Evidenceへ一意に移動できる。
+- 配布方針の理由をIssueとPRの全履歴から再構成せず、Decisionとして読める。
+- 今後のversion準備、tag、GitHub Release、registry upload、公開後検証は、それぞれのrelease IssueとEvidenceで扱う。
+- PyPI公開、CI成功、CLI出力は、actor本人性、credential安全性、package品質全体、変更・完了・merge authorityを証明しない。
