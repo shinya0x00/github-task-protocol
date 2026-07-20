@@ -1,7 +1,6 @@
 {
   "schema": "github-task-protocol-purpose-alignment-walking-skeleton/v1",
   "issue": "https://github.com/shinya0x00/github-task-protocol/issues/69",
-  "doctrine_ref": "https://github.com/shinya0x00/doctrine/blob/a5ad793c7c8bc52eae82645799b621356e3e6650/DOCTRINE.md",
   "branch": "agent/issue-69-purpose-alignment",
   "runtime_change": true,
   "feature_depth": 0,

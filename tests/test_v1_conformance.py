@@ -15,7 +15,12 @@ class MinimalLiveGitHub:
         self._comments = comments
 
     def repository(self, owner, repo):
-        return {"id": 99, "url": "https://api.github.com/repos/o/r"}
+        return {
+            "id": 99,
+            "full_name": "o/r",
+            "url": "https://api.github.com/repos/o/r",
+            "default_branch": "main",
+        }
 
     def issue(self, owner, repo, number):
         return {"id": number, "created_at": "2026-07-18T00:00:00Z"}

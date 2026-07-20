@@ -142,6 +142,15 @@ class GitHubAdapterTests(unittest.TestCase):
         self.assertEqual([{"filename": "src/a.py"}], result)
         pages.assert_called_once_with("/repos/o/r/pulls/7/files")
 
+    def test_branch_404_is_not_silently_converted_to_proven_absence(self) -> None:
+        client = GitHubClient(token="token")
+        with patch.object(
+            client,
+            "_get",
+            side_effect=AcquisitionError("branch", "not visible", 404),
+        ), self.assertRaises(AcquisitionError):
+            client.branch("o", "r", "task")
+
 
 if __name__ == "__main__":
     unittest.main()
