@@ -1,0 +1,141 @@
+{
+  "schema": "github-task-protocol-public-release-evidence/v1",
+  "observed_at": "2026-07-20T14:55:17Z",
+  "issue": {
+    "url": "https://github.com/shinya0x00/github-task-protocol/issues/93",
+    "contract": "https://github.com/shinya0x00/github-task-protocol/issues/93#issuecomment-5023070101",
+    "start": "https://github.com/shinya0x00/github-task-protocol/issues/93#issuecomment-5023078658",
+    "branch": "codex/issue-93-release-v1.0.2",
+    "state_before_evidence_pr": "in_progress"
+  },
+  "candidate": {
+    "commit_sha": "cd1f45ce6697a63c74f924b6ebae6ad97e26b055",
+    "main_ci": "https://github.com/shinya0x00/github-task-protocol/actions/runs/29748116105",
+    "python_311_check": "https://github.com/shinya0x00/github-task-protocol/runs/88371211606",
+    "python_312_check": "https://github.com/shinya0x00/github-task-protocol/runs/88371211625",
+    "python_313_check": "https://github.com/shinya0x00/github-task-protocol/runs/88371211602",
+    "source_changed_during_publication": false,
+    "gtp_md_sha256": "cee9b146dcb80dcaf5a31fe06b56299be7eba5df325cc92aee243e8ddd1fbdb8"
+  },
+  "tag": {
+    "name": "v1.0.2",
+    "url": "https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.2",
+    "kind": "annotated",
+    "tag_object_sha": "d19d6dcc941fbc1cab4b57ba00736e7a10325ebb",
+    "target_commit_sha": "cd1f45ce6697a63c74f924b6ebae6ad97e26b055",
+    "tagger": "agent-operated-bot"
+  },
+  "github_release": {
+    "id": 356794014,
+    "url": "https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.2",
+    "title": "GitHub Task Protocol 1.0.2",
+    "author": "agent-operated-bot",
+    "published_at": "2026-07-20T14:53:09Z",
+    "draft": false,
+    "prerelease": false,
+    "latest_stable": true,
+    "assets_redownloaded_and_hashed": true,
+    "assets": [
+      {
+        "id": 483572645,
+        "filename": "github_task_protocol-1.0.2.tar.gz",
+        "size": 117168,
+        "url": "https://github.com/shinya0x00/github-task-protocol/releases/download/v1.0.2/github_task_protocol-1.0.2.tar.gz",
+        "sha256": "9ebd41dc392629deb26231e32116b6d015ab1c8a7d933cc93fde30efc6789ee3"
+      },
+      {
+        "id": 483572644,
+        "filename": "github_task_protocol-1.0.2-py3-none-any.whl",
+        "size": 28735,
+        "url": "https://github.com/shinya0x00/github-task-protocol/releases/download/v1.0.2/github_task_protocol-1.0.2-py3-none-any.whl",
+        "sha256": "f5ccb6eaec5fd553fa46ac22f01bd4af35a8f226ad45a9a704674104a525bc8a"
+      }
+    ]
+  },
+  "pypi": {
+    "project_url": "https://pypi.org/project/github-task-protocol/",
+    "release_url": "https://pypi.org/project/github-task-protocol/1.0.2/",
+    "json_api_url": "https://pypi.org/pypi/github-task-protocol/1.0.2/json",
+    "package_version": "1.0.2",
+    "requires_python": ">=3.11",
+    "files_redownloaded_and_hashed": true,
+    "files": [
+      {
+        "filename": "github_task_protocol-1.0.2.tar.gz",
+        "packagetype": "sdist",
+        "size": 117168,
+        "sha256": "9ebd41dc392629deb26231e32116b6d015ab1c8a7d933cc93fde30efc6789ee3",
+        "url": "https://files.pythonhosted.org/packages/16/3e/7490405dbf6c801771cf5acd220572cc2a91090bc7e3a772f3356ce890c2/github_task_protocol-1.0.2.tar.gz"
+      },
+      {
+        "filename": "github_task_protocol-1.0.2-py3-none-any.whl",
+        "packagetype": "bdist_wheel",
+        "size": 28735,
+        "sha256": "f5ccb6eaec5fd553fa46ac22f01bd4af35a8f226ad45a9a704674104a525bc8a",
+        "url": "https://files.pythonhosted.org/packages/8b/28/d1f9b586a85896f925fa73070e07f9683f3a777c984a9f922a7c727a4b84/github_task_protocol-1.0.2-py3-none-any.whl"
+      }
+    ]
+  },
+  "build_and_upload_observations": {
+    "clean_checkout_tests": 125,
+    "initial_build_call": "failed before artifact creation because dist directory did not exist",
+    "successful_builds": 1,
+    "twine_check": "passed",
+    "first_two_upload_attempts": "HTTP 403 invalid or non-existent authentication information",
+    "root_cause": "the macOS security -w interactive prompt truncated the PyPI token to 128 characters",
+    "root_cause_reproduction": {
+      "dummy_input_length": 200,
+      "stored_length": 128,
+      "exact_match": false
+    },
+    "recovery": "the full token was stored with Keychain Access; prefix, length 179, and outer whitespace were checked without recording the value",
+    "successful_upload": "wheel and sdist each returned HTTP 200",
+    "credential_value_recorded": false
+  },
+  "public_validation": {
+    "github_release_and_pypi_bytes_equal_to_build": true,
+    "metadata": {
+      "name": "github-task-protocol",
+      "version": "1.0.2",
+      "requires_python": ">=3.11",
+      "license_expression": "MIT"
+    },
+    "github_release_clean_install": {
+      "version_stdout": "1.0.2",
+      "offline_check_recognized": true,
+      "offline_check_schema_valid": true
+    },
+    "pypi_clean_install": {
+      "version_stdout": "1.0.2",
+      "offline_check_recognized": true,
+      "offline_check_schema_valid": true
+    },
+    "authenticated_live_status": {
+      "installed_from": "PyPI redownloaded wheel",
+      "issue": "https://github.com/shinya0x00/github-task-protocol/issues/91",
+      "acquisition": "complete",
+      "state": "done",
+      "next_action": "none_done",
+      "primary_url": "https://github.com/shinya0x00/github-task-protocol/pull/92",
+      "authority": "none"
+    },
+    "latest_stable_release": "v1.0.2",
+    "tag_gtp_md_matches_candidate": true
+  },
+  "evidence_pr": {
+    "url": "pending",
+    "scope": [
+      "README.md",
+      "acceptance/public-release-v1.0.2.json",
+      "tests/test_release_surface.py"
+    ],
+    "final_checks": "presented separately by the Done Record after the final source head passes CI"
+  },
+  "evidence_limits": [
+    "The PyPI upload input and credential lifecycle cannot be reconstructed from public GitHub resources.",
+    "The token value was never recorded; prefix, length, and whitespace checks do not prove credential ownership or safety.",
+    "The root-cause reproduction proves truncation in the observed macOS security prompt path, not every macOS or Keychain input path.",
+    "Matching public hashes establish byte correspondence to the frozen artifacts; they do not independently prove code quality.",
+    "CLI output, CI success, Records, and this Evidence grant no authority to complete or merge the Evidence pull request."
+  ]
+}

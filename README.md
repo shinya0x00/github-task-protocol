@@ -79,7 +79,7 @@ GitHub情報を完全に取得できない場合はstateを推測しません。
 
 人間がGTPを使うためにCLIをinstallする必要はありません。`gtp`はagentや自動検査がRecordと現在stateを確認するための、runtime dependency 0の任意toolです。
 
-CLIはPyPI公開後、固定versionを指定して実行できます。現在のsource candidateは`1.0.2`であり、公開確認前です。公開済み`1.0.1`はこのcandidateと挙動が異なるため、下記commandは`1.0.2`の公開Evidence取得後に使用します。GTPを使うだけならCLIのinstallは不要です。
+CLI `1.0.2`は[PyPI](https://pypi.org/project/github-task-protocol/1.0.2/)と[GitHub Release](https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.2)へ公開済みです。再downloadとhash・clean install・live statusの検証結果は[`acceptance/public-release-v1.0.2.json`](acceptance/public-release-v1.0.2.json)にあります。GTPを使うだけならCLIのinstallは不要です。
 
 ```console
 uvx --from github-task-protocol==1.0.2 gtp status <issue-url>
