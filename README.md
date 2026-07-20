@@ -21,7 +21,7 @@ GTP repository: https://github.com/shinya0x00/github-task-protocol
 
 この明示依頼を受けたagentは、次の順序でsetupします。
 
-この手順はdefault branchへの誤操作を低減しますが、pushを物理的には阻止しません。repository ownerはGitHub branch protectionまたはrulesetでdefault branchへの直接pushを拒否し、pull request経由の変更を必須にします。setup agentは保護設定を変更せず、未設定なら人間へ報告します。
+agentが手順を理解できることと、実行中ずっと意図の境界内に留まり続けることは別の能力です。この手順はbranch-first順序で境界逸脱のriskを下げます。GTP単独の強制力はこの手順の受入対象にしません。repository ownerは補完策としてGitHub branch protectionまたはrulesetでdefault branchへの直接pushを拒否し、pull request経由の変更を必須にできます。setup agentは保護設定を変更せず、未設定なら人間へ報告します。
 
 1. GitHubのlatest stable Releaseを取得し、`draft: false`かつ`prerelease: false`を確認する。未公開candidateやmoving `main`は選ばない。
 2. Releaseのtagをcommit SHAまでdereferenceし、選択したtagとexact commit SHAを記録する。

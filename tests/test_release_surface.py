@@ -72,7 +72,11 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn("commitとpushはsetup branchだけ", introduction)
         self.assertIn("setup開始前に記録したSHA", introduction)
         self.assertIn("GitHub branch protectionまたはruleset", introduction)
-        self.assertIn("pushを物理的には阻止しません", introduction)
+        self.assertIn(
+            "agentが手順を理解できることと、実行中ずっと意図の境界内に留まり続けることは別の能力",
+            introduction,
+        )
+        self.assertIn("GTP単独の強制力はこの手順の受入対象にしません", introduction)
         self.assertIn("setup agentは保護設定を変更せず", introduction)
         self.assertIn("Draft setup PR", introduction)
         self.assertIn("人間がsetup PRをmergeするまで導入完了としません", introduction)
@@ -156,14 +160,12 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertTrue(attempt["vendored_bytes_equal"])
         self.assertTrue(attempt["default_branch_direct_push_observed"])
         self.assertEqual(
-            "passed_with_unenforced_default_branch_boundary",
+            "passed_with_observed_boundary_drift",
             attempt["verdict"],
         )
         self.assertTrue(attempt["merge_allowed"])
         self.assertFalse(
-            run["setup_probe"]["safety_boundary"][
-                "instructions_physically_enforce_branch_policy"
-            ]
+            run["setup_probe"]["safety_boundary"]["gtp_enforcement_strength_evaluated"]
         )
         self.assertEqual(
             {
