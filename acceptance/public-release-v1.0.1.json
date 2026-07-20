@@ -1,0 +1,142 @@
+{
+  "schema": "github-task-protocol-public-release-evidence/v1",
+  "observed_at": "2026-07-20T01:02:32Z",
+  "issue": {
+    "url": "https://github.com/shinya0x00/github-task-protocol/issues/54",
+    "contract": "https://github.com/shinya0x00/github-task-protocol/issues/54#issuecomment-5017913196",
+    "start": "https://github.com/shinya0x00/github-task-protocol/issues/54#issuecomment-5017914692",
+    "branch": "agent/issue-54-pypi-publication-evidence",
+    "state_before_evidence_pr": "in_progress",
+    "state_command_exit_code": 0
+  },
+  "candidate": {
+    "commit_sha": "d882ebc27a95b0e3071bcebeebf264c42020fbae",
+    "main_ci": "https://github.com/shinya0x00/github-task-protocol/actions/runs/29709447567",
+    "source_changed_during_publication": false
+  },
+  "tag": {
+    "name": "v1.0.1",
+    "url": "https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.1",
+    "kind": "annotated",
+    "tag_object_sha": "754b3025c173993bb375ca527cf3b7df00db9ed9",
+    "target_commit_sha": "d882ebc27a95b0e3071bcebeebf264c42020fbae"
+  },
+  "github_release": {
+    "url": "https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.1",
+    "title": "GitHub Task Protocol 1.0.1",
+    "published": true,
+    "assets_redownloaded_and_hashed": true,
+    "assets": [
+      {
+        "filename": "github-task-protocol-1.0.1.tar.gz",
+        "url": "https://github.com/shinya0x00/github-task-protocol/releases/download/v1.0.1/github-task-protocol-1.0.1.tar.gz",
+        "sha256": "9170ef8c96f93dabd39b585098ecb53d7ba9b409449e84d46ced95b182c7e9dd"
+      },
+      {
+        "filename": "github_task_protocol-1.0.1-py3-none-any.whl",
+        "url": "https://github.com/shinya0x00/github-task-protocol/releases/download/v1.0.1/github_task_protocol-1.0.1-py3-none-any.whl",
+        "sha256": "9121816f3c7abd089eef4dc2630a43a47fc239e54fae49b306bd4d29824182cb"
+      }
+    ]
+  },
+  "pypi": {
+    "project_url": "https://pypi.org/project/github-task-protocol/",
+    "release_url": "https://pypi.org/project/github-task-protocol/1.0.1/",
+    "json_api_url": "https://pypi.org/pypi/github-task-protocol/1.0.1/json",
+    "package_version": "1.0.1",
+    "requires_python": ">=3.11",
+    "files_redownloaded_and_hashed": true,
+    "files": [
+      {
+        "filename": "github_task_protocol-1.0.1.tar.gz",
+        "packagetype": "sdist",
+        "size": 145502,
+        "sha256": "9170ef8c96f93dabd39b585098ecb53d7ba9b409449e84d46ced95b182c7e9dd",
+        "url": "https://files.pythonhosted.org/packages/cd/90/93e5194b84eebfa44488d63abf394fad98663848147df7dfc77abcfd7061/github_task_protocol-1.0.1.tar.gz"
+      },
+      {
+        "filename": "github_task_protocol-1.0.1-py3-none-any.whl",
+        "packagetype": "bdist_wheel",
+        "size": 25154,
+        "sha256": "9121816f3c7abd089eef4dc2630a43a47fc239e54fae49b306bd4d29824182cb",
+        "url": "https://files.pythonhosted.org/packages/ad/2c/262574d2d264a0dde523ce0d27d8854f9bb59db91937b35be2eafd2e0445/github_task_protocol-1.0.1-py3-none-any.whl"
+      }
+    ]
+  },
+  "upload_observations": {
+    "first_upload": {
+      "wheel": "accepted by PyPI",
+      "sdist": "HTTP 400 before publication",
+      "original_sdist_filename": "github-task-protocol-1.0.1.tar.gz",
+      "server_detail": "not observed because the first command did not use verbose output"
+    },
+    "recovery": {
+      "action": "copied the same sdist bytes to the normalized distribution filename and uploaded only the missing sdist",
+      "normalized_sdist_filename": "github_task_protocol-1.0.1.tar.gz",
+      "rebuilt": false,
+      "original_sha256": "9170ef8c96f93dabd39b585098ecb53d7ba9b409449e84d46ced95b182c7e9dd",
+      "normalized_name_copy_sha256": "9170ef8c96f93dabd39b585098ecb53d7ba9b409449e84d46ced95b182c7e9dd",
+      "second_upload": "accepted by PyPI"
+    },
+    "cause_assessment": {
+      "status": "inference",
+      "text": "The original sdist filename was not normalized like a binary distribution name; the byte-identical normalized filename was accepted.",
+      "specification": "https://packaging.python.org/en/latest/specifications/source-distribution-format/"
+    }
+  },
+  "public_validation": {
+    "environment": {
+      "kind": "new venv",
+      "python": "3.12",
+      "install_source": "https://pypi.org/simple",
+      "install_requirement": "github-task-protocol==1.0.1",
+      "no_cache": true,
+      "install_exit_code": 0
+    },
+    "version": {
+      "command": "gtp --version",
+      "exit_code": 0,
+      "stdout": "1.0.1"
+    },
+    "offline_check": {
+      "command": "gtp check tests/fixtures/carriers/contract-valid.md",
+      "exit_code": 0,
+      "recognized": true,
+      "schema_valid": true,
+      "contextual_checks": "not_run",
+      "authority": "none"
+    },
+    "live_done": {
+      "issue": "https://github.com/shinya0x00/github-task-protocol/issues/12",
+      "command": "gtp status https://github.com/shinya0x00/github-task-protocol/issues/12",
+      "exit_code": 0,
+      "acquisition": "complete",
+      "state": "done",
+      "primary_url": "https://github.com/shinya0x00/github-task-protocol/pull/24",
+      "authority": "none"
+    },
+    "live_stopped": {
+      "issue": "https://github.com/shinya0x00/github-task-protocol/issues/40",
+      "command": "gtp status https://github.com/shinya0x00/github-task-protocol/issues/40",
+      "exit_code": 0,
+      "acquisition": "complete",
+      "state": "stopped",
+      "primary_url": "https://github.com/shinya0x00/github-task-protocol/issues/40#issuecomment-5015888880",
+      "authority": "none"
+    }
+  },
+  "evidence_pr": {
+    "scope": [
+      "acceptance/public-release-v1.0.1.json"
+    ],
+    "ci_workflow": "https://github.com/shinya0x00/github-task-protocol/actions/workflows/ci.yml",
+    "final_check_url": "presented separately by the Done Record after the final source head passes CI"
+  },
+  "evidence_limits": [
+    "The PyPI JSON API and redownloaded hashes prove the observed public files, not the identity of the person who uploaded them.",
+    "The token value was not observed, so this Evidence does not prove credential safety or token scope.",
+    "The first HTTP 400 did not expose a detailed server message; its filename cause is an inference from the specification and the successful byte-identical renamed upload.",
+    "The GitHub tag, Release, PyPI records, and matching hashes establish correspondence to the frozen artifacts; they do not independently prove code quality.",
+    "CLI output, CI success, Records, and this Evidence grant no authority to publish, complete, or merge."
+  ]
+}
