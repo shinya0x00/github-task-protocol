@@ -9,7 +9,7 @@
     "readme_on_default_branch": true
   },
   "setup_probe": {
-    "status": "pending",
+    "status": "repair_pending",
     "input": [
       "このrepositoryへGTPを導入するDraft setup PRを作ってください。",
       "GTP repository: https://github.com/shinya0x00/github-task-protocol"
@@ -25,6 +25,29 @@
       "Draft setup PR URL and author",
       "existing instructions preserved by diff",
       "human merge SHA"
+    ],
+    "attempts": [
+      {
+        "attempt": 1,
+        "provider_model": "Cursor / Grok 4.5",
+        "target_repository": "https://github.com/agent-operated/gtptest1",
+        "target_visibility": "public",
+        "evidence_disclosure": "all values approved for publication",
+        "draft_pull_request": "https://github.com/agent-operated/gtptest1/pull/1",
+        "stable_tag": "v1.0.1",
+        "dereferenced_commit": "d882ebc27a95b0e3071bcebeebf264c42020fbae",
+        "immutable_gtp_url": "https://raw.githubusercontent.com/shinya0x00/github-task-protocol/d882ebc27a95b0e3071bcebeebf264c42020fbae/GTP.md",
+        "upstream_sha256": "f58a34cd6acda120a65f8d2cfbc3d5b741e6f5d1cb2d436f1544460328b39309",
+        "vendored_sha256": "f58a34cd6acda120a65f8d2cfbc3d5b741e6f5d1cb2d436f1544460328b39309",
+        "vendored_bytes_equal": true,
+        "adapter_exact": true,
+        "base_instruction_files_absent": true,
+        "draft_pr_clean": true,
+        "default_branch_direct_push_observed": true,
+        "default_branch_restored_to_base": true,
+        "verdict": "failed_default_branch_direct_push",
+        "merge_allowed": false
+      }
     ]
   },
   "issue_probe": {
@@ -41,9 +64,9 @@
   },
   "privacy": {
     "dedicated_acceptance_repository": false,
-    "target_visibility": "unknown_until_user_response",
+    "target_visibility": "public_for_attempt_1",
     "record_private_values": false,
-    "required_user_decision": "which Evidence values may be published"
+    "required_user_decision": "new target Evidence disclosure for each later attempt"
   },
   "claim_boundary": {
     "external_setup_success": false,
@@ -56,10 +79,10 @@
     "contract_change_required": "post Stop and move to a successor Issue"
   },
   "evidence_limits": [
-    "no post-delivery external setup probe has been observed",
+    "attempt 1 proves stable binding but failed because a default-branch direct push occurred before restoration",
     "no post-setup Issue URL-only probe has been observed",
     "private target values will not be published without user disclosure approval",
     "this artifact does not authorize merge or publication"
   ],
-  "next_action": "user runs setup_probe, returns Evidence and disclosure boundary, then runs issue_probe after human setup merge"
+  "next_action": "repair branch-first ordering, rerun setup_probe with another clean agent and repository, then run issue_probe after a passing setup merge"
 }

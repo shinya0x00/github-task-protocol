@@ -63,6 +63,14 @@ class ReleaseSurfaceTests(unittest.TestCase):
         )
         self.assertIn("上書きせず停止", introduction)
         self.assertIn("`gtp/setup-<tag>-<short-sha>`", introduction)
+        branch_guard = introduction.index("target fileを変更する前に")
+        vendor = introduction.index("そのcommitの`GTP.md`だけ")
+        adapter = introduction.index("root `AGENTS.md`がなければ作成")
+        self.assertLess(branch_guard, vendor)
+        self.assertLess(branch_guard, adapter)
+        self.assertIn("現在branchがdefault branchではなくsetup branch", introduction)
+        self.assertIn("commitとpushはsetup branchだけ", introduction)
+        self.assertIn("setup開始前に記録したSHA", introduction)
         self.assertIn("Draft setup PR", introduction)
         self.assertIn("人間がsetup PRをmergeするまで導入完了としません", introduction)
         manual = introduction.split("## 手動導入", 1)[1]
@@ -136,8 +144,13 @@ class ReleaseSurfaceTests(unittest.TestCase):
         )
         self.assertEqual("pending_external_evidence", run["status"])
         self.assertTrue(run["delivery"]["readme_on_default_branch"])
-        self.assertEqual("pending", run["setup_probe"]["status"])
+        self.assertEqual("repair_pending", run["setup_probe"]["status"])
         self.assertEqual("pending_after_setup_merge", run["issue_probe"]["status"])
+        attempt = run["setup_probe"]["attempts"][0]
+        self.assertTrue(attempt["vendored_bytes_equal"])
+        self.assertTrue(attempt["default_branch_direct_push_observed"])
+        self.assertEqual("failed_default_branch_direct_push", attempt["verdict"])
+        self.assertFalse(attempt["merge_allowed"])
         self.assertEqual(
             {
                 "external_setup_success": False,
