@@ -260,9 +260,31 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertTrue(public_evidence["github_release"]["published"])
         self.assertTrue(public_evidence["pypi"]["files_redownloaded_and_hashed"])
         self.assertNotEqual(PROJECT["version"], public_evidence["pypi"]["package_version"])
+        current_evidence = json.loads(
+            (ROOT / "acceptance" / "public-release-v1.0.2.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(PROJECT["version"], current_evidence["pypi"]["package_version"])
+        self.assertTrue(current_evidence["github_release"]["published_at"])
+        self.assertTrue(current_evidence["github_release"]["latest_stable"])
+        self.assertTrue(current_evidence["pypi"]["files_redownloaded_and_hashed"])
+        self.assertTrue(
+            current_evidence["public_validation"][
+                "github_release_and_pypi_bytes_equal_to_build"
+            ]
+        )
+        self.assertEqual(
+            "done",
+            current_evidence["public_validation"]["authenticated_live_status"][
+                "state"
+            ],
+        )
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertIn("現在のsource candidateは`1.0.2`", readme)
-        self.assertIn("公開確認前", readme)
+        self.assertIn("CLI `1.0.2`は[PyPI]", readme)
+        self.assertIn("public-release-v1.0.2.json", readme)
+        self.assertNotIn("現在のsource candidateは`1.0.2`", readme)
+        self.assertNotIn("公開確認前", readme)
         self.assertTrue((ROOT / "acceptance" / "release-notes-v1.0.2.md").exists())
         decisions = (ROOT / "DECISIONS.md").read_text(encoding="utf-8")
         self.assertIn(
