@@ -48,6 +48,11 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn("`prerelease: false`", introduction)
         self.assertIn("tagをcommit SHAまでdereference", introduction)
         self.assertIn("そのcommitの`GTP.md`だけ", introduction)
+        self.assertIn(
+            "https://raw.githubusercontent.com/shinya0x00/"
+            "github-task-protocol/<commit-sha>/GTP.md",
+            introduction,
+        )
         self.assertIn("上書きせず停止", introduction)
         self.assertIn("`gtp/setup-<tag>-<short-sha>`", introduction)
         self.assertIn("Draft setup PR", introduction)
