@@ -467,20 +467,29 @@ class CliTests(unittest.TestCase):
         self.assertEqual(0, code)
         self.assertEqual("done", output["state"])
         self.assertEqual("none", output["authority"])
-        self.assertEqual([], output["task_context"]["not_proven"])
+        self.assertIn(
+            "Done Conditionの自然言語上の充足は自動判定していない",
+            output["task_context"]["not_proven"],
+        )
         self.assertEqual(
             [
+                "Check RunがDone Conditionの内容を十分に検査したこと",
+                "Artifactの内容がDone Conditionを満たすこと",
                 "actor本人性",
                 "credential安全性",
                 "GitHub外情報を参照しなかったこと",
             ],
             output["task_context"]["evidence_limits"],
         )
-        self.assertTrue(any("確認できた完了条件" in line for line in human))
-        self.assertEqual(
-            ["terminal_violation"],
-            [item["token"] for item in output["diagnostics"]],
+        self.assertTrue(
+            any("Evidence bindingを確認した条件" in line for line in human)
         )
+        self.assertTrue(
+            any("条件内容の充足は自動判定していません" in line for line in human)
+        )
+        self.assertEqual([], output["diagnostics"])
+        self.assertIsNone(output["halt_reason"])
+        self.assertEqual("none_done", output["next_action"])
 
     def test_status_required_live_binding_http_matrix(self) -> None:
         matrix = json.loads(

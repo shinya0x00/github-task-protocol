@@ -43,6 +43,13 @@
             "goal": "Purpose alignment walking skeleton",
             "scope": ["src/"],
             "done_conditions": {"artifact": {"text": "semantic review completed", "evidence_kind": "artifact"}}
+          },
+          {
+            "gtp": "1.0",
+            "type": "start",
+            "id": "11234567-89ab-4def-8123-456789abcdef",
+            "contract_ref": "https://github.com/o/r/issues/1#issuecomment-101",
+            "branch": "agent/test"
           }
         ]
       }
