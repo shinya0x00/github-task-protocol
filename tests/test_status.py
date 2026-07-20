@@ -93,9 +93,10 @@ def pr(*, merged: bool) -> dict:
         "created_at": "2026-07-19T00:00:02Z",
         "updated_at": "2026-07-19T00:00:02Z",
         "changed_files": 1,
-        "base": {"repo": {"id": 99}},
+        "base": {"repo": {"id": 99}, "ref": "main", "sha": "b" * 40},
         "head": {"repo": {"id": 99}, "ref": "codex/walking", "sha": SHA},
         "merged_at": "2026-07-19T01:00:00Z" if merged else None,
+        "state": "closed" if merged else "open",
     }
 
 

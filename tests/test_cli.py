@@ -158,12 +158,14 @@ class CliTests(unittest.TestCase):
                 "user": {"login": "fixture"},
             })
 
+        repository_reads = 0
         issue_reads = 0
         pr_reads = 0
         pull_reads = 0
+        file_reads = 0
 
         def response(request, timeout):
-            nonlocal issue_reads, pr_reads, pull_reads
+            nonlocal repository_reads, issue_reads, pr_reads, pull_reads, file_reads
             self.assertEqual("GET", request.get_method())
             self.assertEqual(30, timeout)
             url = request.full_url
@@ -171,7 +173,16 @@ class CliTests(unittest.TestCase):
             body = None
             headers = {}
             if parsed.path == "/repos/o/r":
-                body = {"id": 99, "full_name": "o/r", "default_branch": "main"}
+                repository_reads += 1
+                body = {
+                    "id": 99,
+                    "full_name": "o/r",
+                    "default_branch": (
+                        "trunk"
+                        if case.get("repository_moves") and repository_reads > 1
+                        else "main"
+                    ),
+                }
             elif parsed.path == "/repos/x/y":
                 body = {"id": 100, "full_name": "x/y"}
             elif parsed.path == "/repos/o/r/issues/1":
@@ -200,7 +211,10 @@ class CliTests(unittest.TestCase):
                 + quote(start["branch"], safe="")
             ):
                 if case.get("branch_exists", True):
-                    body = {"name": start["branch"], "commit": {"sha": sha}}
+                    body = {
+                        "name": start["branch"],
+                        "commit": {"sha": case.get("branch_sha", sha)},
+                    }
                 else:
                     raise HTTPError(url, 404, "not found", {}, None)
             elif parsed.path == "/repos/o/r/pulls":
@@ -216,7 +230,10 @@ class CliTests(unittest.TestCase):
                 body = self._matrix_pr(case, sha, 7)
                 if case.get("pr_moves") and pr_reads > 1:
                     body["head"]["sha"] = "f" * 40
+                if case.get("base_moves_during_files") and file_reads:
+                    body["base"]["sha"] = "c" * 40
             elif parsed.path == "/repos/o/r/pulls/7/files":
+                file_reads += 1
                 body = case.get("files", [{"filename": "src/a.py", "status": "added"}])
             elif parsed.path == "/repos/o/r/check-runs/8":
                 body = {
@@ -254,7 +271,11 @@ class CliTests(unittest.TestCase):
                 "changed_files",
                 len(case.get("files", [{"filename": "src/a.py", "status": "added"}])),
             ),
-            "base": {"repo": {"id": 99}},
+            "base": {
+                "repo": {"id": 99},
+                "ref": "main",
+                "sha": case.get("base_sha", "b" * 40),
+            },
             "head": {
                 "repo": {"id": 100 if case.get("fork") else 99},
                 "ref": case.get(
@@ -263,6 +284,7 @@ class CliTests(unittest.TestCase):
                 "sha": case.get("pr_sha", sha),
             },
             "merged_at": case.get("merged_at"),
+            "state": "closed" if case.get("merged_at") else "open",
         }
 
     def test_check_valid_carrier_exits_zero(self) -> None:
