@@ -1,0 +1,47 @@
+{
+  "schema": "github-task-protocol-url-only-install-acceptance/v1",
+  "status": "pending_external_evidence",
+  "source_issue": "https://github.com/shinya0x00/github-task-protocol/issues/81",
+  "executor": "user_with_separate_provider_and_repository",
+  "dedicated_acceptance_repository": false,
+  "required_evidence": {
+    "installation_input": [
+      "clean agentへ渡した入力がGTP repository URLだけだったこと"
+    ],
+    "stable_release_selection": [
+      "選択されたnon-draftかつnon-prereleaseのstable tag",
+      "tagをdereferenceしたcommit SHA",
+      "vendorしたGTP.mdのSHA-256"
+    ],
+    "setup_pull_request": [
+      "Draft setup PR URL",
+      "人間がmergeしたcommit SHA",
+      "既存instructionを削除または変更していないdiff"
+    ],
+    "issue_only_use": [
+      "別providerの別clean agentへtarget Issue URLだけを渡したこと",
+      "既存branchとPRを再利用し重複branchまたはPRを作らなかったこと",
+      "再構成したstate、最初の行動、参照したContract、Start、PR"
+    ],
+    "disclosure": [
+      "Evidenceの公開可否",
+      "非公開情報をrepositoryへ記録しない場合の検証可能性の限界"
+    ]
+  },
+  "claim_boundary": {
+    "url_only_install_success": false,
+    "gtp_done": false,
+    "version_1_0_2_published": false
+  },
+  "failure_policy": {
+    "within_contract": "同じContract scope内で修復し、別のclean agentで再実行する",
+    "contract_change_required": "Stopを投稿し、後継Issueへ移る"
+  },
+  "evidence_limits": [
+    "URL-only導入とIssue URL-only実利用はまだ実行していない",
+    "Draft PR内の導入手順をrepository URLだけからclean agentが発見できるかは未観測",
+    "外部Evidenceの公開可否は未確定",
+    "このartifactは変更、完了、merge、公開のauthorityを与えない"
+  ],
+  "next_action": "ユーザーが別providerのclean agentと別repositoryで受入を実行し、必須Evidenceと公開可否を返す"
+}
