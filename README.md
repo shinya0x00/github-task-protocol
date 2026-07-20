@@ -53,8 +53,8 @@ GitHub情報を完全に取得できない場合はstateを推測しません。
 CLIはPyPI公開後、固定versionを指定して実行できます。GTPを使うだけならCLIのinstallは不要です。
 
 ```console
-uvx --from github-task-protocol==1.0.1 gtp status <issue-url>
-uvx --from github-task-protocol==1.0.1 gtp check <comment.md>
+uvx --from github-task-protocol==1.0.2 gtp status <issue-url>
+uvx --from github-task-protocol==1.0.2 gtp check <comment.md>
 ```
 
 - `status`はGitHubへGETだけを行い、日本語6項目の後にmachine JSONを出します。
