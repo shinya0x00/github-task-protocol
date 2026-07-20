@@ -45,7 +45,7 @@
         "bound_pr": "https://github.com/o/r/pull/7"
       },
       "next_action": "await_merge",
-      "reason_contains": "Done Claimは確認済み"
+      "reason_contains": "Done ClaimのEvidence bindingは確認済み"
     },
     {
       "name": "halt",

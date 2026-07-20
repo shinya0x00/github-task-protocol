@@ -1,0 +1,86 @@
+{
+  "issue_url": "https://github.com/o/r/issues/1",
+  "requests": [
+    {
+      "url": "https://api.github.com/repos/o/r",
+      "body": {"id": 99, "full_name": "o/r", "url": "https://api.github.com/repos/o/r"}
+    },
+    {
+      "url": "https://api.github.com/repos/o/r/issues/1",
+      "body": {"id": 1, "url": "https://api.github.com/repos/o/r/issues/1", "created_at": "2026-07-18T00:00:00Z", "updated_at": "2026-07-19T00:00:00Z"}
+    },
+    {
+      "url": "https://api.github.com/repos/o/r/issues/1/comments?sort=created&direction=asc&per_page=100",
+      "body": {
+        "_records": [
+          {
+            "gtp": "1.0",
+            "type": "contract",
+            "id": "01234567-89ab-4def-8123-456789abcdef",
+            "goal": "Purpose alignment walking skeleton",
+            "scope": ["src/"],
+            "done_conditions": {"artifact": {"text": "semantic review completed", "evidence_kind": "artifact"}}
+          },
+          {
+            "gtp": "1.0",
+            "type": "start",
+            "id": "11234567-89ab-4def-8123-456789abcdef",
+            "contract_ref": "https://github.com/o/r/issues/1#issuecomment-101",
+            "branch": "agent/test"
+          },
+          {
+            "gtp": "1.0",
+            "type": "done",
+            "id": "21234567-89ab-4def-8123-456789abcdef",
+            "pr_ref": "https://github.com/o/r/pull/7",
+            "head_sha": "0123456789abcdef0123456789abcdef01234567",
+            "evidence": {"artifact": "https://github.com/o/r/blob/0123456789abcdef0123456789abcdef01234567/src/a.py"}
+          },
+          {
+            "gtp": "1.0",
+            "type": "contract",
+            "id": "01234567-89ab-4def-8123-456789abcdef",
+            "goal": "Purpose alignment walking skeleton",
+            "scope": ["src/"],
+            "done_conditions": {"artifact": {"text": "semantic review completed", "evidence_kind": "artifact"}}
+          },
+          {
+            "gtp": "1.0",
+            "type": "start",
+            "id": "11234567-89ab-4def-8123-456789abcdef",
+            "contract_ref": "https://github.com/o/r/issues/1#issuecomment-101",
+            "branch": "agent/test"
+          }
+        ]
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/o/r",
+      "body": {"id": 99}
+    },
+    {
+      "url": "https://api.github.com/repos/o/r/pulls/7",
+      "body": {"number": 7, "html_url": "https://github.com/o/r/pull/7", "base": {"repo": {"id": 99}}, "head": {"repo": {"id": 99}, "ref": "agent/test", "sha": "0123456789abcdef0123456789abcdef01234567"}, "merged_at": "2026-07-19T00:00:03Z"}
+    },
+    {
+      "url": "https://api.github.com/repos/o/r/pulls/7/files?per_page=100",
+      "body": [{"filename": "src/a.py", "status": "added"}]
+    },
+    {
+      "url": "https://api.github.com/repos/o/r",
+      "body": {"id": 99}
+    },
+    {
+      "url": "https://api.github.com/repos/o/r/contents/src/a.py?ref=0123456789abcdef0123456789abcdef01234567",
+      "body": {"type": "file", "path": "src/a.py"}
+    },
+    {
+      "url": "https://api.github.com/repos/o/r/pulls/7",
+      "body": {"number": 7, "html_url": "https://github.com/o/r/pull/7", "base": {"repo": {"id": 99}}, "head": {"repo": {"id": 99}, "ref": "agent/test", "sha": "0123456789abcdef0123456789abcdef01234567"}, "merged_at": "2026-07-19T00:00:03Z"}
+    },
+    {
+      "url": "https://api.github.com/repos/o/r/issues/1",
+      "body": {"id": 1, "url": "https://api.github.com/repos/o/r/issues/1", "created_at": "2026-07-18T00:00:00Z", "updated_at": "2026-07-19T00:00:00Z"}
+    }
+  ]
+}

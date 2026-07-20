@@ -1,0 +1,41 @@
+状態: done
+停止要否: 停止は不要です。完了状態です
+次の行動: 追加のprotocol actionはありません
+理由: Done Claimのsource head、Evidence binding、native mergeを確認しました
+最初のURL: https://github.com/shinya0x00/github-task-protocol/pull/66
+非許可表示: この出力は変更・完了・mergeの許可を与えません
+かんたんな説明:
+  結論: Done ClaimのEvidence bindingとnative mergeを確認しました。条件内容の充足はEvidenceを読んで判断してください。
+  この作業の目的: GitHub Actionsがbuildしたsdistとwheelを同じexact-head Check Run内でTwine検査する
+  変更してよい場所: .github/workflows/ci.yml
+  作業場所: branch agent/issue-65-twine-ci / PR https://github.com/shinya0x00/github-task-protocol/pull/66
+  Evidence bindingを確認した条件（条件内容の充足は自動判定していません）:
+    - Python 3.11 jobが全test、build、Twine check、clean install、CLI smokeを実行して成功する（識別子: python_311_twine）
+      確認資料: https://github.com/shinya0x00/github-task-protocol/runs/88281277894
+    - Python 3.12 jobが全test、build、Twine check、clean install、CLI smokeを実行して成功する（識別子: python_312_twine）
+      確認資料: https://github.com/shinya0x00/github-task-protocol/runs/88281277914
+    - Python 3.13 jobが全test、build、Twine check、clean install、CLI smokeを実行して成功する（識別子: python_313_twine）
+      確認資料: https://github.com/shinya0x00/github-task-protocol/runs/88281277887
+    - workflowがbuild後にTwine 6.2.0を使い、repositoryの他fileを変更しない（識別子: workflow_content）
+      確認資料: https://github.com/shinya0x00/github-task-protocol/blob/18c64153c1fcb4a1dc9a10aad78e158c1cdb8bf5/.github/workflows/ci.yml
+  ここまでが人向けの説明です。続くJSONは機械処理用です。
+{
+  "acquisition": "complete",
+  "authority": "none",
+  "bound_pr": "https://github.com/shinya0x00/github-task-protocol/pull/66",
+  "evidence_limits": [
+    "Check RunがDone Conditionの内容を十分に検査したこと",
+    "Artifactの内容がDone Conditionを満たすこと",
+    "actor本人性",
+    "credential安全性",
+    "GitHub外情報を参照しなかったこと"
+  ],
+  "issue_url": "https://github.com/shinya0x00/github-task-protocol/issues/65",
+  "next_action": "none_done",
+  "not_proven": [
+    "Done Conditionの自然言語上の充足は自動判定していない"
+  ],
+  "primary_url": "https://github.com/shinya0x00/github-task-protocol/pull/66",
+  "state": "done"
+}
+[exit code: 0; observed with authenticated GET-only acquisition]

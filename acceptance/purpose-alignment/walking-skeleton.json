@@ -1,0 +1,44 @@
+{
+  "schema": "github-task-protocol-purpose-alignment-walking-skeleton/v1",
+  "issue": "https://github.com/shinya0x00/github-task-protocol/issues/69",
+  "doctrine_ref": "https://github.com/shinya0x00/doctrine/blob/a5ad793c7c8bc52eae82645799b621356e3e6650/DOCTRINE.md",
+  "branch": "agent/issue-69-purpose-alignment",
+  "runtime_change": true,
+  "feature_depth": 0,
+  "real_trigger": "gtp status https://github.com/o/r/issues/1 through the external HTTP fixture boundary",
+  "attachment_points": [
+    "gtp-status-command",
+    "status-evidence-projection",
+    "terminal-safe-retry-evaluator"
+  ],
+  "oracle": {
+    "state": "done",
+    "current_plain_heading": "確認できた完了条件",
+    "current_not_proven": [],
+    "current_evidence_limits": [
+      "actor本人性",
+      "credential安全性",
+      "GitHub外情報を参照しなかったこと"
+    ],
+    "current_terminal_diagnostic": "terminal_violation"
+  },
+  "acceptance_evaluation": "not_met",
+  "next_fill_order": [
+    "e2e-contract",
+    "evidence-projection-repair",
+    "safe-retry-repair",
+    "purpose-boundary-reconciliation",
+    "level1-evidence-supersession",
+    "verification",
+    "doubt-pass",
+    "prune-report"
+  ],
+  "unknowns": [
+    "exact-head Check Run URLs are unknown until this commit fires on the draft pull request"
+  ],
+  "evidence_limits": [
+    "The fixture replaces only the external GitHub HTTP boundary.",
+    "This artifact records expected firing; the exact-head GitHub Check Run is acquired separately.",
+    "The walking skeleton proves runtime attachment firing, not the repaired behavior."
+  ]
+}

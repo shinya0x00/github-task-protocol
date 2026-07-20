@@ -36,6 +36,8 @@
     }
   },
   "positive_completion": {
+    "acceptance_role": "historical_done_reconstruction",
+    "superseded_for_current_exact_head_ci_by": "https://github.com/shinya0x00/github-task-protocol/issues/65",
     "issue": "https://github.com/shinya0x00/github-task-protocol/issues/12",
     "pr": "https://github.com/shinya0x00/github-task-protocol/pull/24",
     "done": "https://github.com/shinya0x00/github-task-protocol/issues/12#issuecomment-5015631367",
@@ -47,6 +49,22 @@
     "exit_code": 0,
     "stdout": "stdout/done.txt",
     "acquisition_note": "最初のunauthenticated取得はHTTP 403でincomplete。haltと混同せず、保存済みGitHub CLI認証で全resourceを再取得してdoneを観測した。"
+  },
+  "current_positive_completion": {
+    "acceptance_role": "current_exact_head_ci",
+    "issue": "https://github.com/shinya0x00/github-task-protocol/issues/65",
+    "pr": "https://github.com/shinya0x00/github-task-protocol/pull/66",
+    "done": "https://github.com/shinya0x00/github-task-protocol/issues/65#issuecomment-5019209894",
+    "done_source_head": "18c64153c1fcb4a1dc9a10aad78e158c1cdb8bf5",
+    "checks": {
+      "python_311": "https://github.com/shinya0x00/github-task-protocol/runs/88281277894",
+      "python_312": "https://github.com/shinya0x00/github-task-protocol/runs/88281277914",
+      "python_313": "https://github.com/shinya0x00/github-task-protocol/runs/88281277887"
+    },
+    "workflow_artifact": "https://github.com/shinya0x00/github-task-protocol/blob/18c64153c1fcb4a1dc9a10aad78e158c1cdb8bf5/.github/workflows/ci.yml",
+    "observed_state": "done",
+    "stdout": "stdout/current-done.txt",
+    "evidence_boundary": "各Check Runのsuccessとsource head bindingを確認する。Done Conditionの自然言語上の十分性は人がEvidenceを読んで判断する。"
   },
   "halt_reason_coverage": [
     {

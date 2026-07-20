@@ -1,0 +1,84 @@
+{
+  "acceptance": "purpose_alignment",
+  "issue": "https://github.com/shinya0x00/github-task-protocol/issues/69",
+  "pr": "https://github.com/shinya0x00/github-task-protocol/pull/70",
+  "doctrine": {
+    "canonical_commit": "a5ad793c7c8bc52eae82645799b621356e3e6650",
+    "exact_ref": "https://github.com/shinya0x00/doctrine/blob/a5ad793c7c8bc52eae82645799b621356e3e6650/DOCTRINE.md",
+    "plan_lint": "proceed"
+  },
+  "walking_skeleton": {
+    "source_head": "66cea6efda44c7bca20adb2159dab77617071155",
+    "workflow_run": "https://github.com/shinya0x00/github-task-protocol/actions/runs/29722779901",
+    "firing_evidence": "https://github.com/shinya0x00/github-task-protocol/issues/69#issuecomment-5019528952",
+    "observed_gap": [
+      "done表示がEvidence bindingとDone Conditionの自然言語上の充足を区別していなかった",
+      "terminal後の同一Contract retryがterminal_violationになった"
+    ]
+  },
+  "implemented_boundaries": {
+    "evidence_projection": {
+      "fact": "CLIはDone Claim、Evidence binding、native mergeを分け、条件内容の充足を自動判定しないと表示する",
+      "tests": [
+        "test_cli.CliTests.test_purpose_alignment_walking_skeleton_fires_all_attachments",
+        "test_cli.CliTests.test_status_done_http_fixture_uses_all_production_logic"
+      ]
+    },
+    "terminal_safe_retry": {
+      "fact": "同一ID・同一JSONのaliasはContractとStartを含めterminal後も新Recordとして扱わない",
+      "tests": [
+        "test_status.StatusTests.test_identical_contract_and_start_retries_after_terminal_are_safe",
+        "test_cli.CliTests.test_purpose_alignment_walking_skeleton_fires_all_attachments"
+      ]
+    },
+    "unknown": {
+      "fact": "task固有の未確認事項は通常のIssue本文またはcommentへ残し、GTPのclosed Record schemaへ追加しない",
+      "done_boundary": "Done Conditionの判断に関係するunknownが残る間はDoneを提示しない"
+    },
+    "authority": {
+      "fact": "CLI出力、Evidence、Check Run、exit codeは変更、完了、review、mergeの権限を与えない"
+    },
+    "acceptance_supersession": {
+      "historical": "https://github.com/shinya0x00/github-task-protocol/issues/12",
+      "current_exact_head_ci": "https://github.com/shinya0x00/github-task-protocol/issues/65",
+      "reason": "Issue #65はPython 3.11、3.12、3.13の各Done Conditionを個別のexact-head Check Runへ束縛している"
+    }
+  },
+  "verification": {
+    "local_full_suite": {
+      "result": "passed",
+      "tests": 101
+    },
+    "gtp_line_budget": {
+      "limit": 400,
+      "result": "passed"
+    },
+    "json_validation": "passed",
+    "git_diff_check": "passed",
+    "live_issue_65": {
+      "authenticated_get": {
+        "acquisition": "complete",
+        "state": "done",
+        "authority": "none",
+        "not_proven": [
+          "Done Conditionの自然言語上の充足は自動判定していない"
+        ],
+        "stdout": "../level1/stdout/current-done.txt"
+      },
+      "unauthenticated_get": {
+        "acquisition": "incomplete",
+        "state": null,
+        "http_status": 403,
+        "inference": "取得不能をprotocol haltと混同しない境界を再観測した"
+      }
+    },
+    "final_exact_head_checks": "Done Claimのcheck Evidenceとして外部参照する"
+  },
+  "evidence_limits": [
+    "Check Run successはDone Conditionのtest内容が十分であることを証明しない",
+    "Artifact permalinkは指定commitにfileが存在することまでを証明する",
+    "live再読は観測時点のGitHub resourceに限られる",
+    "actor本人性、credential安全性、GitHub外情報の不使用を証明しない",
+    "このartifactは変更、review、mergeのauthorityを与えない"
+  ]
+}

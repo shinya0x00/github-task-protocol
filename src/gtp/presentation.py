@@ -19,6 +19,8 @@ HALT_MESSAGES = {
     "terminal_violation": "terminal stateの前後関係に違反するRecordまたはmergeがあります",
 }
 EVIDENCE_LIMITS = [
+    "Check RunがDone Conditionの内容を十分に検査したこと",
+    "Artifactの内容がDone Conditionを満たすこと",
     "actor本人性",
     "credential安全性",
     "GitHub外情報を参照しなかったこと",
@@ -94,12 +96,17 @@ def _task_context(
         not_proven.extend(missing)
         if done is None:
             not_proven.append("Done Claim未提示")
-        elif state == "in_progress":
-            not_proven.append("native merge未確認")
-        elif state == "halt" and not missing:
-            not_proven.append("protocol不適合が未解決")
-        elif state == "stopped":
-            not_proven.append("このIssueは完了を証明せず停止済み")
+        else:
+            if state in {"in_progress", "done"} and not missing:
+                not_proven.append(
+                    "Done Conditionの自然言語上の充足は自動判定していない"
+                )
+            if state == "in_progress":
+                not_proven.append("native merge未確認")
+            elif state == "halt" and not missing:
+                not_proven.append("protocol不適合が未解決")
+            elif state == "stopped":
+                not_proven.append("このIssueは完了を証明せず停止済み")
 
     branch_name = branch.get("name") if isinstance(branch, dict) else None
     if not isinstance(branch_name, str):
@@ -223,11 +230,17 @@ def _plain_summary(machine: dict[str, Any], context: dict[str, Any]) -> list[str
         if state is None
         else "このIssueの完了は確認できません。作業を止めて人が確認してください。"
         if state == "halt"
-        else "このIssueの完了を確認しました。"
+        else (
+            "Done ClaimのEvidence bindingとnative mergeを確認しました。"
+            "条件内容の充足はEvidenceを読んで判断してください。"
+        )
         if state == "done"
         else "このIssueは完了を主張せず終了しています。"
         if state == "stopped"
-        else "完了条件の確認資料はそろっていますが、マージはまだです。"
+        else (
+            "Done ClaimのEvidence bindingを確認しましたが、マージはまだです。"
+            "条件内容の充足はEvidenceを読んで判断してください。"
+        )
         if machine["next_action"] == "await_merge"
         else "このIssueはまだ作業途中です。"
     )
@@ -274,7 +287,7 @@ def _plain_summary(machine: dict[str, Any], context: dict[str, Any]) -> list[str
     evidence_confirmed = state == "done" or machine["next_action"] == "await_merge"
     if presented:
         lines.append(
-            "  確認できた完了条件:"
+            "  Evidence bindingを確認した条件（条件内容の充足は自動判定していません）:"
             if evidence_confirmed
             else "  記録に確認資料へのリンクがある条件（達成済みとはまだ断定しません）:"
         )
@@ -336,7 +349,7 @@ def _status_text(machine: dict[str, Any]) -> list[str]:
         token = machine["halt_reason"]
         reason = f"{token} — {HALT_MESSAGES.get(token, 'protocol上の矛盾または不適合を確認しました')}"
     elif action == "await_merge":
-        reason = "Done Claimは確認済みですが、native mergeはまだ確認できません"
+        reason = "Done ClaimのEvidence bindingは確認済みですが、native mergeはまだ確認できません"
     elif action == "post_done":
         reason = f"Start、作業branch {branch_name or '（名前不明）'}、PR candidateを確認しました"
     elif action == "continue_work":
@@ -345,7 +358,7 @@ def _status_text(machine: dict[str, Any]) -> list[str]:
         reason = {
             "unmanaged": "有効なContractがありません",
             "ready": "有効なContractがあり、Startはまだありません",
-            "done": "Done Claimのsource head、Evidence、native mergeを確認しました",
+            "done": "Done Claimのsource head、Evidence binding、native mergeを確認しました",
             "stopped": "有効なStop Recordを確認しました",
         }[machine["state"]]
     lines = [

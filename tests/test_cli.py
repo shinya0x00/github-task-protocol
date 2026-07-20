@@ -453,12 +453,47 @@ class CliTests(unittest.TestCase):
         self.assertEqual("done", output["state"])
         self.assertEqual("complete", output["acquisition"])
         self.assertEqual("HTTP fixture acceptance", output["task_context"]["goal"])
-        self.assertIn("  結論: このIssueの完了を確認しました。", human)
+        self.assertIn(
+            "  結論: Done ClaimのEvidence bindingとnative mergeを確認しました。"
+            "条件内容の充足はEvidenceを読んで判断してください。",
+            human,
+        )
         self.assertIn("  この作業の目的: HTTP fixture acceptance", human)
         self.assertIn(
             "  ここまでが人向けの説明です。続くJSONは機械処理用です。",
             human,
         )
+
+    def test_purpose_alignment_walking_skeleton_fires_all_attachments(self) -> None:
+        code, human, output = self.call_http_fixture(
+            "purpose-alignment-walking-skeleton.json"
+        )
+        self.assertEqual(0, code)
+        self.assertEqual("done", output["state"])
+        self.assertEqual("none", output["authority"])
+        self.assertIn(
+            "Done Conditionの自然言語上の充足は自動判定していない",
+            output["task_context"]["not_proven"],
+        )
+        self.assertEqual(
+            [
+                "Check RunがDone Conditionの内容を十分に検査したこと",
+                "Artifactの内容がDone Conditionを満たすこと",
+                "actor本人性",
+                "credential安全性",
+                "GitHub外情報を参照しなかったこと",
+            ],
+            output["task_context"]["evidence_limits"],
+        )
+        self.assertTrue(
+            any("Evidence bindingを確認した条件" in line for line in human)
+        )
+        self.assertTrue(
+            any("条件内容の充足は自動判定していません" in line for line in human)
+        )
+        self.assertEqual([], output["diagnostics"])
+        self.assertIsNone(output["halt_reason"])
+        self.assertEqual("none_done", output["next_action"])
 
     def test_status_required_live_binding_http_matrix(self) -> None:
         matrix = json.loads(
