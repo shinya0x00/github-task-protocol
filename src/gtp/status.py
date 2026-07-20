@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import unquote
 
@@ -216,21 +216,29 @@ def _scope_diagnostics(
     return []
 
 
+def _github_time(value: object, resource: str, field: str) -> datetime:
+    if not isinstance(value, str):
+        raise AcquisitionError(resource, f"{field} missing")
+    try:
+        observed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise AcquisitionError(resource, f"{field} invalid") from error
+    if observed.tzinfo is None:
+        raise AcquisitionError(resource, f"{field} timezone missing")
+    return observed.astimezone(timezone.utc)
+
+
 def _pr_not_after_start(
     pr: dict[str, Any],
     start: RecordObservation,
     resource: str,
 ) -> bool:
-    created_at = pr.get("created_at")
-    if not isinstance(created_at, str):
-        raise AcquisitionError(resource, "pull request created_at missing")
-    try:
-        created_time = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-        start_time = datetime.fromisoformat(
-            start.comment.created_at.replace("Z", "+00:00")
-        )
-    except ValueError as error:
-        raise AcquisitionError(resource, "pull request ordering timestamp invalid") from error
+    created_time = _github_time(
+        pr.get("created_at"), resource, "pull request created_at"
+    )
+    start_time = _github_time(
+        start.comment.created_at, start.comment.url, "Start created_at"
+    )
     return created_time <= start_time
 
 
@@ -433,23 +441,30 @@ def _stop_diagnostics(
     for pr in candidates_after:
         if not _pr_matches(pr, repo_id, branch_name):
             continue
-        created_at = pr.get("created_at")
         pr_url = pr.get("html_url")
-        if not isinstance(created_at, str) or not isinstance(pr_url, str):
+        if not isinstance(pr_url, str):
             raise AcquisitionError(stop.comment.url, "pull request ordering fields missing")
-        if _pr_not_after_start(pr, start, pr_url):
-            diagnostics.append(
-                _diagnostic("invalid_binding", start.comment.url, pr_url)
+        created_time = _github_time(
+            pr.get("created_at"), pr_url, "pull request created_at"
+        )
+        stop_time = _github_time(
+            stop.comment.created_at, stop.comment.url, "Stop created_at"
+        )
+        if created_time == stop_time:
+            raise AcquisitionError(
+                pr_url, "pull request creation and Stop ordering is ambiguous"
             )
+        if _pr_not_after_start(pr, start, pr_url):
             continue
-        if created_at > stop.comment.created_at:
+        if created_time > stop_time:
             continue
         merged_at = pr.get("merged_at")
         if not isinstance(merged_at, str):
             continue
-        if merged_at == stop.comment.created_at:
+        merged_time = _github_time(merged_at, pr_url, "pull request merged_at")
+        if merged_time == stop_time:
             raise AcquisitionError(pr_url, "merge and Stop ordering is ambiguous")
-        if merged_at > stop.comment.created_at:
+        if merged_time > stop_time:
             diagnostics.append(
                 _diagnostic("terminal_violation", stop.comment.url, pr_url)
             )

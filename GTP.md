@@ -295,7 +295,7 @@ valid Doneが指す`head_sha`を、Bound PRがnative mergeし、その後にterm
 - StartなしのDone、Start後のContract、Record順序違反は`invalid_transition`である。
 - Start、Done、Stopを複数の異なるLogical Recordとして置かない。
 - 1 Issue = 1 branch = 1 PRとする。分割、統合、別branchへの移動はStopと新Issueで行う。
-- Startと同時刻以前の`created_at`を持つPRは、そのStartのcandidate、Done、Stop対象として受理せず`invalid_binding`とする。
+- Startと同時刻以前の`created_at`を持つPRは、そのStartのcandidateまたはDone対象として受理せず`invalid_binding`とする。valid Stopではpre-terminalな不適合を閉じるため、現在taskの対象PRから除外する。
 - PR file一覧を完全取得し、`filename`とrename時の`previous_filename`がすべてContract scope内にあることを確認する。
 - Doneの`head_sha`はBound PRのsource headと一致し、全Evidenceも同じrepositoryとSHAへ束縛される。native merge前はbranch SHAも同じ値でなければならない。
 - Stop後の新Recordまたは対象PR merge、証明済みDone後のStopや新Recordは`halt / terminal_violation`である。先に成立したterminal resultを別のterminal resultへ書き換えない。
@@ -321,7 +321,7 @@ valid Doneが指す`head_sha`を、Bound PRがnative mergeし、その後にterm
 
 `reason: "superseded"`では`successor_ref`へ後継Issueを示す。`reason: "abandoned"`では`successor_ref: null`とする。Stop後は元Issueへ新Recordを投稿しない。
 
-Stop後mergeの対象は、Startより後かつStop以前に作成されたsame-repository・same-branch PRだけである。Startと同時刻以前のPRは`invalid_binding`であり、Stop後に同名branchを再利用して作成されたPRは元Issueへ影響しない。mergeとStopの先後を一意に取得できない場合はAcquisition Errorである。
+Stop後mergeの対象は、Startより後かつStopより前に作成されたsame-repository・same-branch PRだけである。Startと同時刻以前のPRとStop後に作成されたPRは元Issueへ影響しない。PR作成またはmergeとStopが同一instantで先後を一意に取得できない場合はAcquisition Errorである。
 
 証明済みDoneは後のStopで`stopped`へ上書きできない。Stop後に対象PRがmergeされた場合も`done`へ変えない。どちらもpublic stateは`halt`、理由は`terminal_violation`とし、先に成立していたterminal resultを`details`へ残す。
 

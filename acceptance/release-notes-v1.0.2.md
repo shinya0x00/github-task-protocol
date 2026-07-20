@@ -8,7 +8,8 @@
 - Stop後に作られた同名branchのPRを、過去のstopped taskへ結び付けない。
 - GitHub 404、取得中のsnapshot変化、不完全なPR file一覧をAcquisition Errorとして分離する。
 - PR file取得前後でbase/head SHAと`changed_files`を固定し、repositoryの`default_branch`も再読する。
-- Start前から存在するPRをcandidate、Done、Stopの全経路で拒否する。
+- Start前から存在するPRをcandidateとDoneでは拒否し、Stopでは対象外として安全に閉じる。
+- PR作成またはmergeとStopが同一instantならstateを断定しない。
 - native merge前のDoneでbranch SHA、PR head SHA、Done head SHAを一致させる。
 - repositoryのdefault branchをStart branchとして受理しない。
 - Done提示前に、task固有の未確認事項を読むIssue URLを表示する。

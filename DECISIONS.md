@@ -1657,7 +1657,7 @@ protocol coreは次の4領域へ限定する。
 
 ## ADR-033: PR snapshotとtask lifecycleのidentity境界を一致させる
 
-- Status: Accepted
+- Status: Accepted; Stopのpre-Start PR判断はADR-034でsupersede
 - Date: 2026-07-20
 
 ### 観測事実
@@ -1689,3 +1689,33 @@ protocol coreは次の4領域へ限定する。
 - PRがtaskへ属するかの規則がcandidate、Done、Stopで一致する。
 - default branch変更とnative merge前のbranch/PR反映差からstateを推測しない。
 - clean readerはpredecessorから一つのopen 1.0.2 candidate laneへ移動できる。
+
+## ADR-034: Stopではpre-Start PRを対象外とし、同一instantを推測しない
+
+- Status: Accepted
+- Date: 2026-07-20
+
+### 観測事実
+
+- ADR-033はStartと同時刻以前のPRをcandidate、Done、Stopの全経路で`invalid_binding`とした。
+- この規則では、古いsame-branch PRが原因でhaltしたIssueへvalid Stopを投稿しても`stopped`へ着地できず、pre-terminalな不適合を安全に放棄するStopの役割と衝突した。
+- GitHubのPR作成時刻とStop comment時刻が同一instantでも、実装はPRをStop以前の対象として扱い、後日のmergeを`terminal_violation`と断定できた。
+
+### 決定
+
+- candidate探索とDone bindingでは、Startと同時刻以前のPRを従来どおり`invalid_binding`とする。
+- Stopでは、Startと同時刻以前のPRを現在taskの対象外として除外し、diagnosticへ加えない。
+- PR作成時刻とStop時刻が同一instantなら、merge有無より先にAcquisition Errorとする。merge時刻とStop時刻の同一instantもAcquisition Errorを維持する。
+- timestampはtimezone付きdatetimeとしてUTCへ正規化して比較する。Record、state、halt reasonは追加しない。
+
+### 不採用案
+
+- Stopでもpre-Start PRを`invalid_binding`にする案は、valid Stopを非常口として使えなくするため採用しない。
+- PR作成とStopの同一instantをStop以前とみなす案は、Stop後に作成された別taskのPRを元Issueへ結び付ける可能性があるため採用しない。
+- branch名を永久に再利用禁止とする案は、Stopの時間窓と後継Issueの新branchでtask identityを分離できるため採用しない。
+
+### 結果
+
+- 作業中に古いPRを誤継承せず、壊れたStartはvalid Stopで`stopped`へ閉じられる。
+- Stopと同一instantのPR作成から`stopped`または`terminal_violation`を推測しない。
+- candidate、Done、Stopは同じPR集合を同じ目的で扱うのではなく、作業bindingと安全な放棄という役割に応じた境界を持つ。
