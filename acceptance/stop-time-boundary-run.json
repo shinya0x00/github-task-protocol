@@ -1,13 +1,22 @@
 {
   "acceptance": "stop_recovery_time_boundary",
-  "issue": "https://github.com/shinya0x00/github-task-protocol/issues/77",
-  "pr": "https://github.com/shinya0x00/github-task-protocol/pull/78",
+  "issue": "https://github.com/shinya0x00/github-task-protocol/issues/79",
+  "pr": "https://github.com/shinya0x00/github-task-protocol/pull/80",
   "implementation_head": "b7d4d9b869c52517444baae469f2f2a597f477ee",
-  "supersession": {
-    "predecessor_issue": "https://github.com/shinya0x00/github-task-protocol/issues/75",
-    "predecessor_pr": "https://github.com/shinya0x00/github-task-protocol/pull/76",
-    "observed_result": "Issueは#77を指すStop後にnative closed、PRは未mergeでclosed"
-  },
+  "supersession": [
+    {
+      "predecessor_issue": "https://github.com/shinya0x00/github-task-protocol/issues/75",
+      "predecessor_pr": "https://github.com/shinya0x00/github-task-protocol/pull/76",
+      "successor_issue": "https://github.com/shinya0x00/github-task-protocol/issues/77",
+      "observed_result": "Issueは#77を指すStop後にnative closed、PRは未mergeでclosed"
+    },
+    {
+      "predecessor_issue": "https://github.com/shinya0x00/github-task-protocol/issues/77",
+      "predecessor_pr": "https://github.com/shinya0x00/github-task-protocol/pull/78",
+      "successor_issue": "https://github.com/shinya0x00/github-task-protocol/issues/79",
+      "observed_result": "継承差分のscope不足によりDoneせずStopし、Issueはnative closed、PRは未mergeでclosed"
+    }
+  ],
   "native_lane_cleanup": [
     {
       "issue": "https://github.com/shinya0x00/github-task-protocol/issues/64",
@@ -21,6 +30,11 @@
     },
     {
       "issue": "https://github.com/shinya0x00/github-task-protocol/issues/75",
+      "state": "closed",
+      "state_reason": "not_planned"
+    },
+    {
+      "issue": "https://github.com/shinya0x00/github-task-protocol/issues/77",
       "state": "closed",
       "state_reason": "not_planned"
     }
@@ -73,13 +87,14 @@
   },
   "next_lane": {
     "name": "URL-only installation",
-    "activation": "PR #78がnative mergeされた後に別Issueと別PRで開始する",
+    "activation": "PR #80がnative mergeされた後に別Issueと別PRで開始する",
     "status": "not_started"
   },
   "evidence_limits": [
     "fixtureはGitHub HTTP boundaryを置き換え、実際の同時更新発生を証明しない",
     "timestampが異なる場合もGitHub API反映遅延がないことまでは証明しない",
     "Check Run successはDone Conditionの自然言語上の十分性を証明しない",
+    "Issue #77のContractは継承差分全体をscopeへ含めず、live statusがinvalid_bindingになったため完了Evidenceにはならない",
     "URL-only導入の外部clean-agent Evidenceはまだ取得していない",
     "1.0.2のtag、GitHub Release、PyPI公開、mergeは未実施である",
     "このartifactは変更、review、公開、mergeのauthorityを与えない"
