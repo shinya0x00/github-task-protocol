@@ -21,12 +21,15 @@ GTP repository: https://github.com/shinya0x00/github-task-protocol
 
 この明示依頼を受けたagentは、次の順序でsetupします。
 
+agentが手順を理解できることと、実行中ずっと意図の境界内に留まり続けることは別の能力です。この手順はbranch-first順序で境界逸脱のriskを下げます。GTP単独の強制力はこの手順の受入対象にしません。repository ownerは補完策としてGitHub branch protectionまたはrulesetでdefault branchへの直接pushを拒否し、pull request経由の変更を必須にできます。setup agentは保護設定を変更せず、未設定なら人間へ報告します。
+
 1. GitHubのlatest stable Releaseを取得し、`draft: false`かつ`prerelease: false`を確認する。未公開candidateやmoving `main`は選ばない。
 2. Releaseのtagをcommit SHAまでdereferenceし、選択したtagとexact commit SHAを記録する。
-3. そのcommitの`GTP.md`だけを`https://raw.githubusercontent.com/shinya0x00/github-task-protocol/<commit-sha>/GTP.md`から取得し、導入先rootへvendorする。既存`GTP.md`とSHA-256が同一なら保持する。内容が異なるfile、別のGTP authority、または既存instructionとの衝突があれば、上書きせず停止して人間へ報告する。
-4. root `AGENTS.md`がなければ作成する。存在する場合は本文を変更・削除せず、下のexact adapterがなければ`## GitHub Task Protocol adapter` heading付きで追記する。既に同じadapterがあれば重複追加しない。
-5. default branchへ直接pushせず、`gtp/setup-<tag>-<short-sha>` branchからDraft setup PRを作る。PR bodyにはrelease tag、exact commit SHA、immutable `GTP.md` URL、変更file、保持した既存instruction、次に必要な人間判断を書く。
-6. 人間がsetup PRをmergeするまで導入完了としません。merge後、taskごとにGitHub Issueを1件作り、agentへそのIssue URLだけを渡します。
+3. target fileを変更する前にrepositoryのdefault branch名とhead SHAを記録し、そのheadから`gtp/setup-<tag>-<short-sha>` branchを作ってswitchする。現在branchがdefault branchではなくsetup branchであることを確認できなければ停止する。
+4. そのcommitの`GTP.md`だけを`https://raw.githubusercontent.com/shinya0x00/github-task-protocol/<commit-sha>/GTP.md`から取得し、導入先rootへvendorする。既存`GTP.md`とSHA-256が同一なら保持する。内容が異なるfile、別のGTP authority、または既存instructionとの衝突があれば、上書きせず停止して人間へ報告する。
+5. root `AGENTS.md`がなければ作成する。存在する場合は本文を変更・削除せず、下のexact adapterがなければ`## GitHub Task Protocol adapter` heading付きで追記する。既に同じadapterがあれば重複追加しない。
+6. commitとpushはsetup branchだけに行い、default branchへ直接pushしない。push後にdefault branch headを再取得し、setup開始前に記録したSHAから予期せず変化していたら停止して報告する。Draft setup PRのbodyにはrelease tag、exact commit SHA、immutable `GTP.md` URL、変更file、保持した既存instruction、次に必要な人間判断を書く。
+7. 人間がsetup PRをmergeするまで導入完了としません。merge後、taskごとにGitHub Issueを1件作り、agentへそのIssue URLだけを渡します。
 
 共通adapter文:
 
@@ -42,9 +45,9 @@ GTP repository: https://github.com/shinya0x00/github-task-protocol
 
 自動setupを使わない場合は、次の3手順で導入できます。
 
-1. latest stable Releaseのexact commitから`GTP.md`を導入先repositoryのrootへコピーする。
-2. 上の共通adapter文を、agentが必ず読む既存instructionへ非破壊で追加する。
-3. setup用branchとDraft PRを作り、人間が内容を確認してmergeする。
+1. latest stable Releaseをexact commitへ固定し、file変更前にdefault branchからsetup用branchを作ってswitchする。
+2. setup branch上で`GTP.md`をrootへコピーし、共通adapter文を既存instructionへ非破壊で追加する。
+3. commitとpushをsetup branchだけに行ってDraft PRを作り、人間が内容を確認してmergeする。
 
 ## 4つのRecord
 

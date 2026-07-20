@@ -1,0 +1,98 @@
+{
+  "schema": "github-task-protocol-explicit-setup-acceptance/v1",
+  "status": "repair_delivery_candidate_pending_merge",
+  "source_issue": "https://github.com/shinya0x00/github-task-protocol/issues/89",
+  "predecessor_acceptance_issue": "https://github.com/shinya0x00/github-task-protocol/issues/87",
+  "delivery": {
+    "pull_request": "https://github.com/shinya0x00/github-task-protocol/pull/86",
+    "source_head": "e529c27a34ad62ae6552d09bdf2b1c464a7c9821",
+    "merge_commit": "358b84cad73f54c674c004b7e04a90a1c2f88789",
+    "readme_on_default_branch": true
+  },
+  "setup_probe": {
+    "status": "passed_pending_human_merge",
+    "input": [
+      "このrepositoryへGTPを導入するDraft setup PRを作ってください。",
+      "GTP repository: https://github.com/shinya0x00/github-task-protocol"
+    ],
+    "target_context": "separate_repository_already_open_in_clean_agent",
+    "provider": "separate_from_delivery_agent",
+    "required_evidence": [
+      "input transcript",
+      "latest stable non-draft and non-prerelease tag",
+      "dereferenced commit SHA",
+      "vendored GTP.md SHA-256",
+      "immutable GTP.md URL",
+      "Draft setup PR URL and author",
+      "existing instructions preserved by diff",
+      "human merge SHA"
+    ],
+    "attempts": [
+      {
+        "attempt": 1,
+        "provider_model": "Cursor / Grok 4.5",
+        "target_repository": "https://github.com/agent-operated/gtptest1",
+        "target_visibility": "public",
+        "evidence_disclosure": "all values approved for publication",
+        "draft_pull_request": "https://github.com/agent-operated/gtptest1/pull/1",
+        "stable_tag": "v1.0.1",
+        "dereferenced_commit": "d882ebc27a95b0e3071bcebeebf264c42020fbae",
+        "immutable_gtp_url": "https://raw.githubusercontent.com/shinya0x00/github-task-protocol/d882ebc27a95b0e3071bcebeebf264c42020fbae/GTP.md",
+        "upstream_sha256": "f58a34cd6acda120a65f8d2cfbc3d5b741e6f5d1cb2d436f1544460328b39309",
+        "vendored_sha256": "f58a34cd6acda120a65f8d2cfbc3d5b741e6f5d1cb2d436f1544460328b39309",
+        "vendored_bytes_equal": true,
+        "adapter_exact": true,
+        "base_instruction_files_absent": true,
+        "draft_pr_clean": true,
+        "default_branch_direct_push_observed": true,
+        "default_branch_restored_to_base": true,
+        "verdict": "passed_with_observed_boundary_drift",
+        "merge_allowed": true,
+        "operator_decision": "accept setup behavior; record that understanding instructions and remaining within their boundary are distinct capabilities; use branch-first guidance and GitHub branch protection or rulesets as complementary risk reductions"
+      }
+    ],
+    "safety_boundary": {
+      "agent_understanding_and_boundary_adherence_are_distinct": true,
+      "gtp_guidance_reduces_boundary_drift_risk": true,
+      "gtp_enforcement_strength_evaluated": false,
+      "complementary_control": "GitHub branch protection or ruleset requiring pull requests and rejecting direct pushes"
+    }
+  },
+  "issue_probe": {
+    "status": "pending_after_setup_merge",
+    "input": "target Issue URL only",
+    "provider": "separate_clean_agent",
+    "required_evidence": [
+      "reconstructed state",
+      "first action",
+      "referenced Contract, Start, and pull request",
+      "existing branch and pull request reuse",
+      "absence of duplicate branch and pull request"
+    ]
+  },
+  "privacy": {
+    "dedicated_acceptance_repository": false,
+    "target_visibility": "public_for_attempt_1",
+    "record_private_values": false,
+    "required_user_decision": "new target Evidence disclosure for each later attempt"
+  },
+  "claim_boundary": {
+    "external_setup_success": false,
+    "issue_url_only_success": false,
+    "version_1_0_2_published": false,
+    "merge_authority": false
+  },
+  "failure_policy": {
+    "within_contract": "repair README, acceptance artifact, or release-surface test and rerun with another clean agent",
+    "contract_change_required": "post Stop and move to a successor Issue"
+  },
+  "evidence_limits": [
+    "attempt 1 proves stable binding and Draft PR creation but also observed a transient default-branch direct push before restoration",
+    "this acceptance does not evaluate whether GTP alone can enforce the boundary",
+    "branch-first guidance and GitHub branch protection or rulesets are recorded as complementary risk reductions",
+    "no post-setup Issue URL-only probe has been observed",
+    "private target values will not be published without user disclosure approval",
+    "this artifact does not authorize merge or publication"
+  ],
+  "next_action": "human reviews branch protection and the target Draft setup PR, merges the branch-first guidance delivery, then continues the Issue URL-only probe after target setup merge"
+}

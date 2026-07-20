@@ -63,6 +63,21 @@ class ReleaseSurfaceTests(unittest.TestCase):
         )
         self.assertIn("上書きせず停止", introduction)
         self.assertIn("`gtp/setup-<tag>-<short-sha>`", introduction)
+        branch_guard = introduction.index("target fileを変更する前に")
+        vendor = introduction.index("そのcommitの`GTP.md`だけ")
+        adapter = introduction.index("root `AGENTS.md`がなければ作成")
+        self.assertLess(branch_guard, vendor)
+        self.assertLess(branch_guard, adapter)
+        self.assertIn("現在branchがdefault branchではなくsetup branch", introduction)
+        self.assertIn("commitとpushはsetup branchだけ", introduction)
+        self.assertIn("setup開始前に記録したSHA", introduction)
+        self.assertIn("GitHub branch protectionまたはruleset", introduction)
+        self.assertIn(
+            "agentが手順を理解できることと、実行中ずっと意図の境界内に留まり続けることは別の能力",
+            introduction,
+        )
+        self.assertIn("GTP単独の強制力はこの手順の受入対象にしません", introduction)
+        self.assertIn("setup agentは保護設定を変更せず", introduction)
         self.assertIn("Draft setup PR", introduction)
         self.assertIn("人間がsetup PRをmergeするまで導入完了としません", introduction)
         manual = introduction.split("## 手動導入", 1)[1]
@@ -120,6 +135,47 @@ class ReleaseSurfaceTests(unittest.TestCase):
             evidence["observed_probes"][0]["result"],
         )
         self.assertFalse((ROOT / "acceptance" / "url-only-install").exists())
+
+    def test_explicit_setup_external_run_starts_pending_without_success_claim(self) -> None:
+        run = json.loads(
+            (
+                ROOT
+                / "acceptance"
+                / "explicit-setup-install"
+                / "run.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            "github-task-protocol-explicit-setup-acceptance/v1",
+            run["schema"],
+        )
+        self.assertEqual("repair_delivery_candidate_pending_merge", run["status"])
+        self.assertTrue(run["delivery"]["readme_on_default_branch"])
+        self.assertEqual(
+            "passed_pending_human_merge",
+            run["setup_probe"]["status"],
+        )
+        self.assertEqual("pending_after_setup_merge", run["issue_probe"]["status"])
+        attempt = run["setup_probe"]["attempts"][0]
+        self.assertTrue(attempt["vendored_bytes_equal"])
+        self.assertTrue(attempt["default_branch_direct_push_observed"])
+        self.assertEqual(
+            "passed_with_observed_boundary_drift",
+            attempt["verdict"],
+        )
+        self.assertTrue(attempt["merge_allowed"])
+        self.assertFalse(
+            run["setup_probe"]["safety_boundary"]["gtp_enforcement_strength_evaluated"]
+        )
+        self.assertEqual(
+            {
+                "external_setup_success": False,
+                "issue_url_only_success": False,
+                "version_1_0_2_published": False,
+                "merge_authority": False,
+            },
+            run["claim_boundary"],
+        )
 
     def test_readme_copies_the_canonical_adapter_exactly(self) -> None:
         spec = (ROOT / "GTP.md").read_text(encoding="utf-8")
