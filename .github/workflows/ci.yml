@@ -44,10 +44,10 @@ jobs:
         run: |
           mkdir dist
           python -c 'import build_backend; print(build_backend.build_sdist("dist")); print(build_backend.build_wheel("dist"))'
-      - name: Install Twine runtime probe
+      - name: Install Twine
         run: python -m pip install twine==6.2.0
-      - name: Probe Twine runtime wiring
-        run: python -m twine --version
+      - name: Check distribution metadata with Twine
+        run: python -m twine check dist/*.tar.gz dist/*.whl
       - name: Install wheel in clean environment
         run: |
           python -m venv .venv-check
