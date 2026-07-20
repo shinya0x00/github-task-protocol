@@ -87,6 +87,10 @@ class ReleaseSurfaceTests(unittest.TestCase):
             (ROOT / release_plan["superseded_by"]).read_text(encoding="utf-8")
         )
         self.assertEqual(
+            "github-task-protocol-public-release-evidence/v1",
+            public_evidence["schema"],
+        )
+        self.assertEqual(
             release_plan["package_version"],
             public_evidence["pypi"]["package_version"],
         )
