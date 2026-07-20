@@ -1,16 +1,23 @@
 {
   "schema": "github-task-protocol-explicit-setup-acceptance/v1",
-  "status": "repair_delivery_candidate_pending_merge",
-  "source_issue": "https://github.com/shinya0x00/github-task-protocol/issues/89",
+  "status": "pending_issue_url_probe",
+  "source_issue": "https://github.com/shinya0x00/github-task-protocol/issues/91",
   "predecessor_acceptance_issue": "https://github.com/shinya0x00/github-task-protocol/issues/87",
+  "predecessor_delivery_issue": "https://github.com/shinya0x00/github-task-protocol/issues/89",
   "delivery": {
     "pull_request": "https://github.com/shinya0x00/github-task-protocol/pull/86",
     "source_head": "e529c27a34ad62ae6552d09bdf2b1c464a7c9821",
     "merge_commit": "358b84cad73f54c674c004b7e04a90a1c2f88789",
     "readme_on_default_branch": true
   },
+  "branch_first_delivery": {
+    "pull_request": "https://github.com/shinya0x00/github-task-protocol/pull/90",
+    "source_head": "c01c99d297c010cf0ec4b21e754d9aca75c77f80",
+    "merge_commit": "86be1f3272e6e3924ee5dc566a35e08363e7ed0b",
+    "issue_state": "done"
+  },
   "setup_probe": {
-    "status": "passed_pending_human_merge",
+    "status": "passed",
     "input": [
       "このrepositoryへGTPを導入するDraft setup PRを作ってください。",
       "GTP repository: https://github.com/shinya0x00/github-task-protocol"
@@ -48,6 +55,7 @@
         "default_branch_restored_to_base": true,
         "verdict": "passed_with_observed_boundary_drift",
         "merge_allowed": true,
+        "human_merge_commit": "68afc1c343ad8d394b79f9d34e9be2b7118cb04d",
         "operator_decision": "accept setup behavior; record that understanding instructions and remaining within their boundary are distinct capabilities; use branch-first guidance and GitHub branch protection or rulesets as complementary risk reductions"
       }
     ],
@@ -59,7 +67,7 @@
     }
   },
   "issue_probe": {
-    "status": "pending_after_setup_merge",
+    "status": "pending",
     "input": "target Issue URL only",
     "provider": "separate_clean_agent",
     "required_evidence": [
@@ -77,7 +85,7 @@
     "required_user_decision": "new target Evidence disclosure for each later attempt"
   },
   "claim_boundary": {
-    "external_setup_success": false,
+    "external_setup_success": true,
     "issue_url_only_success": false,
     "version_1_0_2_published": false,
     "merge_authority": false
@@ -94,5 +102,5 @@
     "private target values will not be published without user disclosure approval",
     "this artifact does not authorize merge or publication"
   ],
-  "next_action": "human reviews branch protection and the target Draft setup PR, merges the branch-first guidance delivery, then continues the Issue URL-only probe after target setup merge"
+  "next_action": "user prepares a target Issue with Contract, Start, existing branch, and existing Draft PR, then gives only the Issue URL to a separate clean agent"
 }

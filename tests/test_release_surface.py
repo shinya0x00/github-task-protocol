@@ -149,13 +149,13 @@ class ReleaseSurfaceTests(unittest.TestCase):
             "github-task-protocol-explicit-setup-acceptance/v1",
             run["schema"],
         )
-        self.assertEqual("repair_delivery_candidate_pending_merge", run["status"])
+        self.assertEqual("pending_issue_url_probe", run["status"])
         self.assertTrue(run["delivery"]["readme_on_default_branch"])
         self.assertEqual(
-            "passed_pending_human_merge",
+            "passed",
             run["setup_probe"]["status"],
         )
-        self.assertEqual("pending_after_setup_merge", run["issue_probe"]["status"])
+        self.assertEqual("pending", run["issue_probe"]["status"])
         attempt = run["setup_probe"]["attempts"][0]
         self.assertTrue(attempt["vendored_bytes_equal"])
         self.assertTrue(attempt["default_branch_direct_push_observed"])
@@ -164,12 +164,16 @@ class ReleaseSurfaceTests(unittest.TestCase):
             attempt["verdict"],
         )
         self.assertTrue(attempt["merge_allowed"])
+        self.assertEqual(
+            "68afc1c343ad8d394b79f9d34e9be2b7118cb04d",
+            attempt["human_merge_commit"],
+        )
         self.assertFalse(
             run["setup_probe"]["safety_boundary"]["gtp_enforcement_strength_evaluated"]
         )
         self.assertEqual(
             {
-                "external_setup_success": False,
+                "external_setup_success": True,
                 "issue_url_only_success": False,
                 "version_1_0_2_published": False,
                 "merge_authority": False,
