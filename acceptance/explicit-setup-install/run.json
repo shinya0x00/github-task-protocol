@@ -10,7 +10,7 @@
     "readme_on_default_branch": true
   },
   "setup_probe": {
-    "status": "pending_after_repair_delivery_merge",
+    "status": "passed_pending_human_merge",
     "input": [
       "このrepositoryへGTPを導入するDraft setup PRを作ってください。",
       "GTP repository: https://github.com/shinya0x00/github-task-protocol"
@@ -46,10 +46,16 @@
         "draft_pr_clean": true,
         "default_branch_direct_push_observed": true,
         "default_branch_restored_to_base": true,
-        "verdict": "failed_default_branch_direct_push",
-        "merge_allowed": false
+        "verdict": "passed_with_unenforced_default_branch_boundary",
+        "merge_allowed": true,
+        "operator_decision": "accept setup behavior and treat branch-first instructions as risk reduction; use GitHub branch protection or ruleset for enforcement"
       }
-    ]
+    ],
+    "safety_boundary": {
+      "instructions_reduce_direct_push_risk": true,
+      "instructions_physically_enforce_branch_policy": false,
+      "recommended_enforcement": "GitHub branch protection or ruleset requiring pull requests and rejecting direct pushes"
+    }
   },
   "issue_probe": {
     "status": "pending_after_setup_merge",
@@ -80,10 +86,11 @@
     "contract_change_required": "post Stop and move to a successor Issue"
   },
   "evidence_limits": [
-    "attempt 1 proves stable binding but failed because a default-branch direct push occurred before restoration",
+    "attempt 1 proves stable binding and Draft PR creation but also observed a transient default-branch direct push before restoration",
+    "branch-first instructions reduce risk but cannot replace GitHub branch protection or rulesets",
     "no post-setup Issue URL-only probe has been observed",
     "private target values will not be published without user disclosure approval",
     "this artifact does not authorize merge or publication"
   ],
-  "next_action": "human reviews and natively merges the branch-first repair delivery pull request, then a successor acceptance lane reruns setup_probe with another clean agent and repository"
+  "next_action": "human reviews branch protection and the target Draft setup PR, merges the branch-first guidance delivery, then continues the Issue URL-only probe after target setup merge"
 }

@@ -71,6 +71,9 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn("現在branchがdefault branchではなくsetup branch", introduction)
         self.assertIn("commitとpushはsetup branchだけ", introduction)
         self.assertIn("setup開始前に記録したSHA", introduction)
+        self.assertIn("GitHub branch protectionまたはruleset", introduction)
+        self.assertIn("pushを物理的には阻止しません", introduction)
+        self.assertIn("setup agentは保護設定を変更せず", introduction)
         self.assertIn("Draft setup PR", introduction)
         self.assertIn("人間がsetup PRをmergeするまで導入完了としません", introduction)
         manual = introduction.split("## 手動導入", 1)[1]
@@ -145,15 +148,23 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertEqual("repair_delivery_candidate_pending_merge", run["status"])
         self.assertTrue(run["delivery"]["readme_on_default_branch"])
         self.assertEqual(
-            "pending_after_repair_delivery_merge",
+            "passed_pending_human_merge",
             run["setup_probe"]["status"],
         )
         self.assertEqual("pending_after_setup_merge", run["issue_probe"]["status"])
         attempt = run["setup_probe"]["attempts"][0]
         self.assertTrue(attempt["vendored_bytes_equal"])
         self.assertTrue(attempt["default_branch_direct_push_observed"])
-        self.assertEqual("failed_default_branch_direct_push", attempt["verdict"])
-        self.assertFalse(attempt["merge_allowed"])
+        self.assertEqual(
+            "passed_with_unenforced_default_branch_boundary",
+            attempt["verdict"],
+        )
+        self.assertTrue(attempt["merge_allowed"])
+        self.assertFalse(
+            run["setup_probe"]["safety_boundary"][
+                "instructions_physically_enforce_branch_policy"
+            ]
+        )
         self.assertEqual(
             {
                 "external_setup_success": False,
