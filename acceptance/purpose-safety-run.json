@@ -1,0 +1,64 @@
+{
+  "acceptance": "purpose_safety_repair",
+  "issue": "https://github.com/shinya0x00/github-task-protocol/issues/71",
+  "pr": "https://github.com/shinya0x00/github-task-protocol/pull/72",
+  "implementation_head": "06b31fd0bed5abda358acb0ee8c5313f5fbe57cf",
+  "observed_boundaries": {
+    "terminal_identity": "Stop後のfresh Record、証明済みDone後のStop、Stop後の対象PR mergeはhalt / terminal_violationになる",
+    "stopped_task_identity": "Stop対象PRはStart以後かつStop以前に作成されたsame-repository・same-branch PRへ限定される",
+    "acquisition_completeness": "曖昧な404、変化したbranchまたはPR snapshot、不完全なPR file一覧からstateを出さない",
+    "work_branch_safety": "repository default branchへのStartはhalt / invalid_bindingになる",
+    "human_handoff": "Issue本文・通常commentの意味は自動判定せず、statusは人間の確認先Issue URLを表示する",
+    "delivery_identity": "修復済みsource candidateは未公開version 1.0.2として公開済み1.0.1から分離される"
+  },
+  "verification": {
+    "local_source_suite": {
+      "python": "3.12",
+      "tests": 115,
+      "result": "passed"
+    },
+    "local_clean_install": {
+      "wheel": "github_task_protocol-1.0.2-py3-none-any.whl",
+      "install": "--no-index --no-deps",
+      "reported_version": "1.0.2",
+      "installed_cli_tests": 15,
+      "result": "passed"
+    },
+    "exact_head_checks": [
+      {
+        "python": "3.11",
+        "head_sha": "06b31fd0bed5abda358acb0ee8c5313f5fbe57cf",
+        "result": "success",
+        "url": "https://github.com/shinya0x00/github-task-protocol/actions/runs/29728074549/job/88305726242"
+      },
+      {
+        "python": "3.12",
+        "head_sha": "06b31fd0bed5abda358acb0ee8c5313f5fbe57cf",
+        "result": "success",
+        "url": "https://github.com/shinya0x00/github-task-protocol/actions/runs/29728074549/job/88305726258"
+      },
+      {
+        "python": "3.13",
+        "head_sha": "06b31fd0bed5abda358acb0ee8c5313f5fbe57cf",
+        "result": "success",
+        "url": "https://github.com/shinya0x00/github-task-protocol/actions/runs/29728074549/job/88305726247"
+      }
+    ],
+    "distribution_checks_per_job": [
+      "dependency-free sdist and wheel build",
+      "Twine metadata validation",
+      "clean wheel install",
+      "installed CLI smoke test",
+      "installed status E2E"
+    ],
+    "final_head_checks": "Done Claimでこのartifact追加後のexact-head Check Runを外部参照する"
+  },
+  "evidence_limits": [
+    "Check Run successはDone Conditionの自然言語上の十分性を証明しない",
+    "CLIはIssue本文・通常commentに未解決事項がないことを証明しない",
+    "GitHub APIの再読は各観測時点のresourceに限られる",
+    "actor本人性、credential安全性、GitHub外情報の不使用を証明しない",
+    "1.0.2のtag、GitHub Release、PyPI公開、mergeは未実施である",
+    "このartifactは変更、review、公開、mergeのauthorityを与えない"
+  ]
+}
