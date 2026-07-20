@@ -37,11 +37,19 @@ class ReleaseSurfaceTests(unittest.TestCase):
             for value in forbidden:
                 self.assertNotIn(value, text, str(path.relative_to(ROOT)))
 
-    def test_readme_is_plain_first_url_only_entry_to_canonical_spec(self) -> None:
+    def test_readme_requires_explicit_setup_request_before_mutation(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertLessEqual(len(readme.splitlines()), MATRIX["budgets"]["README.md"])
         introduction = readme.split("## 4つのRecord", 1)[0]
-        self.assertIn("## 推奨: repository URLだけで導入", introduction)
+        self.assertIn("## 推奨: 明示的にsetupを依頼", introduction)
+        self.assertIn(
+            "bare GTP repository URLだけではsetup依頼にもrepository変更のauthorizationにもなりません",
+            introduction,
+        )
+        self.assertIn(
+            "このrepositoryへGTPを導入するDraft setup PRを作ってください。",
+            introduction,
+        )
         self.assertIn("https://github.com/shinya0x00/github-task-protocol", introduction)
         self.assertIn("latest stable Release", introduction)
         self.assertIn("`draft: false`", introduction)
@@ -69,17 +77,17 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertNotIn("package registryへ一般公開していません", readme)
         self.assertNotIn("![", readme)
 
-    def test_url_only_install_acceptance_starts_pending_external_evidence(self) -> None:
+    def test_explicit_setup_acceptance_starts_pending_external_evidence(self) -> None:
         evidence = json.loads(
             (
                 ROOT
                 / "acceptance"
                 / "url-only-install"
-                / "pending-external-evidence.json"
+                / "pending-explicit-setup-evidence.json"
             ).read_text(encoding="utf-8")
         )
         self.assertEqual(
-            "github-task-protocol-url-only-install-acceptance/v1",
+            "github-task-protocol-explicit-setup-acceptance/v1",
             evidence["schema"],
         )
         self.assertEqual("pending_external_evidence", evidence["status"])
@@ -96,11 +104,15 @@ class ReleaseSurfaceTests(unittest.TestCase):
         )
         self.assertEqual(
             {
-                "url_only_install_success": False,
+                "explicit_setup_success": False,
                 "gtp_done": False,
                 "version_1_0_2_published": False,
             },
             evidence["claim_boundary"],
+        )
+        self.assertEqual(
+            "description_only_no_repository_mutation",
+            evidence["observed_predecessor_probe"]["result"],
         )
 
     def test_readme_copies_the_canonical_adapter_exactly(self) -> None:

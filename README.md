@@ -8,15 +8,18 @@ AIの説明だけを信じるのではなく、GitHub Issue上のRecordと、実
 
 task固有の未確認事項は、通常のIssue本文やcommentへ人が読める形で残します。開始前から完了判断に必要な不明点はDone Conditionにし、開始後にContract変更が必要になった場合はStopと後継Issueへ移ります。GTP Recordは自由文の意味を自動評価しないため、`status`はDone提示前にIssueを確認するURLを表示します。
 
-## 推奨: repository URLだけで導入
+## 推奨: 明示的にsetupを依頼
 
-導入先repositoryを操作中のclean agentへ、次のGTP repository URLだけを渡します。
+bare GTP repository URLだけではsetup依頼にもrepository変更のauthorizationにもなりません。URLだけを受け取ったagentは、説明または目的確認に留まり、現在のrepositoryを変更しません。
+
+導入先repositoryを操作中のclean agentへ、変更対象とDraft setup PR作成を明示して依頼します。
 
 ```text
-https://github.com/shinya0x00/github-task-protocol
+このrepositoryへGTPを導入するDraft setup PRを作ってください。
+GTP repository: https://github.com/shinya0x00/github-task-protocol
 ```
 
-agentは次の順序でsetupします。
+この明示依頼を受けたagentは、次の順序でsetupします。
 
 1. GitHubのlatest stable Releaseを取得し、`draft: false`かつ`prerelease: false`を確認する。未公開candidateやmoving `main`は選ばない。
 2. Releaseのtagをcommit SHAまでdereferenceし、選択したtagとexact commit SHAを記録する。

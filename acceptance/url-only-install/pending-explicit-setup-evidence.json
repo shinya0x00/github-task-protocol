@@ -1,12 +1,25 @@
 {
-  "schema": "github-task-protocol-url-only-install-acceptance/v1",
+  "schema": "github-task-protocol-explicit-setup-acceptance/v1",
   "status": "pending_external_evidence",
-  "source_issue": "https://github.com/shinya0x00/github-task-protocol/issues/81",
+  "source_issue": "https://github.com/shinya0x00/github-task-protocol/issues/83",
+  "supersedes": {
+    "issue": "https://github.com/shinya0x00/github-task-protocol/issues/81",
+    "pull_request": "https://github.com/shinya0x00/github-task-protocol/pull/82",
+    "reason": "bare repository URL is not mutation authorization"
+  },
+  "observed_predecessor_probe": {
+    "input": "bare GTP repository URL only",
+    "result": "description_only_no_repository_mutation",
+    "interpretation": "expected_safe_behavior",
+    "provider_and_target_repository": "not_recorded"
+  },
   "executor": "user_with_separate_provider_and_repository",
   "dedicated_acceptance_repository": false,
   "required_evidence": {
     "installation_input": [
-      "clean agentへ渡した入力がGTP repository URLだけだったこと"
+      "現在のtarget repositoryへGTPのDraft setup PRを作る明示的な依頼",
+      "GTP repository URL",
+      "target repositoryがagentの現在の操作contextだったこと"
     ],
     "stable_release_selection": [
       "選択されたnon-draftかつnon-prereleaseのstable tag",
@@ -19,7 +32,7 @@
       "既存instructionを削除または変更していないdiff"
     ],
     "issue_only_use": [
-      "別providerの別clean agentへtarget Issue URLだけを渡したこと",
+      "setup merge後、別providerの別clean agentへtarget Issue URLだけを渡したこと",
       "既存branchとPRを再利用し重複branchまたはPRを作らなかったこと",
       "再構成したstate、最初の行動、参照したContract、Start、PR"
     ],
@@ -29,7 +42,7 @@
     ]
   },
   "claim_boundary": {
-    "url_only_install_success": false,
+    "explicit_setup_success": false,
     "gtp_done": false,
     "version_1_0_2_published": false
   },
@@ -38,10 +51,10 @@
     "contract_change_required": "Stopを投稿し、後継Issueへ移る"
   },
   "evidence_limits": [
-    "URL-only導入とIssue URL-only実利用はまだ実行していない",
-    "Draft PR内の導入手順をrepository URLだけからclean agentが発見できるかは未観測",
+    "明示的なsetup依頼による導入とIssue URL-only実利用はまだ実行していない",
+    "predecessor probeはユーザー報告でありproviderとtarget repositoryを公開Evidenceへ含めていない",
     "外部Evidenceの公開可否は未確定",
     "このartifactは変更、完了、merge、公開のauthorityを与えない"
   ],
-  "next_action": "ユーザーが別providerのclean agentと別repositoryで受入を実行し、必須Evidenceと公開可否を返す"
+  "next_action": "ユーザーが別providerのclean agentと別repositoryで明示的なsetup依頼による受入を実行し、必須Evidenceと公開可否を返す"
 }
