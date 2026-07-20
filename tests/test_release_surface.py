@@ -77,43 +77,49 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertNotIn("package registryへ一般公開していません", readme)
         self.assertNotIn("![", readme)
 
-    def test_explicit_setup_acceptance_starts_pending_external_evidence(self) -> None:
+    def test_explicit_setup_delivery_defers_external_acceptance_until_merge(self) -> None:
         evidence = json.loads(
             (
                 ROOT
                 / "acceptance"
-                / "url-only-install"
-                / "pending-explicit-setup-evidence.json"
+                / "explicit-setup-install"
+                / "delivery.json"
             ).read_text(encoding="utf-8")
         )
         self.assertEqual(
-            "github-task-protocol-explicit-setup-acceptance/v1",
+            "github-task-protocol-explicit-setup-delivery/v1",
             evidence["schema"],
         )
-        self.assertEqual("pending_external_evidence", evidence["status"])
-        self.assertFalse(evidence["dedicated_acceptance_repository"])
+        self.assertEqual("delivery_candidate_pending_merge", evidence["status"])
+        self.assertFalse(
+            evidence["delivery_boundary"]["external_acceptance_required_for_delivery_done"]
+        )
         self.assertEqual(
-            {
-                "installation_input",
-                "stable_release_selection",
-                "setup_pull_request",
-                "issue_only_use",
-                "disclosure",
-            },
-            set(evidence["required_evidence"]),
+            "after native merge in a separate Issue and pull request",
+            evidence["delivery_boundary"]["external_acceptance_activation"],
+        )
+        self.assertFalse(evidence["external_acceptance"]["dedicated_acceptance_repository"])
+        self.assertEqual(
+            "pending_after_delivery_merge",
+            evidence["external_acceptance"]["status"],
+        )
+        self.assertEqual(
+            "explain_or_request_purpose_without_repository_mutation",
+            evidence["input_boundary"]["bare_repository_url"],
         )
         self.assertEqual(
             {
-                "explicit_setup_success": False,
-                "gtp_done": False,
+                "external_setup_success": False,
                 "version_1_0_2_published": False,
+                "merge_authority": False,
             },
             evidence["claim_boundary"],
         )
         self.assertEqual(
             "description_only_no_repository_mutation",
-            evidence["observed_predecessor_probe"]["result"],
+            evidence["observed_probes"][0]["result"],
         )
+        self.assertFalse((ROOT / "acceptance" / "url-only-install").exists())
 
     def test_readme_copies_the_canonical_adapter_exactly(self) -> None:
         spec = (ROOT / "GTP.md").read_text(encoding="utf-8")

@@ -1,0 +1,70 @@
+{
+  "schema": "github-task-protocol-explicit-setup-delivery/v1",
+  "status": "delivery_candidate_pending_merge",
+  "source_issue": "https://github.com/shinya0x00/github-task-protocol/issues/85",
+  "supersession": [
+    {
+      "issue": "https://github.com/shinya0x00/github-task-protocol/issues/81",
+      "pull_request": "https://github.com/shinya0x00/github-task-protocol/pull/82",
+      "reason": "bare repository URL is not mutation authorization"
+    },
+    {
+      "issue": "https://github.com/shinya0x00/github-task-protocol/issues/83",
+      "pull_request": "https://github.com/shinya0x00/github-task-protocol/pull/84",
+      "reason": "unmerged instructions cannot be externally accepted from the default branch"
+    }
+  ],
+  "input_boundary": {
+    "bare_repository_url": "explain_or_request_purpose_without_repository_mutation",
+    "setup_request": "explicit_target_setup_request_plus_gtp_repository_url",
+    "setup_effect_limit": "draft_pull_request_pending_human_merge",
+    "task_after_setup": "target_issue_url_only"
+  },
+  "delivery_boundary": {
+    "done_evidence": [
+      "README and static release-surface tests",
+      "source head bound Python 3.11, 3.12, and 3.13 PR Check Runs",
+      "this delivery artifact"
+    ],
+    "external_acceptance_required_for_delivery_done": false,
+    "external_acceptance_activation": "after native merge in a separate Issue and pull request"
+  },
+  "observed_probes": [
+    {
+      "input": "bare GTP repository URL only",
+      "result": "description_only_no_repository_mutation",
+      "interpretation": "expected_safe_behavior"
+    },
+    {
+      "input": "explicit setup request plus GTP repository URL",
+      "result": "draft_setup_pull_request_created_with_moving_main_spec",
+      "interpretation": "activation succeeded but stable Release selection failed because candidate instructions were not on the default branch"
+    }
+  ],
+  "external_acceptance": {
+    "status": "pending_after_delivery_merge",
+    "executor": "user_with_separate_provider_and_repository",
+    "dedicated_acceptance_repository": false,
+    "required_evidence": [
+      "explicit setup input and target repository context",
+      "stable tag, dereferenced commit SHA, and vendored GTP.md SHA-256",
+      "Draft setup PR URL, non-destructive diff, and human merge SHA",
+      "separate clean agent receiving only the target Issue URL",
+      "reconstructed state, first action, referenced Contract, Start, and PR",
+      "existing branch and PR reuse without duplicates",
+      "Evidence disclosure boundary and remaining verification limits"
+    ]
+  },
+  "claim_boundary": {
+    "external_setup_success": false,
+    "version_1_0_2_published": false,
+    "merge_authority": false
+  },
+  "evidence_limits": [
+    "delivery tests do not prove behavior of an external clean agent",
+    "the prior explicit-setup probe used a private target and cannot be independently reproduced from public URLs",
+    "native merge and default-branch discoverability are not established by this artifact",
+    "this artifact does not authorize merge or publication"
+  ],
+  "next_action": "human reviews and natively merges the delivery pull request, then a successor acceptance lane reruns the explicit setup probe"
+}
