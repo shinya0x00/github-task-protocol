@@ -49,10 +49,15 @@ class BuildBackendTests(unittest.TestCase):
     def test_sdist_contains_public_spec_license_source_and_tests(self) -> None:
         project = build_backend._project()
         root = f"github-task-protocol-{project['version']}"
+        expected_filename = f"github_task_protocol-{project['version']}.tar.gz"
         with tempfile.TemporaryDirectory() as directory:
             filename = build_backend.build_sdist(directory)
-            with tarfile.open(Path(directory) / filename, "r:gz") as archive:
+            self.assertEqual(expected_filename, filename)
+            archive_path = Path(directory) / filename
+            self.assertTrue(archive_path.is_file())
+            with tarfile.open(archive_path, "r:gz") as archive:
                 names = set(archive.getnames())
+                self.assertEqual({root}, {name.split("/", 1)[0] for name in names})
                 extracted = archive.extractfile(f"{root}/PKG-INFO")
                 self.assertIsNotNone(extracted)
                 pkg_info = extracted.read().decode("utf-8")
