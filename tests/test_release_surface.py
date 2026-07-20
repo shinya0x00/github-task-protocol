@@ -37,11 +37,36 @@ class ReleaseSurfaceTests(unittest.TestCase):
             for value in forbidden:
                 self.assertNotIn(value, text, str(path.relative_to(ROOT)))
 
-    def test_readme_is_plain_first_three_step_entry_to_canonical_spec(self) -> None:
+    def test_readme_requires_explicit_setup_request_before_mutation(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertLessEqual(len(readme.splitlines()), MATRIX["budgets"]["README.md"])
         introduction = readme.split("## 4つのRecord", 1)[0]
-        steps = re.findall(r"^[1-3]\. ", introduction, flags=re.MULTILINE)
+        self.assertIn("## 推奨: 明示的にsetupを依頼", introduction)
+        self.assertIn(
+            "bare GTP repository URLだけではsetup依頼にもrepository変更のauthorizationにもなりません",
+            introduction,
+        )
+        self.assertIn(
+            "このrepositoryへGTPを導入するDraft setup PRを作ってください。",
+            introduction,
+        )
+        self.assertIn("https://github.com/shinya0x00/github-task-protocol", introduction)
+        self.assertIn("latest stable Release", introduction)
+        self.assertIn("`draft: false`", introduction)
+        self.assertIn("`prerelease: false`", introduction)
+        self.assertIn("tagをcommit SHAまでdereference", introduction)
+        self.assertIn("そのcommitの`GTP.md`だけ", introduction)
+        self.assertIn(
+            "https://raw.githubusercontent.com/shinya0x00/"
+            "github-task-protocol/<commit-sha>/GTP.md",
+            introduction,
+        )
+        self.assertIn("上書きせず停止", introduction)
+        self.assertIn("`gtp/setup-<tag>-<short-sha>`", introduction)
+        self.assertIn("Draft setup PR", introduction)
+        self.assertIn("人間がsetup PRをmergeするまで導入完了としません", introduction)
+        manual = introduction.split("## 手動導入", 1)[1]
+        steps = re.findall(r"^[1-3]\. ", manual, flags=re.MULTILINE)
         self.assertEqual(3, len(steps))
         self.assertIn("[`GTP.md`](GTP.md)", readme)
         self.assertIn("人間がGTPを使うためにCLIをinstallする必要はありません", readme)
@@ -51,6 +76,50 @@ class ReleaseSurfaceTests(unittest.TestCase):
         )
         self.assertNotIn("package registryへ一般公開していません", readme)
         self.assertNotIn("![", readme)
+
+    def test_explicit_setup_delivery_defers_external_acceptance_until_merge(self) -> None:
+        evidence = json.loads(
+            (
+                ROOT
+                / "acceptance"
+                / "explicit-setup-install"
+                / "delivery.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            "github-task-protocol-explicit-setup-delivery/v1",
+            evidence["schema"],
+        )
+        self.assertEqual("delivery_candidate_pending_merge", evidence["status"])
+        self.assertFalse(
+            evidence["delivery_boundary"]["external_acceptance_required_for_delivery_done"]
+        )
+        self.assertEqual(
+            "after native merge in a separate Issue and pull request",
+            evidence["delivery_boundary"]["external_acceptance_activation"],
+        )
+        self.assertFalse(evidence["external_acceptance"]["dedicated_acceptance_repository"])
+        self.assertEqual(
+            "pending_after_delivery_merge",
+            evidence["external_acceptance"]["status"],
+        )
+        self.assertEqual(
+            "explain_or_request_purpose_without_repository_mutation",
+            evidence["input_boundary"]["bare_repository_url"],
+        )
+        self.assertEqual(
+            {
+                "external_setup_success": False,
+                "version_1_0_2_published": False,
+                "merge_authority": False,
+            },
+            evidence["claim_boundary"],
+        )
+        self.assertEqual(
+            "description_only_no_repository_mutation",
+            evidence["observed_probes"][0]["result"],
+        )
+        self.assertFalse((ROOT / "acceptance" / "url-only-install").exists())
 
     def test_readme_copies_the_canonical_adapter_exactly(self) -> None:
         spec = (ROOT / "GTP.md").read_text(encoding="utf-8")
