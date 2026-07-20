@@ -432,7 +432,7 @@ class StatusTests(unittest.TestCase):
                     result.acquisition_errors[0]["code"],
                 )
 
-    def test_pr_created_before_start_is_rejected_across_lifecycle(self) -> None:
+    def test_pr_created_before_start_is_rejected_for_candidate_and_done(self) -> None:
         old = pr(merged=False)
         old["created_at"] = "2026-07-19T00:00:01Z"
         cases = [
@@ -450,15 +450,6 @@ class StatusTests(unittest.TestCase):
                 ],
                 FakeGitHub([], pr=old),
             ),
-            (
-                "stop",
-                [
-                    comment(1, contract(IDS[0])),
-                    comment(2, start(IDS[1])),
-                    comment(3, stop(IDS[2])),
-                ],
-                FakeGitHub([], candidates=[dict(old, merged_at="2026-07-19T00:00:04Z")]),
-            ),
         ]
         for name, comments, client in cases:
             with self.subTest(path=name):
@@ -466,6 +457,43 @@ class StatusTests(unittest.TestCase):
                 result = evaluate_issue(client, ISSUE)
                 self.assertEqual("halt", result.state)
                 self.assertEqual("invalid_binding", result.diagnostics[0].token)
+
+    def test_stop_excludes_pr_created_before_start(self) -> None:
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, start(IDS[1])),
+            comment(3, stop(IDS[2])),
+        ]
+        for merged_at in (None, "2026-07-19T00:00:04Z"):
+            with self.subTest(merged_at=merged_at):
+                old = pr(merged=merged_at is not None)
+                old["created_at"] = "2026-07-19T00:00:01Z"
+                old["merged_at"] = merged_at
+                result = evaluate_issue(
+                    FakeGitHub(comments, candidates=[old]), ISSUE
+                )
+                self.assertEqual("stopped", result.state)
+                self.assertEqual([], result.diagnostics)
+
+    def test_pr_created_at_stop_timestamp_is_acquisition_error(self) -> None:
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, start(IDS[1])),
+            comment(3, stop(IDS[2])),
+        ]
+        for merged_at in (None, "2026-07-19T00:00:04Z"):
+            with self.subTest(merged_at=merged_at):
+                candidate = pr(merged=merged_at is not None)
+                candidate["created_at"] = comments[2].created_at
+                candidate["merged_at"] = merged_at
+                result = evaluate_issue(
+                    FakeGitHub(comments, candidates=[candidate]), ISSUE
+                )
+                self.assertIsNone(result.state)
+                self.assertEqual(
+                    "acquisition_incomplete",
+                    result.acquisition_errors[0]["code"],
+                )
 
     def test_pr_created_at_start_timestamp_is_invalid_binding(self) -> None:
         comments = [comment(1, contract(IDS[0])), comment(2, start(IDS[1]))]
