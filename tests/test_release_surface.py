@@ -121,6 +121,33 @@ class ReleaseSurfaceTests(unittest.TestCase):
         )
         self.assertFalse((ROOT / "acceptance" / "url-only-install").exists())
 
+    def test_explicit_setup_external_run_starts_pending_without_success_claim(self) -> None:
+        run = json.loads(
+            (
+                ROOT
+                / "acceptance"
+                / "explicit-setup-install"
+                / "run.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            "github-task-protocol-explicit-setup-acceptance/v1",
+            run["schema"],
+        )
+        self.assertEqual("pending_external_evidence", run["status"])
+        self.assertTrue(run["delivery"]["readme_on_default_branch"])
+        self.assertEqual("pending", run["setup_probe"]["status"])
+        self.assertEqual("pending_after_setup_merge", run["issue_probe"]["status"])
+        self.assertEqual(
+            {
+                "external_setup_success": False,
+                "issue_url_only_success": False,
+                "version_1_0_2_published": False,
+                "merge_authority": False,
+            },
+            run["claim_boundary"],
+        )
+
     def test_readme_copies_the_canonical_adapter_exactly(self) -> None:
         spec = (ROOT / "GTP.md").read_text(encoding="utf-8")
         adapter = next(

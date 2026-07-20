@@ -1,0 +1,65 @@
+{
+  "schema": "github-task-protocol-explicit-setup-acceptance/v1",
+  "status": "pending_external_evidence",
+  "source_issue": "https://github.com/shinya0x00/github-task-protocol/issues/87",
+  "delivery": {
+    "pull_request": "https://github.com/shinya0x00/github-task-protocol/pull/86",
+    "source_head": "e529c27a34ad62ae6552d09bdf2b1c464a7c9821",
+    "merge_commit": "358b84cad73f54c674c004b7e04a90a1c2f88789",
+    "readme_on_default_branch": true
+  },
+  "setup_probe": {
+    "status": "pending",
+    "input": [
+      "このrepositoryへGTPを導入するDraft setup PRを作ってください。",
+      "GTP repository: https://github.com/shinya0x00/github-task-protocol"
+    ],
+    "target_context": "separate_repository_already_open_in_clean_agent",
+    "provider": "separate_from_delivery_agent",
+    "required_evidence": [
+      "input transcript",
+      "latest stable non-draft and non-prerelease tag",
+      "dereferenced commit SHA",
+      "vendored GTP.md SHA-256",
+      "immutable GTP.md URL",
+      "Draft setup PR URL and author",
+      "existing instructions preserved by diff",
+      "human merge SHA"
+    ]
+  },
+  "issue_probe": {
+    "status": "pending_after_setup_merge",
+    "input": "target Issue URL only",
+    "provider": "separate_clean_agent",
+    "required_evidence": [
+      "reconstructed state",
+      "first action",
+      "referenced Contract, Start, and pull request",
+      "existing branch and pull request reuse",
+      "absence of duplicate branch and pull request"
+    ]
+  },
+  "privacy": {
+    "dedicated_acceptance_repository": false,
+    "target_visibility": "unknown_until_user_response",
+    "record_private_values": false,
+    "required_user_decision": "which Evidence values may be published"
+  },
+  "claim_boundary": {
+    "external_setup_success": false,
+    "issue_url_only_success": false,
+    "version_1_0_2_published": false,
+    "merge_authority": false
+  },
+  "failure_policy": {
+    "within_contract": "repair README, acceptance artifact, or release-surface test and rerun with another clean agent",
+    "contract_change_required": "post Stop and move to a successor Issue"
+  },
+  "evidence_limits": [
+    "no post-delivery external setup probe has been observed",
+    "no post-setup Issue URL-only probe has been observed",
+    "private target values will not be published without user disclosure approval",
+    "this artifact does not authorize merge or publication"
+  ],
+  "next_action": "user runs setup_probe, returns Evidence and disclosure boundary, then runs issue_probe after human setup merge"
+}
