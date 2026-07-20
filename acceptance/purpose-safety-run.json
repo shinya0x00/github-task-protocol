@@ -1,7 +1,12 @@
 {
   "acceptance": "purpose_safety_repair",
-  "issue": "https://github.com/shinya0x00/github-task-protocol/issues/71",
-  "pr": "https://github.com/shinya0x00/github-task-protocol/pull/72",
+  "issue": "https://github.com/shinya0x00/github-task-protocol/issues/73",
+  "pr": "https://github.com/shinya0x00/github-task-protocol/pull/74",
+  "recovery": {
+    "predecessor_issue": "https://github.com/shinya0x00/github-task-protocol/issues/71",
+    "predecessor_pr": "https://github.com/shinya0x00/github-task-protocol/pull/72",
+    "reason": "predecessorのDone Claimに誤った完全SHAを記録したため、Carrierを変更せずStopと後継Issueで再束縛した"
+  },
   "implementation_head": "06b31fd0bed5abda358acb0ee8c5313f5fbe57cf",
   "observed_boundaries": {
     "terminal_identity": "Stop後のfresh Record、証明済みDone後のStop、Stop後の対象PR mergeはhalt / terminal_violationになる",
