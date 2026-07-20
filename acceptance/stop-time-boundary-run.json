@@ -1,0 +1,87 @@
+{
+  "acceptance": "stop_recovery_time_boundary",
+  "issue": "https://github.com/shinya0x00/github-task-protocol/issues/77",
+  "pr": "https://github.com/shinya0x00/github-task-protocol/pull/78",
+  "implementation_head": "b7d4d9b869c52517444baae469f2f2a597f477ee",
+  "supersession": {
+    "predecessor_issue": "https://github.com/shinya0x00/github-task-protocol/issues/75",
+    "predecessor_pr": "https://github.com/shinya0x00/github-task-protocol/pull/76",
+    "observed_result": "Issueは#77を指すStop後にnative closed、PRは未mergeでclosed"
+  },
+  "native_lane_cleanup": [
+    {
+      "issue": "https://github.com/shinya0x00/github-task-protocol/issues/64",
+      "state": "closed",
+      "state_reason": "not_planned"
+    },
+    {
+      "issue": "https://github.com/shinya0x00/github-task-protocol/issues/73",
+      "state": "closed",
+      "state_reason": "not_planned"
+    },
+    {
+      "issue": "https://github.com/shinya0x00/github-task-protocol/issues/75",
+      "state": "closed",
+      "state_reason": "not_planned"
+    }
+  ],
+  "observed_boundaries": {
+    "candidate_and_done": "Startと同時刻以前のPRをinvalid_bindingとして拒否する",
+    "stop_recovery": "Startと同時刻以前のPRをStop対象外として除外し、valid Stopをstoppedへ着地させる",
+    "creation_ordering": "PR作成とStopが同一instantならmerge有無より先にAcquisition Errorとする",
+    "merge_ordering": "対象PRのmergeとStopが同一instantならAcquisition Error、Stop後mergeならterminal_violationとする",
+    "future_reuse": "Stop後に作成されたsame-branch PRは元Issueへ影響させない"
+  },
+  "verification": {
+    "walking_skeleton": {
+      "head_sha": "200578575e2e5dd472f5e2e3fc59b1a780f00045",
+      "result": "修正前production HTTP matrixとunit pathで4 failureを観測",
+      "evidence": "https://github.com/shinya0x00/github-task-protocol/issues/77#issuecomment-5021408421"
+    },
+    "local_source_suite": {
+      "python": "3.12",
+      "tests": 123,
+      "result": "passed"
+    },
+    "local_clean_install": {
+      "wheel": "github_task_protocol-1.0.2-py3-none-any.whl",
+      "install": "--no-index --no-deps",
+      "installed_cli_tests": 15,
+      "result": "passed"
+    },
+    "implementation_head_checks": [
+      {
+        "python": "3.11",
+        "head_sha": "b7d4d9b869c52517444baae469f2f2a597f477ee",
+        "result": "success",
+        "url": "https://github.com/shinya0x00/github-task-protocol/runs/88332815177"
+      },
+      {
+        "python": "3.12",
+        "head_sha": "b7d4d9b869c52517444baae469f2f2a597f477ee",
+        "result": "success",
+        "url": "https://github.com/shinya0x00/github-task-protocol/runs/88332815219"
+      },
+      {
+        "python": "3.13",
+        "head_sha": "b7d4d9b869c52517444baae469f2f2a597f477ee",
+        "result": "success",
+        "url": "https://github.com/shinya0x00/github-task-protocol/runs/88332815187"
+      }
+    ],
+    "final_head_checks": "Done Claimでこのartifact追加後のexact-head Check Runを外部参照する"
+  },
+  "next_lane": {
+    "name": "URL-only installation",
+    "activation": "PR #78がnative mergeされた後に別Issueと別PRで開始する",
+    "status": "not_started"
+  },
+  "evidence_limits": [
+    "fixtureはGitHub HTTP boundaryを置き換え、実際の同時更新発生を証明しない",
+    "timestampが異なる場合もGitHub API反映遅延がないことまでは証明しない",
+    "Check Run successはDone Conditionの自然言語上の十分性を証明しない",
+    "URL-only導入の外部clean-agent Evidenceはまだ取得していない",
+    "1.0.2のtag、GitHub Release、PyPI公開、mergeは未実施である",
+    "このartifactは変更、review、公開、mergeのauthorityを与えない"
+  ]
+}
