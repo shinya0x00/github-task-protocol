@@ -123,7 +123,7 @@
     "tag_gtp_md_matches_candidate": true
   },
   "evidence_pr": {
-    "url": "pending",
+    "url": "https://github.com/shinya0x00/github-task-protocol/pull/94",
     "scope": [
       "README.md",
       "acceptance/public-release-v1.0.2.json",
