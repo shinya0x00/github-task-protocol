@@ -1572,3 +1572,45 @@ protocol coreは次の4領域へ限定する。
 - 配布方針の理由をIssueとPRの全履歴から再構成せず、Decisionとして読める。
 - 今後のversion準備、tag、GitHub Release、registry upload、公開後検証は、それぞれのrelease IssueとEvidenceで扱う。
 - PyPI公開、CI成功、CLI出力は、actor本人性、credential安全性、package品質全体、変更・完了・merge authorityを証明しない。
+
+## ADR-031: 目的説明とEvidence binding表示を分離する
+
+- Status: Accepted
+- Date: 2026-07-20
+
+### 観測事実
+
+- `GTP.md`はCheck Runのtest十分性とArtifact内容の真実性を証明しないと定義している。
+- 変更前のCLIは`done`を「このIssueの完了を確認しました」、条件一覧を「確認できた完了条件」と表示し、resource bindingの確認を条件内容の意味評価と読める余地があった。
+- core schemaはtask固有のunknown fieldを持たず、通常commentは履歴へ影響しない。
+- reducerは同一ID・同一JSONのsafe retryをLogical Recordへ畳むが、live terminal検査はDone aliasだけを除外していたため、terminal後のContractまたはStart retryを新Recordとして扱っていた。
+- Level 1のIssue #12はbranch削除後の完了再構成を示す一方、Issue #65はPython 3.11、3.12、3.13の各Done Conditionを個別のexact-head Check Runへ束縛している。
+
+### 推論
+
+- protocol stateの`done`と、人間による条件内容の受理を同じ文面にすると、GTPが証明しないsemantic fulfillmentを過剰claimする。
+- task固有のunknownをclosed Record schemaへ追加すると、stateへ影響する意味規則が必要になり、最小protocolの境界を越える。通常のIssue本文・commentで人へ引き継ぎ、Done可否に関係するunknownが残るならDoneを提示しない方が一意である。
+- safe retry aliasは新Logical Recordではないため、Record typeにかかわらずterminal後の違反検査から除外しなければ仕様と実装が一致しない。
+- current acceptanceは、Done ConditionとEvidenceを一対一に追えるIssue #65を参照した方がclean readerの再検証可能性が高い。
+
+### 決定
+
+- CLIはDone Claim、Evidence binding、native mergeを観測factとして表示し、Done Conditionの自然言語上の充足を自動判定しないことを同じ出力で明示する。
+- `task_context.not_proven`と`evidence_limits`へsemantic fulfillmentの限界を投影する。task固有のunknown field、state、Record typeは追加しない。
+- terminal後の同一ID・同一JSON retryはContract、Start、Done、Stopの別なくsafe aliasとして扱う。fresh Recordは従来どおり`terminal_violation`とする。
+- Level 1のIssue #12を歴史的な完了再構成Evidenceとして保持し、現行のexact-head CI受入はIssue #65を参照する。
+- runtime変更の実装順はSafe-to-Fail Doctrine `a5ad793c7c8bc52eae82645799b621356e3e6650`へ固定し、real CLI pathを通るwalking skeleton、desired E2E、behavior fill、受入記録の順で行う。
+
+### 不採用案
+
+- `done`をsemantic fulfillmentの自動証明として扱う案は、Evidence resourceから内容の十分性を一般に判定できないため採用しない。
+- unknownをGTP Recordへ追加する案は、closed schemaと4 Recordの最小境界を変えるため採用しない。
+- terminal検査でDone aliasだけを特別扱いする案は、Logical Recordのidentity規則がRecord typeに依存しないため採用しない。
+- Issue #12の記録を削除または現在値へ書き換える案は、過去の受入履歴を失うため採用しない。
+
+### 結果
+
+- 人はCLI出力だけで、機械確認できたbindingと、人がEvidenceを読んで判断すべき条件内容を区別できる。
+- ContractとStartの遅延retryがterminal resultを壊さず、fresh Recordだけが違反になる。
+- task固有の未確認事項はGitHub上の通常proseへ残り、protocol coreのstate判断へ暗黙に混入しない。
+- clean readerは歴史的な完了再構成と現行のexact-head CI受入を区別して辿れる。

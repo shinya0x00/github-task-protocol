@@ -325,6 +325,8 @@ Evidence kindは`check`と`artifact`だけである。
 
 Check Runが証明するのはGitHubが指定SHAへsuccessを返したことまでであり、test内容の十分性までは証明しない。Artifactが証明するのは指定commitにfileが存在することまでであり、内容の真実性までは証明しない。
 
+readerが機械的に判定するのはEvidence resourceとDone Claimのbindingであり、Done Conditionの自然言語上の充足ではない。条件内容の受理は人間がEvidenceを読んで判断する。
+
 人間の最終受理はGitHub native PR mergeへ一本化する。Done ClaimとEvidenceだけではTask Completionにならない。
 
 ## 13. Acquisition Error

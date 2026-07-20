@@ -1,10 +1,12 @@
 # GitHub Task Protocol
 
-GTPは、AIへ実装を任せても、人間が目的・変更範囲・現在地・根拠・未確認事項を理解し、停止・再開・やり直し・mergeの判断を手放さないための小さなprotocolです。
+GTPは、AIへ実装を任せても、人間が目的・変更範囲・現在地・根拠を理解し、停止・再開・やり直し・mergeの判断を手放さないための小さなprotocolです。
 
 > 作業はAIに任せる。判断は手放さない。
 
 AIの説明だけを信じるのではなく、GitHub Issue上のRecordと、実際のbranch・PR・commit・Check Runからtask stateを再構成します。GTP自身は変更、完了、mergeの権限を与えません。
+
+task固有の未確認事項は、通常のIssue本文やcommentへ人が読める形で残します。GTP Recordは未確認事項を保存・意味評価する台帳ではなく、完了条件の判断に関係する不明点が残る間はDoneを提示しません。
 
 ## 導入は3手順
 
@@ -41,7 +43,7 @@ RecordはIssue commentへ人向け要約を先に、機械用JSONを折りたた
 | `ready` | ContractはあるがStart前 |
 | `in_progress` | 作業中、またはDone提示後のmerge待ち |
 | `halt` | 特定transitionを矛盾や不適合のため進められない |
-| `done` | Doneのsource headとEvidenceを持つPRがnative mergeされた |
+| `done` | Doneのsource headへEvidence resourceが結び付き、そのPRがnative mergeされた。条件内容の十分性は人がEvidenceを読んで判断する |
 | `stopped` | Stopにより、このIssueでの作業を終了した |
 
 GitHub情報を完全に取得できない場合はstateを推測しません。これは`halt`ではなくAcquisition Errorです。
@@ -57,7 +59,7 @@ uvx --from github-task-protocol==1.0.1 gtp status <issue-url>
 uvx --from github-task-protocol==1.0.1 gtp check <comment.md>
 ```
 
-- `status`はGitHubへGETだけを行い、日本語6項目の後にmachine JSONを出します。
+- `status`はGitHubへGETだけを行い、日本語6項目の後にmachine JSONを出します。Evidenceの存在・種類・状態・source headとの結び付きを検査しますが、完了条件の自然言語上の充足までは自動判定しません。
 - `check`は投稿前のMarkdown comment全文をoffline検査します。Issue上でもvalidだとは主張しません。
 - exit code、緑色のCheck Run、Evidence URLは、変更やmergeの許可ではありません。
 
