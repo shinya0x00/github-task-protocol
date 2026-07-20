@@ -72,6 +72,32 @@ class ReleaseSurfaceTests(unittest.TestCase):
             project["urls"]["Repository"],
         )
 
+    def test_release_plan_resolves_to_public_evidence_and_policy_decision(self) -> None:
+        release_plan = json.loads(
+            (ROOT / "acceptance" / "release.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            "superseded_by_public_release_evidence", release_plan["status"]
+        )
+        self.assertEqual(
+            "acceptance/public-release-v1.0.1.json",
+            release_plan["superseded_by"],
+        )
+        public_evidence = json.loads(
+            (ROOT / release_plan["superseded_by"]).read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            release_plan["package_version"],
+            public_evidence["pypi"]["package_version"],
+        )
+        self.assertTrue(public_evidence["github_release"]["published"])
+        self.assertTrue(public_evidence["pypi"]["files_redownloaded_and_hashed"])
+        decisions = (ROOT / "DECISIONS.md").read_text(encoding="utf-8")
+        self.assertIn(
+            "## ADR-030: CLIを任意validatorとしてPyPIへ公開する",
+            decisions,
+        )
+
     def test_repository_has_one_non_publish_ci_workflow(self) -> None:
         workflows = list((ROOT / ".github" / "workflows").glob("*.yml"))
         self.assertEqual([ROOT / ".github" / "workflows" / "ci.yml"], workflows)
