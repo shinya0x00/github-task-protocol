@@ -126,6 +126,7 @@
     }
   },
   "evidence_pr": {
+    "url": "https://github.com/shinya0x00/github-task-protocol/pull/55",
     "scope": [
       "acceptance/public-release-v1.0.1.json"
     ],
