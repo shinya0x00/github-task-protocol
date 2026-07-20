@@ -460,6 +460,28 @@ class CliTests(unittest.TestCase):
             human,
         )
 
+    def test_purpose_alignment_walking_skeleton_fires_all_attachments(self) -> None:
+        code, human, output = self.call_http_fixture(
+            "purpose-alignment-walking-skeleton.json"
+        )
+        self.assertEqual(0, code)
+        self.assertEqual("done", output["state"])
+        self.assertEqual("none", output["authority"])
+        self.assertEqual([], output["task_context"]["not_proven"])
+        self.assertEqual(
+            [
+                "actor本人性",
+                "credential安全性",
+                "GitHub外情報を参照しなかったこと",
+            ],
+            output["task_context"]["evidence_limits"],
+        )
+        self.assertTrue(any("確認できた完了条件" in line for line in human))
+        self.assertEqual(
+            ["terminal_violation"],
+            [item["token"] for item in output["diagnostics"]],
+        )
+
     def test_status_required_live_binding_http_matrix(self) -> None:
         matrix = json.loads(
             (HTTP_FIXTURES / "live-binding-matrix.json").read_text(encoding="utf-8")
