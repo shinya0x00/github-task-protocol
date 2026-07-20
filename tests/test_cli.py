@@ -453,7 +453,11 @@ class CliTests(unittest.TestCase):
         self.assertEqual("done", output["state"])
         self.assertEqual("complete", output["acquisition"])
         self.assertEqual("HTTP fixture acceptance", output["task_context"]["goal"])
-        self.assertIn("  結論: このIssueの完了を確認しました。", human)
+        self.assertIn(
+            "  結論: Done ClaimのEvidence bindingとnative mergeを確認しました。"
+            "条件内容の充足はEvidenceを読んで判断してください。",
+            human,
+        )
         self.assertIn("  この作業の目的: HTTP fixture acceptance", human)
         self.assertIn(
             "  ここまでが人向けの説明です。続くJSONは機械処理用です。",
