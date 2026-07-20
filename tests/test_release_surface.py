@@ -142,9 +142,12 @@ class ReleaseSurfaceTests(unittest.TestCase):
             "github-task-protocol-explicit-setup-acceptance/v1",
             run["schema"],
         )
-        self.assertEqual("pending_external_evidence", run["status"])
+        self.assertEqual("repair_delivery_candidate_pending_merge", run["status"])
         self.assertTrue(run["delivery"]["readme_on_default_branch"])
-        self.assertEqual("repair_pending", run["setup_probe"]["status"])
+        self.assertEqual(
+            "pending_after_repair_delivery_merge",
+            run["setup_probe"]["status"],
+        )
         self.assertEqual("pending_after_setup_merge", run["issue_probe"]["status"])
         attempt = run["setup_probe"]["attempts"][0]
         self.assertTrue(attempt["vendored_bytes_equal"])

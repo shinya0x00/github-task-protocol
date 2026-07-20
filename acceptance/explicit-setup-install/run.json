@@ -1,7 +1,8 @@
 {
   "schema": "github-task-protocol-explicit-setup-acceptance/v1",
-  "status": "pending_external_evidence",
-  "source_issue": "https://github.com/shinya0x00/github-task-protocol/issues/87",
+  "status": "repair_delivery_candidate_pending_merge",
+  "source_issue": "https://github.com/shinya0x00/github-task-protocol/issues/89",
+  "predecessor_acceptance_issue": "https://github.com/shinya0x00/github-task-protocol/issues/87",
   "delivery": {
     "pull_request": "https://github.com/shinya0x00/github-task-protocol/pull/86",
     "source_head": "e529c27a34ad62ae6552d09bdf2b1c464a7c9821",
@@ -9,7 +10,7 @@
     "readme_on_default_branch": true
   },
   "setup_probe": {
-    "status": "repair_pending",
+    "status": "pending_after_repair_delivery_merge",
     "input": [
       "このrepositoryへGTPを導入するDraft setup PRを作ってください。",
       "GTP repository: https://github.com/shinya0x00/github-task-protocol"
@@ -84,5 +85,5 @@
     "private target values will not be published without user disclosure approval",
     "this artifact does not authorize merge or publication"
   ],
-  "next_action": "repair branch-first ordering, rerun setup_probe with another clean agent and repository, then run issue_probe after a passing setup merge"
+  "next_action": "human reviews and natively merges the branch-first repair delivery pull request, then a successor acceptance lane reruns setup_probe with another clean agent and repository"
 }
