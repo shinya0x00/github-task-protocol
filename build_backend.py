@@ -131,7 +131,7 @@ def build_sdist(
 ) -> str:
     project = _project()
     base = f"{project['name']}-{project['version']}"
-    filename = f"{base}.tar.gz"
+    filename = f"{_dist_name()}-{project['version']}.tar.gz"
     include = [
         ROOT / "pyproject.toml",
         ROOT / "build_backend.py",
