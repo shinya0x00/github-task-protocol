@@ -136,7 +136,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
         )
         self.assertFalse((ROOT / "acceptance" / "url-only-install").exists())
 
-    def test_explicit_setup_external_run_starts_pending_without_success_claim(self) -> None:
+    def test_explicit_setup_external_run_records_both_passed_probes(self) -> None:
         run = json.loads(
             (
                 ROOT
@@ -149,13 +149,13 @@ class ReleaseSurfaceTests(unittest.TestCase):
             "github-task-protocol-explicit-setup-acceptance/v1",
             run["schema"],
         )
-        self.assertEqual("repair_delivery_candidate_pending_merge", run["status"])
+        self.assertEqual("passed", run["status"])
         self.assertTrue(run["delivery"]["readme_on_default_branch"])
         self.assertEqual(
-            "passed_pending_human_merge",
+            "passed",
             run["setup_probe"]["status"],
         )
-        self.assertEqual("pending_after_setup_merge", run["issue_probe"]["status"])
+        self.assertEqual("passed", run["issue_probe"]["status"])
         attempt = run["setup_probe"]["attempts"][0]
         self.assertTrue(attempt["vendored_bytes_equal"])
         self.assertTrue(attempt["default_branch_direct_push_observed"])
@@ -164,13 +164,33 @@ class ReleaseSurfaceTests(unittest.TestCase):
             attempt["verdict"],
         )
         self.assertTrue(attempt["merge_allowed"])
+        self.assertEqual(
+            "68afc1c343ad8d394b79f9d34e9be2b7118cb04d",
+            attempt["human_merge_commit"],
+        )
         self.assertFalse(
             run["setup_probe"]["safety_boundary"]["gtp_enforcement_strength_evaluated"]
         )
+        probe = run["issue_probe"]
+        self.assertEqual("target Issue URL only", probe["input_boundary"])
+        self.assertEqual("Cursor / Grok 4.5", probe["provider_model"])
+        self.assertFalse(probe["preflight"]["default_branch_protected"])
+        self.assertEqual([], probe["preflight"]["default_branch_rules"])
+        self.assertEqual(
+            "add the second required line to issue-url-probe.txt",
+            probe["observed_result"]["reported_first_task_action"],
+        )
+        self.assertTrue(probe["observed_result"]["existing_branch_reused"])
+        self.assertTrue(probe["observed_result"]["existing_pull_request_reused"])
+        self.assertFalse(probe["observed_result"]["duplicate_branch_created"])
+        self.assertFalse(probe["observed_result"]["duplicate_pull_request_created"])
+        self.assertTrue(probe["observed_result"]["default_branch_unchanged"])
+        self.assertTrue(probe["observed_result"]["done_binding_valid"])
+        self.assertFalse(probe["observed_result"]["native_merge_complete"])
         self.assertEqual(
             {
-                "external_setup_success": False,
-                "issue_url_only_success": False,
+                "external_setup_success": True,
+                "issue_url_only_success": True,
                 "version_1_0_2_published": False,
                 "merge_authority": False,
             },
