@@ -265,7 +265,9 @@ class CliTests(unittest.TestCase):
         return {
             "number": number,
             "html_url": f"https://github.com/o/r/pull/{number}",
-            "created_at": case.get("pr_created_at", "2026-07-19T00:00:02Z"),
+            "created_at": case.get(
+                "pr_created_at", "2026-07-19T00:00:02.500000Z"
+            ),
             "updated_at": "2026-07-19T00:00:02Z",
             "changed_files": case.get(
                 "changed_files",

@@ -6,7 +6,8 @@
       "body": {
         "id": 99,
         "full_name": "o/r",
-        "url": "https://api.github.com/repos/o/r"
+        "url": "https://api.github.com/repos/o/r",
+        "default_branch": "main"
       }
     },
     {
@@ -20,6 +21,15 @@
     {
       "url": "https://api.github.com/repos/o/r/issues/1/comments?sort=created&direction=asc&per_page=100",
       "body": []
+    },
+    {
+      "url": "https://api.github.com/repos/o/r",
+      "body": {
+        "id": 99,
+        "full_name": "o/r",
+        "url": "https://api.github.com/repos/o/r",
+        "default_branch": "main"
+      }
     },
     {
       "url": "https://api.github.com/repos/o/r/issues/1",

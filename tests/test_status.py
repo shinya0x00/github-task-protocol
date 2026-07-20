@@ -90,7 +90,7 @@ def pr(*, merged: bool) -> dict:
     return {
         "number": 7,
         "html_url": "https://github.com/o/r/pull/7",
-        "created_at": "2026-07-19T00:00:02Z",
+        "created_at": "2026-07-19T00:00:02.500000Z",
         "updated_at": "2026-07-19T00:00:02Z",
         "changed_files": 1,
         "base": {"repo": {"id": 99}, "ref": "main", "sha": "b" * 40},
@@ -333,6 +333,17 @@ class StatusTests(unittest.TestCase):
         self.assertIsNone(result.state)
         self.assertEqual("acquisition_incomplete", result.acquisition_errors[0]["code"])
 
+    def test_candidate_list_without_changed_files_uses_stable_detail(self) -> None:
+        comments = [comment(1, contract(IDS[0])), comment(2, start(IDS[1]))]
+        detail = pr(merged=False)
+        listed = dict(detail)
+        listed.pop("changed_files")
+        result = evaluate_issue(
+            FakeGitHub(comments, candidates=[listed], pr=detail), ISSUE
+        )
+        self.assertEqual("in_progress", result.state)
+        self.assertEqual([], result.diagnostics)
+
     def test_rename_checks_previous_and_current_paths(self) -> None:
         scoped_contract = contract(IDS[0])
         scoped_contract["scope"] = ["src/"]
@@ -373,6 +384,130 @@ class StatusTests(unittest.TestCase):
                 return value
 
         result = evaluate_issue(MovingHead(), ISSUE)
+        self.assertIsNone(result.state)
+        self.assertEqual("acquisition_incomplete", result.acquisition_errors[0]["code"])
+
+    def test_pr_base_change_during_file_read_is_acquisition_error(self) -> None:
+        def moving_client(comments, *, candidate):
+            class MovingBase(FakeGitHub):
+                def __init__(self):
+                    value = pr(merged=False)
+                    super().__init__(
+                        comments,
+                        candidates=[value] if candidate else [],
+                        pr=value,
+                    )
+                    self.files_read = False
+
+                def pull_request(self, owner, repo, number):
+                    value = dict(self._pr)
+                    value["base"] = dict(value["base"])
+                    if self.files_read:
+                        value["base"]["sha"] = "f" * 40
+                    return value
+
+                def pull_request_files(self, owner, repo, number):
+                    self.files_read = True
+                    return super().pull_request_files(owner, repo, number)
+
+            return MovingBase()
+
+        without_done = [comment(1, contract(IDS[0])), comment(2, start(IDS[1]))]
+        with_done = [
+            comment(1, contract(IDS[0])),
+            comment(2, start(IDS[1])),
+            comment(3, done(IDS[2])),
+        ]
+        for name, comments, candidate in (
+            ("candidate", without_done, True),
+            ("done", with_done, False),
+        ):
+            with self.subTest(path=name):
+                result = evaluate_issue(
+                    moving_client(comments, candidate=candidate), ISSUE
+                )
+                self.assertIsNone(result.state)
+                self.assertEqual(
+                    "acquisition_incomplete",
+                    result.acquisition_errors[0]["code"],
+                )
+
+    def test_pr_created_before_start_is_rejected_across_lifecycle(self) -> None:
+        old = pr(merged=False)
+        old["created_at"] = "2026-07-19T00:00:01Z"
+        cases = [
+            (
+                "candidate",
+                [comment(1, contract(IDS[0])), comment(2, start(IDS[1]))],
+                FakeGitHub([], candidates=[old]),
+            ),
+            (
+                "done",
+                [
+                    comment(1, contract(IDS[0])),
+                    comment(2, start(IDS[1])),
+                    comment(3, done(IDS[2])),
+                ],
+                FakeGitHub([], pr=old),
+            ),
+            (
+                "stop",
+                [
+                    comment(1, contract(IDS[0])),
+                    comment(2, start(IDS[1])),
+                    comment(3, stop(IDS[2])),
+                ],
+                FakeGitHub([], candidates=[dict(old, merged_at="2026-07-19T00:00:04Z")]),
+            ),
+        ]
+        for name, comments, client in cases:
+            with self.subTest(path=name):
+                client._comments = comments
+                result = evaluate_issue(client, ISSUE)
+                self.assertEqual("halt", result.state)
+                self.assertEqual("invalid_binding", result.diagnostics[0].token)
+
+    def test_pr_created_at_start_timestamp_is_invalid_binding(self) -> None:
+        comments = [comment(1, contract(IDS[0])), comment(2, start(IDS[1]))]
+        same_second = pr(merged=False)
+        same_second["created_at"] = comments[1].created_at
+        result = evaluate_issue(
+            FakeGitHub(comments, candidates=[same_second]), ISSUE
+        )
+        self.assertEqual("halt", result.state)
+        self.assertEqual("invalid_binding", result.diagnostics[0].token)
+
+    def test_repository_default_branch_change_is_acquisition_error(self) -> None:
+        comments = [comment(1, contract(IDS[0])), comment(2, start(IDS[1]))]
+
+        class MovingRepository(FakeGitHub):
+            def __init__(self):
+                super().__init__(comments)
+                self.repository_reads = 0
+
+            def repository(self, owner, repo):
+                self.repository_reads += 1
+                value = super().repository(owner, repo)
+                if self.repository_reads > 1:
+                    value["default_branch"] = "trunk"
+                return value
+
+        result = evaluate_issue(MovingRepository(), ISSUE)
+        self.assertIsNone(result.state)
+        self.assertEqual("acquisition_incomplete", result.acquisition_errors[0]["code"])
+
+    def test_done_branch_and_pr_head_disagreement_is_acquisition_error(self) -> None:
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, start(IDS[1])),
+            comment(3, done(IDS[2])),
+        ]
+
+        class StaleBranch(FakeGitHub):
+            def branch(self, owner, repo, branch):
+                return {"name": branch, "commit": {"sha": "f" * 40}}
+
+        result = evaluate_issue(StaleBranch(comments, pr=pr(merged=False)), ISSUE)
         self.assertIsNone(result.state)
         self.assertEqual("acquisition_incomplete", result.acquisition_errors[0]["code"])
 

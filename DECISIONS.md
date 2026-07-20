@@ -1654,3 +1654,38 @@ protocol coreは次の4領域へ限定する。
 - default branchへの作業継続をGTP statusが案内しない。
 - clean readerはIssue URLからtask固有の未確認事項を確認する必要と、CLIが意味評価しない限界を同時に確認できる。
 - source candidateと次のpublic package identityを1.0.1から分離できる。
+
+## ADR-033: PR snapshotとtask lifecycleのidentity境界を一致させる
+
+- Status: Accepted
+- Date: 2026-07-20
+
+### 観測事実
+
+- PR snapshot比較はhead SHAとmerge時刻を含む一方、base ref・base SHA・`changed_files`を含まず、file一覧取得中のbase更新を検出できなかった。
+- 通常のcandidateとDoneはStart前から存在するsame-branch PRを受理したが、Stop後merge検査はStart以後に作成されたPRだけを対象とし、同じPRのtask identityがlifecycle途中で変わった。
+- repositoryの`default_branch`はStart拒否を決めるが、最初の取得後に再確認していなかった。
+- native merge前のDoneはPR headとDone SHAを照合したが、同時に観測したbranch SHAとの一致を要求していなかった。
+- Issue #64 / PR #67とIssue #73 / PR #74が、異なるruntime内容で同じ未公開version 1.0.2をcandidateとして保持していた。
+
+### 決定
+
+- PR snapshotはbase repository・ref・SHA、head repository・ref・SHA、state、merge時刻、取得可能な`changed_files`を含む。scope判定ではdetail PRをfile一覧の前後に取得し、全snapshotが一致した場合だけfile一覧を使用する。
+- Startと同時刻以前に作成されたPRはcandidate、Done、Stopの全経路で`invalid_binding`とする。Stop後に作成された同名branch PRは従来どおり元taskの対象外とする。
+- issue repositoryをstate評価後に再取得し、identityまたは`default_branch`が変化した場合はAcquisition Errorとする。
+- native merge前のDoneでは、安定したbranch SHA、Bound PR head SHA、Done head SHAの三者一致を要求する。merge後にbranchが削除されても、Issue、Done、PR、merge factから再構成できる既存境界は維持する。
+- Issue #64とIssue #73をIssue #75へsupersedeし、PR #67とPR #74を未mergeで閉じる。未公開1.0.2のopen delivery laneはIssue #75 / PR #76へ一本化する。
+
+### 不採用案
+
+- PR作成時刻をStop時だけ使う案は、作業中と停止後でtask identityが変わるため採用しない。
+- base branch名だけを比較する案は、同じbranch名の先端更新を検出できないため採用しない。
+- merge後もbranch取得を必須にする案は、正常なbranch削除後にhistorical Doneを再構成できなくなるため採用しない。
+- RecordへPR番号またはbase SHA fieldを追加する案は、GitHub live resourceから取得でき、Record grammarを広げる必要がないため採用しない。
+
+### 結果
+
+- scope判定が使用したfile一覧を、同じbase/head/`changed_files`のdetail PRへ束縛できる。
+- PRがtaskへ属するかの規則がcandidate、Done、Stopで一致する。
+- default branch変更とnative merge前のbranch/PR反映差からstateを推測しない。
+- clean readerはpredecessorから一つのopen 1.0.2 candidate laneへ移動できる。

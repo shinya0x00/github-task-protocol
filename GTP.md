@@ -295,8 +295,9 @@ valid Doneが指す`head_sha`を、Bound PRがnative mergeし、その後にterm
 - StartなしのDone、Start後のContract、Record順序違反は`invalid_transition`である。
 - Start、Done、Stopを複数の異なるLogical Recordとして置かない。
 - 1 Issue = 1 branch = 1 PRとする。分割、統合、別branchへの移動はStopと新Issueで行う。
+- Startと同時刻以前の`created_at`を持つPRは、そのStartのcandidate、Done、Stop対象として受理せず`invalid_binding`とする。
 - PR file一覧を完全取得し、`filename`とrename時の`previous_filename`がすべてContract scope内にあることを確認する。
-- Doneの`head_sha`はBound PRのsource headと一致し、全Evidenceも同じrepositoryとSHAへ束縛される。
+- Doneの`head_sha`はBound PRのsource headと一致し、全Evidenceも同じrepositoryとSHAへ束縛される。native merge前はbranch SHAも同じ値でなければならない。
 - Stop後の新Recordまたは対象PR merge、証明済みDone後のStopや新Recordは`halt / terminal_violation`である。先に成立したterminal resultを別のterminal resultへ書き換えない。
 - safe retry aliasは新Recordではないため、同一内容ならterminal後でも畳める。
 
@@ -320,7 +321,7 @@ valid Doneが指す`head_sha`を、Bound PRがnative mergeし、その後にterm
 
 `reason: "superseded"`では`successor_ref`へ後継Issueを示す。`reason: "abandoned"`では`successor_ref: null`とする。Stop後は元Issueへ新Recordを投稿しない。
 
-Stop後mergeの対象は、Start以後かつStop以前に作成されたsame-repository・same-branch PRだけである。Stop後に同名branchを再利用して作成されたPRは元Issueへ影響しない。mergeとStopの先後を一意に取得できない場合はAcquisition Errorである。
+Stop後mergeの対象は、Startより後かつStop以前に作成されたsame-repository・same-branch PRだけである。Startと同時刻以前のPRは`invalid_binding`であり、Stop後に同名branchを再利用して作成されたPRは元Issueへ影響しない。mergeとStopの先後を一意に取得できない場合はAcquisition Errorである。
 
 証明済みDoneは後のStopで`stopped`へ上書きできない。Stop後に対象PRがmergeされた場合も`done`へ変えない。どちらもpublic stateは`halt`、理由は`terminal_violation`とし、先に成立していたterminal resultを`details`へ残す。
 
@@ -343,7 +344,7 @@ state決定に必要なIssue comments、branch、PR、Check Run、artifact、mer
 
 network、authentication、rate limit、pagination途中失敗をprotocol不適合と推測しない。404だけではresource不在を確定しない。PRの`changed_files`と取得file数が一致しない場合もstateを出さない。取得できたresourceの不一致と、resourceを取得できないことを分離する。
 
-stateを左右するIssue、branch、PR候補、Bound PRは取得前後のidentity、head、merge factを比較し、変化したsnapshotからstateを出さない。
+stateを左右するrepository、Issue、branch、PR候補、Bound PRは取得前後を比較し、変化したsnapshotからstateを出さない。repositoryはidentityと`default_branch`を比較する。PRは少なくともbase repository・ref・SHA、head repository・ref・SHA、state、merge時刻、取得可能な`changed_files`を比較し、file一覧取得の前後ではdetail PRの全項目を固定する。
 
 ## 14. Level 0とLevel 1
 

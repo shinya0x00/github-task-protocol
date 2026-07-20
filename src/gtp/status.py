@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 from urllib.parse import unquote
 
@@ -112,23 +113,47 @@ def _branch_snapshot_key(
 def _pr_snapshot_key(pr: dict[str, Any], resource: str) -> tuple[Any, ...]:
     number = pr.get("number")
     url = pr.get("html_url")
-    base_repo_id = pr.get("base", {}).get("repo", {}).get("id")
+    base = pr.get("base", {})
+    base_repo_id = base.get("repo", {}).get("id")
+    base_ref = base.get("ref")
+    base_sha = base.get("sha")
     head = pr.get("head", {})
     head_repo_id = head.get("repo", {}).get("id")
-    ref = head.get("ref")
-    sha = head.get("sha")
+    head_ref = head.get("ref")
+    head_sha = head.get("sha")
     merged_at = pr.get("merged_at")
+    state = pr.get("state")
+    changed_files = pr.get("changed_files")
     if (
         not isinstance(number, int)
         or not isinstance(url, str)
         or not isinstance(base_repo_id, int)
+        or not isinstance(base_ref, str)
+        or not isinstance(base_sha, str)
         or not isinstance(head_repo_id, int)
-        or not isinstance(ref, str)
-        or not isinstance(sha, str)
+        or not isinstance(head_ref, str)
+        or not isinstance(head_sha, str)
+        or not isinstance(state, str)
         or (merged_at is not None and not isinstance(merged_at, str))
+        or (
+            changed_files is not None
+            and (not isinstance(changed_files, int) or changed_files < 0)
+        )
     ):
         raise AcquisitionError(resource, "pull request snapshot fields missing")
-    return number, url, base_repo_id, head_repo_id, ref, sha, merged_at, pr.get("state")
+    return (
+        number,
+        url,
+        base_repo_id,
+        base_ref,
+        base_sha,
+        head_repo_id,
+        head_ref,
+        head_sha,
+        state,
+        merged_at,
+        changed_files,
+    )
 
 
 def _pr_collection_snapshot(
@@ -157,15 +182,20 @@ def _scope_diagnostics(
     pr_url = pr.get("html_url")
     if not isinstance(number, int) or not isinstance(pr_url, str):
         raise AcquisitionError(anchor_url, "pull request identity missing")
-    detail = pr
-    if not isinstance(detail.get("changed_files"), int):
-        detail = client.pull_request(owner, repo, number)
-        if _pr_snapshot_key(detail, pr_url) != _pr_snapshot_key(pr, pr_url):
-            raise AcquisitionError(pr_url, "pull request changed during acquisition")
-    changed_files = detail.get("changed_files")
+    listed_key = _pr_snapshot_key(pr, pr_url)
+    detail = client.pull_request(owner, repo, number)
+    detail_key = _pr_snapshot_key(detail, pr_url)
+    if listed_key[:-1] != detail_key[:-1] or (
+        listed_key[-1] is not None and listed_key[-1] != detail_key[-1]
+    ):
+        raise AcquisitionError(pr_url, "pull request changed during acquisition")
+    changed_files = detail_key[-1]
     if not isinstance(changed_files, int) or changed_files < 0:
         raise AcquisitionError(pr_url, "pull request changed_files missing")
     files = client.pull_request_files(owner, repo, number)
+    detail_after = client.pull_request(owner, repo, number)
+    if _pr_snapshot_key(detail_after, pr_url) != detail_key:
+        raise AcquisitionError(pr_url, "pull request changed during file acquisition")
     if len(files) != changed_files:
         raise AcquisitionError(pr_url, "pull request file collection is incomplete")
     observed_paths: list[str] = []
@@ -184,6 +214,24 @@ def _scope_diagnostics(
     if outside:
         return [_diagnostic("invalid_binding", anchor_url, pr_url, paths=outside)]
     return []
+
+
+def _pr_not_after_start(
+    pr: dict[str, Any],
+    start: RecordObservation,
+    resource: str,
+) -> bool:
+    created_at = pr.get("created_at")
+    if not isinstance(created_at, str):
+        raise AcquisitionError(resource, "pull request created_at missing")
+    try:
+        created_time = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+        start_time = datetime.fromisoformat(
+            start.comment.created_at.replace("Z", "+00:00")
+        )
+    except ValueError as error:
+        raise AcquisitionError(resource, "pull request ordering timestamp invalid") from error
+    return created_time <= start_time
 
 
 def _successor_context(
@@ -258,6 +306,7 @@ def _evaluate_done(
     client: GitHubClient,
     repo_id: int,
     branch_name: str,
+    start: RecordObservation,
     contract: RecordObservation,
     done: RecordObservation,
 ) -> _DoneLive:
@@ -267,7 +316,11 @@ def _evaluate_done(
     pr_repo = client.repository(pr_url.owner, pr_url.repo)
     pr = client.pull_request(pr_url.owner, pr_url.repo, pr_url.number or 0)
     result.pr = pr
-    if not _repo_matches(pr_repo, repo_id) or not _pr_matches(pr, repo_id, branch_name):
+    if (
+        not _repo_matches(pr_repo, repo_id)
+        or not _pr_matches(pr, repo_id, branch_name)
+        or _pr_not_after_start(pr, start, done.record["pr_ref"])
+    ):
         result.diagnostics.append(
             _diagnostic("invalid_binding", done.comment.url, done.record["pr_ref"])
         )
@@ -384,7 +437,12 @@ def _stop_diagnostics(
         pr_url = pr.get("html_url")
         if not isinstance(created_at, str) or not isinstance(pr_url, str):
             raise AcquisitionError(stop.comment.url, "pull request ordering fields missing")
-        if not (start.comment.created_at <= created_at <= stop.comment.created_at):
+        if _pr_not_after_start(pr, start, pr_url):
+            diagnostics.append(
+                _diagnostic("invalid_binding", start.comment.url, pr_url)
+            )
+            continue
+        if created_at > stop.comment.created_at:
             continue
         merged_at = pr.get("merged_at")
         if not isinstance(merged_at, str):
@@ -514,6 +572,7 @@ def _evaluate_acquired(
                     client,
                     repo_id,
                     branch_name,
+                    fold.bound_start,
                     fold.bound_contract,
                     terminal_done,
                 )
@@ -566,7 +625,12 @@ def _evaluate_acquired(
             fold.bound_contract, terminal_done
         ):
             live = _evaluate_done(
-                client, repo_id, branch_name, fold.bound_contract, terminal_done
+                client,
+                repo_id,
+                branch_name,
+                fold.bound_start,
+                fold.bound_contract,
+                terminal_done,
             )
             if live.pr is not None:
                 current["bound_pr"] = live.pr.get("html_url")
@@ -614,6 +678,16 @@ def _evaluate_acquired(
                 raise AcquisitionError(
                     branch_resource, "bound branch changed during acquisition"
                 )
+            branch_key = _branch_snapshot_key(branch_after, branch_resource)
+            pr_head = live.pr.get("head", {}).get("sha") if live.pr else None
+            if (
+                branch_key is None
+                or branch_key[1] != pr_head
+                or pr_head != terminal_done.record["head_sha"]
+            ):
+                raise AcquisitionError(
+                    branch_resource, "bound branch and pull request head disagree"
+                )
             current["branch"]["exists"] = branch is not None
             if branch is None:
                 return StatusResult(
@@ -630,7 +704,10 @@ def _evaluate_acquired(
         branch = client.branch(parsed.owner, parsed.repo, branch_name)
         observed_candidates = client.pull_requests(parsed.owner, parsed.repo, branch_name)
         invalid_candidates = [
-            pr for pr in observed_candidates if not _pr_matches(pr, repo_id, branch_name)
+            pr
+            for pr in observed_candidates
+            if not _pr_matches(pr, repo_id, branch_name)
+            or _pr_not_after_start(pr, fold.bound_start, pr.get("html_url", issue_url))
         ]
         if invalid_candidates:
             urls = [fold.bound_start.comment.url] + [
@@ -704,6 +781,21 @@ def _issue_snapshot_key(issue: dict[str, Any]) -> tuple[int, str, str]:
     return issue_id, created_at, updated_at
 
 
+def _repository_snapshot_key(
+    repository: dict[str, Any], resource: str
+) -> tuple[int, str, str]:
+    repo_id = repository.get("id")
+    full_name = repository.get("full_name")
+    default_branch = repository.get("default_branch")
+    if (
+        not isinstance(repo_id, int)
+        or not isinstance(full_name, str)
+        or not isinstance(default_branch, str)
+    ):
+        raise AcquisitionError(resource, "repository snapshot fields missing")
+    return repo_id, full_name, default_branch
+
+
 def evaluate_issue(client: GitHubClient, issue_url: str) -> StatusResult:
     parsed = parse_github_url(issue_url, "issue")
     if parsed is None:
@@ -714,6 +806,12 @@ def evaluate_issue(client: GitHubClient, issue_url: str) -> StatusResult:
         )
     try:
         repository = client.repository(parsed.owner, parsed.repo)
+        repository_resource = (
+            f"https://api.github.com/repos/{parsed.owner}/{parsed.repo}"
+        )
+        repository_key = _repository_snapshot_key(
+            repository, repository_resource
+        )
         issue = client.issue(parsed.owner, parsed.repo, parsed.number or 0)
         initial_key = _issue_snapshot_key(issue)
         comments = client.comments(parsed.owner, parsed.repo, parsed.number or 0)
@@ -724,6 +822,13 @@ def evaluate_issue(client: GitHubClient, issue_url: str) -> StatusResult:
     if result.state is None:
         return result
     try:
+        repository_after = client.repository(parsed.owner, parsed.repo)
+        if _repository_snapshot_key(
+            repository_after, repository_resource
+        ) != repository_key:
+            raise AcquisitionError(
+                repository_resource, "repository snapshot changed during acquisition"
+            )
         issue_after = client.issue(parsed.owner, parsed.repo, parsed.number or 0)
         if _issue_snapshot_key(issue_after) != initial_key:
             raise AcquisitionError(issue_url, "issue snapshot changed during acquisition")
