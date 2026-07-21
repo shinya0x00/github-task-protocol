@@ -105,3 +105,5 @@ GTPは、actor本人性、credential安全性、コード品質そのもの、Ev
 サンドボックス、最小権限、不可逆操作前の確認、reviewと組み合わせてください。最終的な受理は、人間がPRとEvidenceを読み、GitHubのnative mergeで判断します。
 
 License: [MIT](LICENSE)
+
+GTPを試して、分かりにくかった所・詰まった所があれば、一言だけでも教えてもらえると助かります。IssueでもXでも。
