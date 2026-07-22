@@ -56,7 +56,11 @@ blocker時だけ、次の8項目をこの順で表示する。
 
 `invalid_record`等をRecord履歴、`invalid_binding`をGitHub binding、`invalid_evidence`／`stale_evidence`をEvidence、Acquisition Errorを取得経路へ写像する。ただし、これは最初に確認する層であり、根本的な修正責任ではない。setup blockerと外部Operation blockerはtokenだけからGTP coreへ写像しない。
 
-原因入力を公開仕様へ照合し、`GTP.md`適合入力をproduction implementationが誤判定したことを再現できた場合だけ、GTP implementationを修正責任として確定する。resource側の不適合を観測できた場合はそのresourceを修正候補とし、いずれもEvidenceで確定できなければ根本責任を「所有層未確定」とする。
+原因入力を公開仕様へ照合し、そのexact inputに期待されるstate、halt reason、Acquisition Error、check result、exit codeを決めてproduction implementationのobserved resultと比較する。invalid inputにもexpected resultがある。
+
+- observed resultがexpected resultと異なる場合は、入力のvalidityにかかわらずGTP implementationを修正責任とする。Exact Marker付きの壊れたJSONが期待される`halt / invalid_record`ではなくcrashまたは`unmanaged`になる場合を含む。
+- observed resultがexpected invalid resultと一致する場合はCarrier、Record、binding、Evidence等のresourceを修正候補とする。
+- expected resultまたはobserved resultの比較Evidenceが不足する場合は「修正責任未確定」とする。
 
 所有層を一意に決められない場合は「所有層未確定」とし、修正先Issueを確認できない場合は「修正先Issue未確認」とする。推測したownerやIssueを表示または起票しない。
 
@@ -104,4 +108,5 @@ private provider identity、private rule／version、credential、credential pat
 - normal stateの表示とIssue→PR workflowは変わらない。
 - CLI、setup、外部Operationは同じ8項目を共有するが、各内部ruleの正準はそれぞれのownerに残る。
 - 問題説明だけでは、原因の真実性、人間の理解、修正の成功、merge authorityを証明しない。
+- pull requestのsource headにあるこのADRと設計文書は正準候補であり、main canonical sourceへの昇格はnative merge後のpath再取得で確認する。
 - 後続のmaterialな変更は新ADRからこのADRを`Supersedes`で参照する。判断本文は遡及編集しないが、supersession relationを解決可能にする`Status`と`Superseded by`の参照metadataは更新できる。
