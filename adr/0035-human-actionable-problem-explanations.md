@@ -56,13 +56,17 @@ blocker時だけ、次の8項目をこの順で表示する。
 
 `invalid_record`等をRecord履歴、`invalid_binding`をGitHub binding、`invalid_evidence`／`stale_evidence`をEvidence、Acquisition Errorを取得経路へ写像する。ただし、これは最初に確認する層であり、根本的な修正責任ではない。setup blockerと外部Operation blockerはtokenだけからGTP coreへ写像しない。
 
-原因入力を公開仕様へ照合し、そのexact inputに期待されるstate、halt reason、Acquisition Error、check result、exit codeを決めてproduction implementationのobserved resultと比較する。invalid inputにもexpected resultがある。
+productionの問題説明は、既存のstdout、stderr、machine JSON、diagnostic、観測済みURLから観測事実、最初に確認する層、修正候補、非対象、次の確認方法を投影する。自分自身の出力をoracleとしてexpected resultと比較せず、根本的な修正責任を判定しない。誤ってnormal stateを返した場合はblocker表示が発火せず、crashした場合はpresentationへ到達しないため、production presentation単独では自分自身のregressionを発見または証明できない。
 
-- observed resultがexpected resultと異なる場合は、入力のvalidityにかかわらず、observed resultを返したproduction pathのowner implementationを修正責任とする。GTP reader／CLIまたは`gtp check`ならGTP implementation、setup／adapter preflightならそのsetup workflow owner、外部Operation／providerならそのOperation／provider ownerとする。Exact Marker付きの壊れたJSONをGTP reader／CLIが期待される`halt / invalid_record`ではなくcrashまたは`unmanaged`として返す場合は、GTP implementationが修正責任を持つ。
+根本的な修正責任は、production outputから独立したexpected／observed比較Evidenceとowner Evidenceがある場合に限って確定する。production presentation単独では、修正候補と確認手順を示し、Evidence不足時は「修正責任未確定」とする。
+
+独立したconformance／acceptanceは、公開仕様からexact inputのexpected resultを導出し、同じinputをproduction pathへ与えたstdout、stderr、machine JSON、exit code、crashまたは出力不在をsource headと実行versionへ束縛し、production pathのownerを別のEvidenceで確認する。invalid inputにもexpected resultがある。
+
+- expected resultとobserved resultが異なり、owner Evidenceも揃った場合だけ、不一致をそのproduction pathのowner implementationへ帰属できる。GTP reader／CLIまたは`gtp check`ならGTP implementation、setup／adapter preflightならそのsetup workflow owner、外部Operation／providerならそのOperation／provider ownerである。
 - observed resultがexpected invalid resultと一致する場合はCarrier、Record、binding、Evidence等のresourceを修正候補とする。
-- expected result、observed result、またはobserved resultを返したproduction pathのownerを固定できず、比較Evidenceまたはowner Evidenceが不足する場合は「修正責任未確定」とする。
+- expected result、observed result、またはownerを固定できず、比較Evidenceまたはowner Evidenceが不足する場合は「修正責任未確定」とする。
 
-所有層を一意に決められない場合は「所有層未確定」とし、修正先Issueを確認できない場合は「修正先Issue未確認」とする。推測したownerやIssueを表示または起票しない。
+所有層を一意に決められない場合は「所有層未確定」とし、修正先Issueを確認できない場合は「修正先Issue未確認」とする。推測したownerやIssueを表示または起票しない。独立比較が責任を帰属できる場合も、最終的にどこを修正するかは人間が判断し、通常の別Issueから開始する。
 
 ### read-only／ephemeral境界
 
