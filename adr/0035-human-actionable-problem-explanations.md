@@ -58,9 +58,9 @@ blocker時だけ、次の8項目をこの順で表示する。
 
 原因入力を公開仕様へ照合し、そのexact inputに期待されるstate、halt reason、Acquisition Error、check result、exit codeを決めてproduction implementationのobserved resultと比較する。invalid inputにもexpected resultがある。
 
-- observed resultがexpected resultと異なる場合は、入力のvalidityにかかわらずGTP implementationを修正責任とする。Exact Marker付きの壊れたJSONが期待される`halt / invalid_record`ではなくcrashまたは`unmanaged`になる場合を含む。
+- observed resultがexpected resultと異なる場合は、入力のvalidityにかかわらず、observed resultを返したproduction pathのowner implementationを修正責任とする。GTP reader／CLIまたは`gtp check`ならGTP implementation、setup／adapter preflightならそのsetup workflow owner、外部Operation／providerならそのOperation／provider ownerとする。Exact Marker付きの壊れたJSONをGTP reader／CLIが期待される`halt / invalid_record`ではなくcrashまたは`unmanaged`として返す場合は、GTP implementationが修正責任を持つ。
 - observed resultがexpected invalid resultと一致する場合はCarrier、Record、binding、Evidence等のresourceを修正候補とする。
-- expected resultまたはobserved resultの比較Evidenceが不足する場合は「修正責任未確定」とする。
+- expected result、observed result、またはobserved resultを返したproduction pathのownerを固定できず、比較Evidenceまたはowner Evidenceが不足する場合は「修正責任未確定」とする。
 
 所有層を一意に決められない場合は「所有層未確定」とし、修正先Issueを確認できない場合は「修正先Issue未確認」とする。推測したownerやIssueを表示または起票しない。
 
