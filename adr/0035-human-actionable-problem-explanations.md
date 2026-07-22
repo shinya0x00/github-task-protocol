@@ -13,7 +13,7 @@
 
 ## 決定
 
-問題説明を、既存の診断事実とmachine projectionから導出するhuman presentation projectionとして実装する。これはprotocol stateではなく、read-onlyかつephemeral-by-defaultである。
+問題説明を、既存の診断事実とmachine projectionから導出するhuman presentation projectionとして設計する。これはprotocol stateではなく、read-onlyかつephemeral-by-defaultである。CLI behaviorはIssue #99、setup preflightと外部Operation blocker接続はIssue #100で実装され、各production pathのnative mergeまでは`Target / not yet implemented`である。
 
 ### 入力
 
@@ -38,7 +38,9 @@ blocker時だけ、次の8項目をこの順で表示する。
 7. 最初に確認するURL
 8. 解決したと判断する条件
 
-各項目の表示内容と推測禁止事項は[`DESIGN.md`](../DESIGN.md)をcurrent architectureとして参照する。diagnostic URLがある場合は先頭URLを使い、ない場合だけ既存`primary_url`へfallbackする。投稿前の`gtp check`にGitHub URLがなければ、その事実を「URLなし（投稿前入力）」と表示する。
+各項目の表示内容と推測禁止事項は[`DESIGN.md`](../DESIGN.md)を参照する。diagnostic URLがある場合は先頭URLを使い、ない場合だけ既存`primary_url`へfallbackする。投稿前の`gtp check`にGitHub URLがなければ、その事実を「URLなし（投稿前入力）」と表示する。
+
+解決確認は2種類に分ける。再検査で解消可能なcaseは期待するstateまたは結果を示す。`terminal_violation`のように元Issueで解消不能なcaseは、元Issueのterminal resultとviolationを保持し、後継Issue側のContract、PR、Evidence、native mergeを確認条件として示す。元Issueが正常stateへ戻るとは表示しない。
 
 ### 所有層
 
@@ -52,7 +54,9 @@ blocker時だけ、次の8項目をこの順で表示する。
 - setup先instruction／authority／dependency
 - 外部Operation
 
-`invalid_record`等をRecord履歴、`invalid_binding`をGitHub binding、`invalid_evidence`／`stale_evidence`をEvidence、Acquisition Errorを取得経路へ写像する。setup blockerと外部Operation blockerはGTP coreへ写像しない。
+`invalid_record`等をRecord履歴、`invalid_binding`をGitHub binding、`invalid_evidence`／`stale_evidence`をEvidence、Acquisition Errorを取得経路へ写像する。ただし、これは最初に確認する層であり、根本的な修正責任ではない。setup blockerと外部Operation blockerはtokenだけからGTP coreへ写像しない。
+
+原因入力を公開仕様へ照合し、`GTP.md`適合入力をproduction implementationが誤判定したことを再現できた場合だけ、GTP implementationを修正責任として確定する。resource側の不適合を観測できた場合はそのresourceを修正候補とし、いずれもEvidenceで確定できなければ根本責任を「所有層未確定」とする。
 
 所有層を一意に決められない場合は「所有層未確定」とし、修正先Issueを確認できない場合は「修正先Issue未確認」とする。推測したownerやIssueを表示または起票しない。
 
@@ -67,6 +71,8 @@ blocker時だけ、次の8項目をこの順で表示する。
 問題説明は変更、完了、review、merge、publicationのauthorityを与えない。既存の`authority: none`、machine JSON、exit code、4 Record、6 state、7 halt reason、2 command、Evidence、native merge、Acquisition Errorの意味を変更しない。
 
 private provider identity、private rule／version、credential、credential path、local absolute path、stack trace、raw exception、private diagnosticは人向け表示へ出さない。
+
+認証済み利用者へのinteractive consoleでは、既存表示との互換性のため、その利用者が取得した同一repositoryのprivate Issue／comment／PR URLを表示できる。public acceptance／release artifactまたは公開logへは、public確認済みまたは人間が明示的に公開承認したURLだけを記録する。外部providerのprivate diagnostic URLはconsoleにも転記しない。
 
 ## 理由
 
@@ -98,4 +104,4 @@ private provider identity、private rule／version、credential、credential pat
 - normal stateの表示とIssue→PR workflowは変わらない。
 - CLI、setup、外部Operationは同じ8項目を共有するが、各内部ruleの正準はそれぞれのownerに残る。
 - 問題説明だけでは、原因の真実性、人間の理解、修正の成功、merge authorityを証明しない。
-- 後続のmaterialな変更は新ADRからこのADRを`Supersedes`で参照し、このfileの`Superseded by`を更新する。
+- 後続のmaterialな変更は新ADRからこのADRを`Supersedes`で参照する。判断本文は遡及編集しないが、supersession relationを解決可能にする`Status`と`Superseded by`の参照metadataは更新できる。

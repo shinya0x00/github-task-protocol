@@ -1,6 +1,6 @@
 # GTP implementation design
 
-この文書は、GTP reader、presentation、setup／adapter、外部Operation接続、通常のIssue→PR workflowのcurrent implementation architectureを所有する。
+この文書は、GTP reader、presentation、setup／adapter、外部Operation接続、通常のIssue→PR workflowの設計を、`Implemented`と`Target / not yet implemented`を区別して所有する。
 
 公開protocolの意味は[`GTP.md`](GTP.md)だけが所有する。この文書やADRだけで、4 Record、6 state、7 halt reason、transition、Evidence、native merge、Acquisition Error、CLI machine contractの意味を変更しない。protocol変更が必要な場合は、同じ変更laneで`GTP.md`を更新する。
 
@@ -14,7 +14,24 @@
 | 親Issue #97 | 正準へのlink、受け入れ条件の要約、子Issueの進行状態 | 設計、実装仕様、GTP task state |
 | 子Issue | 1 PR分の実行contract、scope、完了条件 | merge後の設計正本 |
 
-正準が衝突する場合、公開protocolについては`GTP.md`、current implementationについては`DESIGN.md`、materialな判断理由については未supersedeのADRを優先する。親Issueと子Issueはこれらを参照するprojectionであり、新しい意味を作らない。
+正準が衝突する場合、公開protocolについては`GTP.md`、`Implemented`と明記したcurrent implementationについては`DESIGN.md`、materialな判断理由については未supersedeのADRを優先する。親Issueと子Issueはこれらを参照するprojectionであり、新しい意味を作らない。
+
+## Implementation status
+
+### Implemented
+
+- readerはGitHub resourceをGET-onlyで取得し、`GTP.md`に従ってstate、diagnostic、Acquisition Errorを導出する。
+- machine projectionは既存のdiagnostic、acquisition error、`primary_url`、`authority: none`を返す。
+- human presentationは状態、停止要否、次の行動、理由、最初のURL、非許可表示とtask summaryを返す。
+- READMEの明示setup手順はstable Releaseをexact commitへ固定し、file変更前にbranchを作る。
+
+### Target / not yet implemented
+
+- blocker時だけ8項目の「問題の整理」を表示するCLI behaviorはIssue #99で実装する。
+- instruction、authority、外部dependencyをfile／branch変更前に判定するsetup preflightはIssue #100で実装する。
+- 外部Operation blockerの8項目表示は、#100のsetup境界と各Operation ownerが公開する観測事実を接続して実装する。
+
+Targetはmerge前の仕様であり、現行behaviorのClaimではない。各targetは対応Issueのproduction path、回帰test、native mergeを観測したときだけ`Implemented`へ移す。
 
 ## Architecture
 
@@ -22,32 +39,31 @@
 GitHub Issue comments + live GitHub resources
                     |
                     v
-             read-only reader
+       read-only reader [Implemented]
                     |
                     +--> machine projection
                     |    (既存schema・token・authority: none)
                     |
                     `--> human presentation
-                         (normal summary / blocker時だけ問題の整理)
+                         normal summary [Implemented]
+                         blocker時の問題の整理 [Target #99]
 
 explicit setup request + target repository observations
                     |
                     v
-          setup／adapter preflight
+      setup／adapter preflight [Target #100]
                     |
        proceed または ephemeral blocker report
 
 external Operation observations
                     |
                     v
-       Operation ownerを参照するephemeral report
+ Operation ownerを参照するephemeral report [Target #100]
 ```
 
-- readerはGitHubの観測事実をGET-onlyで取得し、`GTP.md`に従ってstate、diagnostic、Acquisition Errorを導出する。
-- machine projectionは既存のdiagnostic、acquisition error、`primary_url`、`authority: none`を保持する。
-- human presentationはmachine projectionと既存診断事実を説明する。stateやauthorityを再判定しない。
-- setup／adapter preflightはtarget fileまたはbranchを変更する前に既存instruction、authority、外部dependencyを読む。
-- 外部Operationの内部rule、provider、activationはそのOperationのownerが所有し、GTPは推測または複製しない。
+- Targetのhuman presentationはmachine projectionと既存診断事実だけを説明し、stateやauthorityを再判定しない。
+- Targetのsetup／adapter preflightはtarget fileまたはbranchを変更する前に既存instruction、authority、外部dependencyを読む。
+- 外部Operationの内部rule、provider、activationはそのOperationのownerが所有し、Target実装も推測または複製しない。
 
 ## 通常workflow
 
@@ -74,30 +90,46 @@ Issue -> Contract -> Start -> branch -> PR -> Done -> Human native merge
 | 順序 | 項目 | 表示する内容 | 推測しない内容 |
 |---:|---|---|---|
 | 1 | 何が問題か | 観測済みdiagnosticまたはblockerの平易な要約 | 未観測の原因、成功／完了claim |
-| 2 | どこが問題か | Record履歴、binding、Evidence、取得経路、入力Carrier、setup先、外部Operationのいずれか | 一意に決められない所有層 |
+| 2 | どこが問題か | diagnosticが示す最初に確認する層。Record履歴、binding、Evidence、取得経路、入力Carrier、setup先、外部Operationのいずれか | 根本的な修正責任、一意に決められない所有層 |
 | 3 | なぜそう判断したか | diagnostic token、error code、観測値、参照URL | private diagnostic、raw exceptionからの憶測 |
-| 4 | どこを直すか | 観測事実が所有する最小の修正対象 | 関係のないrepository、protocol vocabulary |
+| 4 | どこを直すか | 再現Evidenceで責任を確定できた最小の修正対象。未確定なら「所有層未確定」 | 関係のないrepository、protocol vocabulary |
 | 5 | 何を直さないか | 守る正準、Record、state、対象外resource | 将来必要かもしれない変更 |
 | 6 | 次の安全な一手 | read-only確認、再取得、人間判断、通常の後継Issueのいずれか | 自動修復、自動mutation |
-| 7 | 最初に確認するURL | diagnosticの先頭URL。なければ既存`primary_url` | 存在未確認のURL、private URL |
-| 8 | 解決したと判断する条件 | 同じ入力を再検査したときに観測すべき具体的結果 | Evidenceが保証しない内容の十分性 |
+| 7 | 最初に確認するURL | diagnosticの先頭URL。なければ既存`primary_url` | 存在未確認のURL、利用者が取得していないprivate URL、推測した代替URL |
+| 8 | 解決したと判断する条件 | 再検査で解消可能なら期待するstate／結果。元Issueで解消不能なら保持するterminal resultと後継Issue側の確認条件 | 存在しない元Issueの回復、Evidenceが保証しない内容の十分性 |
 
 「どこを直すか」と「何を直さないか」は必ず同時に表示する。修正対象だけでは、非エンジニアがGTP coreや正常なresourceまで変更する指示を出す危険があるためである。
 
-### 所有層mapping
+### 最初に確認する層のmapping
 
-| 入力 | 問題の所有層 | 修正候補 | 変更しない対象 |
+diagnostic tokenは観測された不一致を分類し、最初に確認する層を示す。tokenだけでは根本原因または修正責任を確定しない。
+
+| 入力 | 最初に確認する層 | 最初の調査 | 変更しない対象 |
 |---|---|---|---|
 | `invalid_record`、`conflicting_records`、`invalid_transition` | 対象IssueのRecord履歴 | 原因commentの確認と、必要なら人間判断後のStop／後継Issue | Carrierの編集・削除、Record grammar |
 | `invalid_binding` | Issue、branch、PR、scopeのbinding | 原因URLで参照関係と変更fileを確認 | 4 Record、6 state、7 halt reason |
 | `invalid_evidence`、`stale_evidence` | Done Claim、Evidence resource、source head | resource状態とSHAの一致を確認し、継続不能なら通常の後継Issue | Contract、state vocabulary |
-| `terminal_violation` | terminal履歴と後続Record／merge | 先に成立したterminal resultを保持し、必要作業を別Issueへ送る | 元Issueの履歴修復、新Record追加 |
+| `terminal_violation` | terminal履歴と後続Record／merge | 元Issueは同じ`terminal_violation`を保持する。必要作業を別Issueへ送り、そのIssue固有の完了条件を確認する | 元Issueの履歴修復、新Record追加、元Issueの回復claim |
 | Acquisition Error | GitHub取得、認証、rate limit、snapshot経路 | 同じresourceのread-only再取得またはアクセス経路の修正 | protocol不適合への分類、Record |
 | `gtp check`不適合 | 投稿予定Markdown Carrier | error codeとJSON pathが示す入力箇所 | 未観測のIssue、branch、PR |
 | setup blocker | setup先instruction／authority／dependency | 確認済みownerまたはtarget instruction | target file、branch、Issue、PR |
 | 外部Operation blocker | Operation provider／activation owner | 確認済みowner repository、Issue、host integration | GTP core、test providerによる代用 |
 
-所有層または修正先を一意に決められない場合は「所有層未確定」または「修正先Issue未確認」と表示し、人間へ戻す。存在を確認していないIssueやownerを作らない。
+### 根本的な修正責任の確定
+
+修正責任はtokenではなく再現Evidenceから決める。
+
+1. 原因URLと入力をread-onlyで取得し、`GTP.md`または対象ownerの公開仕様へ照合する。
+2. `GTP.md`適合入力を同じproduction pathが誤判定したことを再現できた場合だけ、GTP implementationを修正責任として確定する。
+3. 入力またはGitHub bindingが公開仕様へ不適合だと観測できた場合は、そのresourceを修正候補とする。ただし既存Carrierの編集・削除は提案しない。
+4. どちらもEvidenceで確定できなければ、根本的な修正責任は「所有層未確定」とする。
+
+修正先Issueを確認できない場合は「修正先Issue未確認」と表示する。存在を確認していないIssueやownerを作らない。
+
+### 解決確認の2種類
+
+- 再検査で解消可能なcaseは、同じ入力とresourceを再取得したときに期待するstate、check結果、または取得完了を示す。
+- `terminal_violation`など元Issueで解消不能なcaseは、元Issueがterminal resultとviolationを保持することを明示し、後継Issueで確認するContract、PR、Evidence、native mergeを示す。元Issueが正常stateへ戻るとは表示しない。
 
 ## 非干渉境界
 
@@ -114,12 +146,20 @@ Issue -> Contract -> Start -> branch -> PR -> Done -> Human native merge
 
 - 問題説明、exit code、Check Run、Record、Evidenceは変更、完了、mergeのauthorityを与えない。
 - private provider identity、private rule／version、credential、credential path、local absolute path、stack trace、raw exception、private diagnosticを人向け表示へ出さない。
-- 公開可能なGitHub URLは、取得と公開可否を確認できた場合だけ表示する。
+- 認証済み利用者へ返すinteractive consoleでは、現行の先頭6項目との互換性を維持し、その利用者が取得した同一repositoryのprivate Issue／comment／PR URLを表示できる。この表示は公開許可を意味しない。
+- public acceptance／release artifact、Issueへの自動保存、公開logでは、publicであることを確認したURLまたは人間が対象を明示して公開を承認したURLだけを記録する。private URLはredactし、代替URLを推測しない。
+- 外部providerのprivate diagnostic URLはinteractive consoleにも転記せず、確認済みの公開owner URLまたは「修正先Issue未確認」を使う。
 - Evidenceが示すのは観測resourceとのbindingまでであり、自然言語上の十分性やactor本人性を証明しない。
+
+## Distribution boundary
+
+- `DESIGN.md`と`adr/`のcanonical ownerはGitHub repositoryである。
+- 公開済み1.0.2のsdistは両pathを含まない。1.0.2のarchive内だけでcurrent designを再構成できるとはClaimしない。
+- 1.0.3 publicationを所有するIssue #102は、sdistへ`DESIGN.md`と`adr/`を収録し、archive内の相対linkを検証してから公開する。
 
 ## 変更規則
 
 - 公開protocol semanticsを変える変更は`GTP.md`を同じlaneで更新し、versionと互換性を判断する。
 - current architectureの変更は`DESIGN.md`を更新する。
-- materialな判断変更は新しいADRでsupersessionを記録する。既存ADRを遡及編集しない。
+- materialな判断変更は新しいADRでsupersessionを記録する。既存ADRの判断本文は遡及編集しない。ただし、supersession relationを解決可能にする`Status`と`Superseded by`の参照metadataは更新できる。
 - 親Issue #97はGTP taskとして実行せず、子Issueのnative mergeを観測した後に進行状態だけを更新する。
