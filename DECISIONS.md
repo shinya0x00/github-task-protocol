@@ -2,6 +2,8 @@
 
 > 現在のprotocolの唯一の正本は[`GTP.md`](GTP.md)である。この文書は採否理由と設計履歴を所有し、Record作成やstate判断の追加仕様ではない。意味が衝突する場合は`GTP.md`を優先する。
 
+このfileの既存本文は設計履歴として保持する。current implementation architectureは[`DESIGN.md`](DESIGN.md)、今後のsupersede可能なmaterial decisionは[`adr/`](adr/)を正準とする。`DESIGN.md`またはADRだけで公開protocolの意味は変更せず、衝突時は`GTP.md`を優先する。
+
 ## 現在の判断を読む順序
 
 1. ADR-027: `GTP.md`を唯一の公開正本とし、4 Record・6 state・7 halt reasonへ限定した理由。
