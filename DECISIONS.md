@@ -2,7 +2,7 @@
 
 > 現在のprotocolの唯一の正本は[`GTP.md`](GTP.md)である。この文書は採否理由と設計履歴を所有し、Record作成やstate判断の追加仕様ではない。意味が衝突する場合は`GTP.md`を優先する。
 
-このfileの既存本文は設計履歴として保持する。current implementation architectureは[`DESIGN.md`](DESIGN.md)、今後のsupersede可能なmaterial decisionは[`adr/`](adr/)を正準とする。`DESIGN.md`またはADRだけで公開protocolの意味は変更せず、衝突時は`GTP.md`を優先する。
+このfileの既存本文は設計履歴として保持する。ImplementedとTargetを区別したcurrent designは[`DESIGN.md`](https://github.com/shinya0x00/github-task-protocol/blob/main/DESIGN.md)、今後のsupersede可能なmaterial decisionは[`adr/`](https://github.com/shinya0x00/github-task-protocol/tree/main/adr)をrepository canonical sourceとする。公開済み1.0.2のsdistは両pathを含まないためabsolute repository URLで参照し、1.0.3での収録はrelease Issue #102が所有する。`DESIGN.md`またはADRだけで公開protocolの意味は変更せず、衝突時は`GTP.md`を優先する。
 
 ## 現在の判断を読む順序
 
