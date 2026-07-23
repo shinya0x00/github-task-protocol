@@ -23,6 +23,19 @@ GTP repository: https://github.com/shinya0x00/github-task-protocol
 
 agentが手順を理解できることと、実行中ずっと意図の境界内に留まり続けることは別の能力です。この手順はbranch-first順序で境界逸脱のriskを下げます。GTP単独の強制力はこの手順の受入対象にしません。repository ownerは補完策としてGitHub branch protectionまたはrulesetでdefault branchへの直接pushを拒否し、pull request経由の変更を必須にできます。setup agentは保護設定を変更せず、未設定なら人間へ報告します。
 
+### file・branch変更前のpreflight
+
+target fileの編集、branch作成、Issue／comment／label操作、PR作成より前に、read-onlyで既存instruction、task protocol authority、必要な外部provider／runtime／Operationとその接続状態を確認します。結果は次の4つだけです。
+
+1. `instructionなし`: 通常setupを続行する。
+2. `両立可能`: 既存instructionを保持し、adapterを非破壊で追加する通常setupを続行する。
+3. `未接続dependency`: test／mock providerでproduction dependencyを代用せず、変更せずに外部Operation接続のblockerを報告する。
+4. `別authority／意味衝突`: 自動統合や上書きをせず、人間のauthority判断へ戻す。
+
+blockerでは、chatまたはconsoleへ「何が問題か」「どこが問題か」「なぜそう判断したか」「どこを直すか」「何を直さないか」「次の安全な一手」「最初に確認するURL」「解決したと判断する条件」の8項目を返します。外部Operationのowner URLはread-only取得で確認できた場合だけ表示し、不明なら`修正先Issue未確認`と表示します。
+
+preflightとblocker報告はephemeralです。working tree、branch、commit、push、Issue、comment、label、PRを変更せず、repair Issueも自動作成しません。blocker解消後は同じ入力でpreflightを再実行します。`instructionなし`または`両立可能`の場合だけ、次の既存branch-first手順へ進みます。
+
 1. GitHubのlatest stable Releaseを取得し、`draft: false`かつ`prerelease: false`を確認する。未公開candidateやmoving `main`は選ばない。
 2. Releaseのtagをcommit SHAまでdereferenceし、選択したtagとexact commit SHAを記録する。
 3. target fileを変更する前にrepositoryのdefault branch名とhead SHAを記録し、そのheadから`gtp/setup-<tag>-<short-sha>` branchを作ってswitchする。現在branchがdefault branchではなくsetup branchであることを確認できなければ停止する。
