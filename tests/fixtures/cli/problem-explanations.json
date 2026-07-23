@@ -13,18 +13,18 @@
   "halt": {
     "invalid_record": [
       "GTP Recordの形式、内容、編集状態のいずれかが不正です",
-      "対象IssueのRecord履歴",
-      "diagnostic token: invalid_record",
-      "Record履歴を確認し、人間が必要ならStopと後継Issueを選ぶ（修正候補。根本的な修正責任は未確定）",
-      "既存Carrierの編集・削除、Record grammar、state語彙",
-      "最初のURLのCarrierとcomment履歴をread-onlyで確認する",
+      "対象IssueのGTP記録があるcomment",
+      "Issue commentを、変更されていない一意のGTP記録として確定できませんでした",
+      "最初のURLのcomment内容を確認し、過去commentは直さず、人間が必要ならStopと後継Issueを選ぶ（修正候補。根本的な修正責任は未確定）",
+      "過去のIssue commentを編集・削除しない。GTPの仕様を変更しない",
+      "最初のURLのcommentと前後のGTP記録をread-onlyで確認する",
       "https://github.com/o/r/issues/1#issuecomment-9",
-      "既存Carrierを変更せず、人間判断後のvalid Stopで元Issueをstoppedにし、必要なら後継Issueで再開する"
+      "過去commentを変更せず、人間判断後のvalid Stopで元Issueをstoppedにし、必要なら後継Issueで再開する"
     ],
     "conflicting_records": [
       "同じ役割のRecordが競合しています",
       "対象IssueのRecord履歴",
-      "diagnostic token: conflicting_records",
+      "Issueに同じ役割のGTP Recordが複数あります",
       "競合したRecord履歴を確認し、人間がStopと後継Issueを選ぶ（修正候補。根本的な修正責任は未確定）",
       "既存Carrierの編集・削除、Recordのjoin、Record grammar",
       "最初のURLから同じ役割のLogical Recordをread-onlyで確認する",
@@ -34,7 +34,7 @@
     "invalid_transition": [
       "Recordの順序または参照関係が成立していません",
       "対象IssueのRecord履歴",
-      "diagnostic token: invalid_transition",
+      "GTP Recordの順序または参照先を確認できませんでした",
       "Record順序と参照を確認し、人間がStopと後継Issueを選ぶ（修正候補。根本的な修正責任は未確定）",
       "既存Carrierの編集・削除、Record順序の書換え、state語彙",
       "最初のURLと先行Recordをread-onlyで時系列確認する",
@@ -42,19 +42,19 @@
       "既存Recordを変更せず、人間判断後のvalid Stopで元Issueをstoppedにし、後継Issueで正しい順序から再開する"
     ],
     "invalid_binding": [
-      "Issue、branch、PR、scopeの束縛が一致しません",
-      "Issue、branch、PR、scopeのbinding",
-      "diagnostic token: invalid_binding",
-      "diagnostic URLが示すbranch、PR、scopeの参照関係（修正候補。根本的な修正責任は未確定）",
-      "4 Record、6 state、7 halt reason、Record grammar",
-      "最初のURLで参照関係とPR変更fileをread-onlyで比較する",
+      "Issueの記録が指す対象とGitHub上の対象が一致しません",
+      "Issueの記録が指す対象とGitHub上で確認した対象",
+      "Issueの記録が指す対象とGitHub上で確認した対象が一致しませんでした",
+      "最初のURLで記録の参照先とGitHub上の対象を比較する（修正候補。根本的な修正責任は未確定）",
+      "一致を確認できていない記録やGitHub上の対象を推測で変更しない",
+      "最初のURLで記録の参照先とGitHub上の対象をread-onlyで比較する",
       "https://github.com/o/r/issues/1#issuecomment-9",
-      "再取得でIssue、branch、PR、scopeのbindingが一致してhaltが消える、または人間判断後に後継Issueへ移る"
+      "再取得で記録の参照先とGitHub上の対象が一致する、または人間判断後に後継Issueへ移る"
     ],
     "invalid_evidence": [
       "Done Conditionに対応するEvidenceを確認できません",
       "Done Claim、Evidence resource、source head",
-      "diagnostic token: invalid_evidence",
+      "Done Conditionに対応するEvidence URLまたは成功状態を確認できませんでした",
       "Evidenceのkey、kind、resource状態、source head binding（修正候補。根本的な修正責任は未確定）",
       "Contract、state語彙、既存Done Carrierの編集・削除",
       "最初のURLでEvidence resourceの状態とSHAをread-onlyで確認する",
@@ -64,7 +64,7 @@
     "stale_evidence": [
       "EvidenceがDoneのsource head SHAと一致しません",
       "Done Claim、Evidence resource、source head",
-      "diagnostic token: stale_evidence",
+      "Evidenceが示すcommitとDoneが示すsource headが異なります",
       "新しいsource headを扱う通常の後継Issue（修正候補。根本的な修正責任は未確定）",
       "既存Done Carrier、Evidence URL、source履歴の書換え",
       "最初のURLでDone、Evidence、現在のPR headをread-onlyで比較する",
@@ -74,7 +74,7 @@
     "terminal_violation": [
       "terminal stateの前後関係に違反するRecordまたはmergeがあります",
       "terminal履歴と後続Recordまたはmerge",
-      "diagnostic token: terminal_violation",
+      "完了または停止の後に追加のGTP Recordまたはmergeが見つかりました",
       "必要作業を扱う通常の別Issue（修正候補。元Issueの修正責任は確定しない）",
       "元Issueのterminal履歴、新Record追加、元Issueの回復claim",
       "先に成立したterminal resultを保持し、別Issueの確認条件を人間と決める",
@@ -97,7 +97,7 @@
       "paths": ["README.md", "docs/outside.md"],
       "private_message": "private diagnostic must not be displayed",
       "private_exception": "private exception must not be displayed",
-      "reason": "diagnostic token: invalid_binding; paths: README.md, docs/outside.md"
+      "reason": "PRに変更範囲外のfile README.md, docs/outside.mdが含まれています"
     },
     "http_403": {
       "code": "acquisition_incomplete",
