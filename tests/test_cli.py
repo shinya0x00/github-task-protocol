@@ -424,6 +424,7 @@ class CliTests(unittest.TestCase):
             ):
                 _, human, output = self.call(["status", issue_url])
                 self.assertEqual(expected, self.problem_values(human, labels))
+                self.assertNotIn("diagnostic token", expected[2])
                 self.assertEqual(cause_url, output["primary_url"])
 
         acquisition = StatusResult(
@@ -494,6 +495,11 @@ class CliTests(unittest.TestCase):
             _, human, _ = self.call(["status", issue_url])
         reason = self.problem_values(human, labels)[2]
         self.assertEqual(scope["reason"], reason)
+        self.assertNotIn("diagnostic token", reason)
+        problem = "\n".join(self.problem_values(human, labels))
+        self.assertNotIn("binding", problem)
+        self.assertNotIn("束縛", problem)
+        self.assertNotIn("4 Record、6 state、7 halt reason", problem)
         self.assertNotIn(scope["private_message"], "\n".join(human))
         self.assertNotIn(scope["private_exception"], "\n".join(human))
         self.assertNotIn("private-provider", "\n".join(human))
@@ -753,10 +759,23 @@ class CliTests(unittest.TestCase):
                 if case.get("reason"):
                     self.assertEqual(case["reason"], output["diagnostics"][0]["token"])
                 if case["name"] == "scope outside":
+                    values = self.problem_values(
+                        human,
+                        json.loads(
+                            (CLI_FIXTURES / "problem-explanations.json").read_text(
+                                encoding="utf-8"
+                            )
+                        )["labels"],
+                    )
+                    self.assertIn("README.md", values[0])
                     self.assertIn(
-                        "diagnostic token: invalid_binding; paths: README.md",
+                        "このIssueで変更してよい範囲はsrc/ですが、"
+                        "PRに範囲外のfile README.mdが含まれています",
                         "\n".join(human),
                     )
+                    problem = "\n".join(values)
+                    self.assertNotIn("binding", problem)
+                    self.assertNotIn("束縛", problem)
                 if case.get("first_url"):
                     self.assertEqual(case["first_url"], output["primary_url"])
                     self.assertEqual(

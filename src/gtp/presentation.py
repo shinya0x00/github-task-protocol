@@ -18,6 +18,15 @@ HALT_MESSAGES = {
     "stale_evidence": "EvidenceがDoneのsource head SHAと一致しません",
     "terminal_violation": "terminal stateの前後関係に違反するRecordまたはmergeがあります",
 }
+HALT_OBSERVATIONS = {
+    "invalid_record": "Issue commentをGTP Recordとして読み取れませんでした",
+    "conflicting_records": "Issueに同じ役割のGTP Recordが複数あります",
+    "invalid_transition": "GTP Recordの順序または参照先を確認できませんでした",
+    "invalid_binding": "Issueに記録されたbranch、PR、変更範囲の対応を確認できませんでした",
+    "invalid_evidence": "Done Conditionに対応するEvidence URLまたは成功状態を確認できませんでした",
+    "stale_evidence": "Evidenceが示すcommitとDoneが示すsource headが異なります",
+    "terminal_violation": "完了または停止の後に追加のGTP Recordまたはmergeが見つかりました",
+}
 EVIDENCE_LIMITS = [
     "Check RunがDone Conditionの内容を十分に検査したこと",
     "Artifactの内容がDone Conditionを満たすこと",
@@ -28,10 +37,10 @@ EVIDENCE_LIMITS = [
 ]
 PROBLEM_LABELS = ("何が問題か", "どこが問題か", "なぜそう判断したか", "どこを直すか", "何を直さないか", "次の安全な一手", "最初に確認するURL", "解決したと判断する条件")
 HALT_PROBLEMS = {
-    "invalid_record": ("対象IssueのRecord履歴", "Record履歴を確認し、人間が必要ならStopと後継Issueを選ぶ（修正候補。根本的な修正責任は未確定）", "既存Carrierの編集・削除、Record grammar、state語彙", "最初のURLのCarrierとcomment履歴をread-onlyで確認する", "既存Carrierを変更せず、人間判断後のvalid Stopで元Issueをstoppedにし、必要なら後継Issueで再開する"),
+    "invalid_record": ("対象IssueのGTP記録があるcomment", "最初のURLのcomment内容を確認し、過去commentは直さず、人間が必要ならStopと後継Issueを選ぶ（修正候補。根本的な修正責任は未確定）", "過去のIssue commentを編集・削除しない。GTPの仕様を変更しない", "最初のURLのcommentと前後のGTP記録をread-onlyで確認する", "過去commentを変更せず、人間判断後のvalid Stopで元Issueをstoppedにし、必要なら後継Issueで再開する"),
     "conflicting_records": ("対象IssueのRecord履歴", "競合したRecord履歴を確認し、人間がStopと後継Issueを選ぶ（修正候補。根本的な修正責任は未確定）", "既存Carrierの編集・削除、Recordのjoin、Record grammar", "最初のURLから同じ役割のLogical Recordをread-onlyで確認する", "既存Recordを変更せず、人間判断後のvalid Stopで元Issueをstoppedにし、後継Issueで一意のContractから再開する"),
     "invalid_transition": ("対象IssueのRecord履歴", "Record順序と参照を確認し、人間がStopと後継Issueを選ぶ（修正候補。根本的な修正責任は未確定）", "既存Carrierの編集・削除、Record順序の書換え、state語彙", "最初のURLと先行Recordをread-onlyで時系列確認する", "既存Recordを変更せず、人間判断後のvalid Stopで元Issueをstoppedにし、後継Issueで正しい順序から再開する"),
-    "invalid_binding": ("Issue、branch、PR、scopeのbinding", "diagnostic URLが示すbranch、PR、scopeの参照関係（修正候補。根本的な修正責任は未確定）", "4 Record、6 state、7 halt reason、Record grammar", "最初のURLで参照関係とPR変更fileをread-onlyで比較する", "再取得でIssue、branch、PR、scopeのbindingが一致してhaltが消える、または人間判断後に後継Issueへ移る"),
+    "invalid_binding": ("Issueで変更してよい範囲とbranch・PRの対応", "最初のURLでIssueの変更範囲とPRの変更fileを比較する（修正候補。根本的な修正責任は未確定）", "Issueに既に投稿された記録とGTP.mdの仕様", "最初のURLでIssueの変更範囲とPRの変更fileをread-onlyで比較する", "再取得でIssueに記録されたbranch、PR、変更範囲の対応を確認できる、または人間判断後に後継Issueへ移る"),
     "invalid_evidence": ("Done Claim、Evidence resource、source head", "Evidenceのkey、kind、resource状態、source head binding（修正候補。根本的な修正責任は未確定）", "Contract、state語彙、既存Done Carrierの編集・削除", "最初のURLでEvidence resourceの状態とSHAをread-onlyで確認する", "Evidence resourceが成功状態でDoneのsource headと一致してhaltが消える、または人間判断後に後継Issueへ移る"),
     "stale_evidence": ("Done Claim、Evidence resource、source head", "新しいsource headを扱う通常の後継Issue（修正候補。根本的な修正責任は未確定）", "既存Done Carrier、Evidence URL、source履歴の書換え", "最初のURLでDone、Evidence、現在のPR headをread-onlyで比較する", "元のDoneと履歴を変更せずvalid Stopで元Issueをstoppedにし、後継Issueで新しいheadへ束縛する"),
     "terminal_violation": ("terminal履歴と後続Recordまたはmerge", "必要作業を扱う通常の別Issue（修正候補。元Issueの修正責任は確定しない）", "元Issueのterminal履歴、新Record追加、元Issueの回復claim", "先に成立したterminal resultを保持し、別Issueの確認条件を人間と決める", "元Issueでは解消不能。terminal resultとviolationを保持し、別IssueのContract、PR、Evidence、native mergeを確認する"),
@@ -53,7 +62,6 @@ def _problem_lines(values: tuple[str, ...]) -> list[str]:
 
 
 def _halt_observation(machine: dict[str, Any], token: str) -> str:
-    observation = f"diagnostic token: {token}"
     diagnostics = machine.get("diagnostics")
     diagnostic = (
         diagnostics[0] if isinstance(diagnostics, list) and diagnostics else None
@@ -65,9 +73,21 @@ def _halt_observation(machine: dict[str, Any], token: str) -> str:
         if isinstance(paths, list)
         else []
     )
-    if safe_paths:
-        observation += f"; paths: {', '.join(safe_paths)}"
-    return observation
+    if token == "invalid_binding" and safe_paths:
+        task_context = machine.get("task_context")
+        scope = task_context.get("scope") if isinstance(task_context, dict) else None
+        safe_scope = (
+            [path for path in scope if isinstance(path, str)]
+            if isinstance(scope, list)
+            else []
+        )
+        if safe_scope:
+            return (
+                f"このIssueで変更してよい範囲は{', '.join(safe_scope)}ですが、"
+                f"PRに範囲外のfile {', '.join(safe_paths)}が含まれています"
+            )
+        return f"PRに変更範囲外のfile {', '.join(safe_paths)}が含まれています"
+    return HALT_OBSERVATIONS.get(token, "protocol上の不適合を観測しました")
 
 
 def _acquisition_observation(error: dict[str, Any] | None) -> str:
@@ -96,8 +116,32 @@ def _status_problem(machine: dict[str, Any]) -> tuple[str, ...] | None:
                 "同じresourceを再取得し、期待するstateまたは別Issueの確認条件を確認する",
             ),
         )
+        if token == "invalid_binding":
+            diagnostics = machine.get("diagnostics")
+            diagnostic = (
+                diagnostics[0]
+                if isinstance(diagnostics, list) and diagnostics
+                else None
+            )
+            detail = diagnostic.get("detail") if isinstance(diagnostic, dict) else None
+            paths = detail.get("paths") if isinstance(detail, dict) else None
+            safe_paths = (
+                [path for path in paths if isinstance(path, str)]
+                if isinstance(paths, list)
+                else []
+            )
+            if safe_paths:
+                what = f"PRに、このIssueで変更してよい範囲外のfile {', '.join(safe_paths)}があります"
+                repair = (
+                    "範囲外のfileをこのPRから外すか、必要なら通常の後継Issueで扱う"
+                    "（修正候補。最終判断は人間）"
+                )
+            else:
+                what = "Issueに記録されたbranch、PR、変更範囲の対応を確認できません"
+        else:
+            what = HALT_MESSAGES.get(token, "protocol上の不適合を確認しました")
         return (
-            HALT_MESSAGES.get(token, "protocol上の不適合を確認しました"),
+            what,
             layer,
             _halt_observation(machine, token),
             repair,
