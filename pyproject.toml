@@ -5,7 +5,7 @@ backend-path = ["."]
 
 [project]
 name = "github-task-protocol"
-version = "1.0.2"
+version = "1.0.3"
 description = "Reconstruct AI coding task state from GitHub Issue records"
 readme = "README.md"
 requires-python = ">=3.11"

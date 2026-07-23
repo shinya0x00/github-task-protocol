@@ -16,6 +16,7 @@ MATRIX = json.loads(
     )
 )
 PROJECT = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+PUBLISHED_CLI_VERSION = "1.0.2"
 
 
 class ReleaseSurfaceTests(unittest.TestCase):
@@ -86,7 +87,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn("[`GTP.md`](GTP.md)", readme)
         self.assertIn("人間がGTPを使うためにCLIをinstallする必要はありません", readme)
         self.assertIn(
-            f"uvx --from github-task-protocol=={PROJECT['version']} gtp status",
+            f"uvx --from github-task-protocol=={PUBLISHED_CLI_VERSION} gtp status",
             readme,
         )
         self.assertNotIn("package registryへ一般公開していません", readme)
@@ -265,7 +266,10 @@ class ReleaseSurfaceTests(unittest.TestCase):
                 encoding="utf-8"
             )
         )
-        self.assertEqual(PROJECT["version"], current_evidence["pypi"]["package_version"])
+        self.assertEqual("1.0.3", PROJECT["version"])
+        self.assertEqual(
+            PUBLISHED_CLI_VERSION, current_evidence["pypi"]["package_version"]
+        )
         self.assertTrue(current_evidence["github_release"]["published_at"])
         self.assertTrue(current_evidence["github_release"]["latest_stable"])
         self.assertTrue(current_evidence["pypi"]["files_redownloaded_and_hashed"])
@@ -283,8 +287,9 @@ class ReleaseSurfaceTests(unittest.TestCase):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("CLI `1.0.2`は[PyPI]", readme)
         self.assertIn("public-release-v1.0.2.json", readme)
-        self.assertNotIn("現在のsource candidateは`1.0.2`", readme)
-        self.assertNotIn("公開確認前", readme)
+        self.assertIn("現在のsource candidateは`1.0.3`（公開前）", readme)
+        self.assertIn("利用commandは検証済みの`1.0.2`に固定", readme)
+        self.assertNotIn("github-task-protocol==1.0.3", readme)
         self.assertTrue((ROOT / "acceptance" / "release-notes-v1.0.2.md").exists())
         decisions = (ROOT / "DECISIONS.md").read_text(encoding="utf-8")
         self.assertIn(

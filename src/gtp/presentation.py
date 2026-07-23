@@ -26,6 +26,144 @@ EVIDENCE_LIMITS = [
     "credential安全性",
     "GitHub外情報を参照しなかったこと",
 ]
+PROBLEM_LABELS = ("何が問題か", "どこが問題か", "なぜそう判断したか", "どこを直すか", "何を直さないか", "次の安全な一手", "最初に確認するURL", "解決したと判断する条件")
+HALT_PROBLEMS = {
+    "invalid_record": ("対象IssueのRecord履歴", "Record履歴を確認し、人間が必要ならStopと後継Issueを選ぶ（修正候補。根本的な修正責任は未確定）", "既存Carrierの編集・削除、Record grammar、state語彙", "最初のURLのCarrierとcomment履歴をread-onlyで確認する", "既存Carrierを変更せず、人間判断後のvalid Stopで元Issueをstoppedにし、必要なら後継Issueで再開する"),
+    "conflicting_records": ("対象IssueのRecord履歴", "競合したRecord履歴を確認し、人間がStopと後継Issueを選ぶ（修正候補。根本的な修正責任は未確定）", "既存Carrierの編集・削除、Recordのjoin、Record grammar", "最初のURLから同じ役割のLogical Recordをread-onlyで確認する", "既存Recordを変更せず、人間判断後のvalid Stopで元Issueをstoppedにし、後継Issueで一意のContractから再開する"),
+    "invalid_transition": ("対象IssueのRecord履歴", "Record順序と参照を確認し、人間がStopと後継Issueを選ぶ（修正候補。根本的な修正責任は未確定）", "既存Carrierの編集・削除、Record順序の書換え、state語彙", "最初のURLと先行Recordをread-onlyで時系列確認する", "既存Recordを変更せず、人間判断後のvalid Stopで元Issueをstoppedにし、後継Issueで正しい順序から再開する"),
+    "invalid_binding": ("Issue、branch、PR、scopeのbinding", "diagnostic URLが示すbranch、PR、scopeの参照関係（修正候補。根本的な修正責任は未確定）", "4 Record、6 state、7 halt reason、Record grammar", "最初のURLで参照関係とPR変更fileをread-onlyで比較する", "再取得でIssue、branch、PR、scopeのbindingが一致してhaltが消える、または人間判断後に後継Issueへ移る"),
+    "invalid_evidence": ("Done Claim、Evidence resource、source head", "Evidenceのkey、kind、resource状態、source head binding（修正候補。根本的な修正責任は未確定）", "Contract、state語彙、既存Done Carrierの編集・削除", "最初のURLでEvidence resourceの状態とSHAをread-onlyで確認する", "Evidence resourceが成功状態でDoneのsource headと一致してhaltが消える、または人間判断後に後継Issueへ移る"),
+    "stale_evidence": ("Done Claim、Evidence resource、source head", "新しいsource headを扱う通常の後継Issue（修正候補。根本的な修正責任は未確定）", "既存Done Carrier、Evidence URL、source履歴の書換え", "最初のURLでDone、Evidence、現在のPR headをread-onlyで比較する", "元のDoneと履歴を変更せずvalid Stopで元Issueをstoppedにし、後継Issueで新しいheadへ束縛する"),
+    "terminal_violation": ("terminal履歴と後続Recordまたはmerge", "必要作業を扱う通常の別Issue（修正候補。元Issueの修正責任は確定しない）", "元Issueのterminal履歴、新Record追加、元Issueの回復claim", "先に成立したterminal resultを保持し、別Issueの確認条件を人間と決める", "元Issueでは解消不能。terminal resultとviolationを保持し、別IssueのContract、PR、Evidence、native mergeを確認する"),
+}
+CHECK_PROBLEMS = {
+    "unrecognized": ("投稿前MarkdownにExact MarkerがなくGTP Carrierとして認識できません", "投稿前Carrier", "投稿予定MarkdownのExact MarkerとCarrier全体（修正候補。根本的な修正責任は未確定）", "未確認のIssue、branch、PR、protocol vocabulary", "入力fileに完全なCarrierを作成してgtp checkを再実行する", "recognizedとschema_validがともにtrueになる"),
+    "format": ("投稿前GTP CarrierのMarkdown構造が形式に適合しません", "投稿前Carrier", "error pathが示すCarrier構造（修正候補。根本的な修正責任は未確定）", "未確認のIssue、branch、PR、Record grammar", "error codeとpathの入力箇所を修正してgtp checkを再実行する", "recognizedとschema_validがともにtrueになる"),
+    "json": ("投稿前GTP CarrierのJSONをstrict JSONとして読めません", "投稿前CarrierのJSON", "error pathが示すJSON（修正候補。根本的な修正責任は未確定）", "未確認のIssue、branch、PR、GTP state", "error codeとpathのJSONを修正してgtp checkを再実行する", "recognizedとschema_validがともにtrueになる"),
+    "schema": ("投稿前GTP Recordがclosed schemaに適合しません", "投稿前CarrierのRecord JSON", "error pathが示すschema不適合箇所（修正候補。根本的な修正責任は未確定）", "未確認のIssue、branch、PR、公開protocol vocabulary", "error codeとpathのfieldだけを修正してgtp checkを再実行する", "recognizedとschema_validがともにtrueになる"),
+}
+SCHEMA_ERROR_CODES = {"duplicate_value", "invalid_condition_id", "invalid_type", "invalid_url", "invalid_value", "missing_field", "unknown_field"}
+
+
+def _problem_lines(values: tuple[str, ...]) -> list[str]:
+    return ["問題の整理:"] + [
+        f"  {index}. {label}: {value}"
+        for index, (label, value) in enumerate(zip(PROBLEM_LABELS, values), start=1)
+    ]
+
+
+def _halt_observation(machine: dict[str, Any], token: str) -> str:
+    observation = f"diagnostic token: {token}"
+    diagnostics = machine.get("diagnostics")
+    diagnostic = (
+        diagnostics[0] if isinstance(diagnostics, list) and diagnostics else None
+    )
+    detail = diagnostic.get("detail") if isinstance(diagnostic, dict) else None
+    paths = detail.get("paths") if isinstance(detail, dict) else None
+    safe_paths = (
+        [path for path in paths if isinstance(path, str)]
+        if isinstance(paths, list)
+        else []
+    )
+    if safe_paths:
+        observation += f"; paths: {', '.join(safe_paths)}"
+    return observation
+
+
+def _acquisition_observation(error: dict[str, Any] | None) -> str:
+    code = (
+        error.get("code", "acquisition_incomplete")
+        if error
+        else "acquisition_incomplete"
+    )
+    observation = f"acquisition error: {code}"
+    status = error.get("status") if error else None
+    if isinstance(status, int) and not isinstance(status, bool):
+        observation += f"; status: {status}"
+    return observation
+
+
+def _status_problem(machine: dict[str, Any]) -> tuple[str, ...] | None:
+    if machine["state"] == "halt":
+        token = machine["halt_reason"] or "unknown"
+        layer, repair, excluded, next_step, resolution = HALT_PROBLEMS.get(
+            token,
+            (
+                "所有層未確定",
+                "修正責任未確定",
+                "未確認のresource、Record grammar、state語彙",
+                "最初のURLをread-onlyで確認して人間へ戻す",
+                "同じresourceを再取得し、期待するstateまたは別Issueの確認条件を確認する",
+            ),
+        )
+        return (
+            HALT_MESSAGES.get(token, "protocol上の不適合を確認しました"),
+            layer,
+            _halt_observation(machine, token),
+            repair,
+            excluded,
+            next_step,
+            machine["primary_url"],
+            resolution,
+        )
+    if machine["state"] is None:
+        errors = machine["acquisition_errors"]
+        error = errors[0] if errors and isinstance(errors[0], dict) else None
+        return (
+            "GitHub情報を完全に取得できずstateを決定できません",
+            "GitHub取得経路",
+            _acquisition_observation(error),
+            "取得・認証・snapshot経路（修正責任未確定）",
+            "GTP Record、state、halt reason",
+            "同じresourceをread-onlyで再取得する",
+            machine["primary_url"],
+            "取得がcompleteとなりstateを再構成できる",
+        )
+    return None
+
+
+def _check_problem(result: CarrierResult) -> tuple[str, ...] | None:
+    if result.recognized and result.schema_valid:
+        return None
+    if not result.recognized:
+        category = "unrecognized"
+        why = "check result: recognized=false"
+    else:
+        error = result.errors[0] if result.errors else {}
+        code = error.get("code", "invalid_carrier")
+        path = error.get("path", "$")
+        category = (
+            "json"
+            if code in {"duplicate_key", "invalid_json"}
+            else "schema"
+            if code in SCHEMA_ERROR_CODES
+            else "format"
+        )
+        why = f"check error: {code} at {path}"
+    what, layer, repair, excluded, next_step, resolution = CHECK_PROBLEMS[category]
+    return (
+        what,
+        layer,
+        why,
+        repair,
+        excluded,
+        next_step,
+        "URLなし（投稿前入力）",
+        resolution,
+    )
+
+
+def _input_error_problem() -> tuple[str, ...]:
+    return (
+        "入力fileをUTF-8のMarkdown commentとして取得できません",
+        "投稿前入力の取得経路",
+        "input_errorを観測しました",
+        "入力fileの存在、読取権限、UTF-8 encoding（修正候補。根本的な修正責任は未確定）",
+        "未確認のIssue、branch、PR、GTP Record",
+        "入力fileを読める状態にしてgtp checkを再実行する",
+        "URLなし（投稿前入力）",
+        "input_errorがなくなりCarrier検査結果を取得できる",
+    )
 
 
 def _record(value: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -390,7 +528,11 @@ def _status_text(machine: dict[str, Any]) -> list[str]:
 
 def present_status(result: StatusResult) -> tuple[list[str], dict[str, Any]]:
     machine = status_projection(result)
-    return _status_text(machine), machine
+    lines = _status_text(machine)
+    problem = _status_problem(machine)
+    if problem is not None:
+        lines[6:6] = _problem_lines(problem)
+    return lines, machine
 
 
 def check_projection(result: CarrierResult) -> dict[str, Any]:
@@ -418,19 +560,25 @@ def present_check(result: CarrierResult) -> tuple[list[str], dict[str, Any]]:
         summary = "GTP Carrierとして認識し、offline schemaに適合しました"
     else:
         summary = "GTP Carrierとして認識しましたが、形式・JSON・schemaに適合しません"
-    return [
+    lines = [
         f"検査結果: {summary}",
         "contextual checks: Issue上の参照関係とstateは検査していません",
         f"非許可表示: {AUTHORITY_NOTICE}",
-    ], machine
+    ]
+    problem = _check_problem(result)
+    if problem is not None:
+        lines.extend(_problem_lines(problem))
+    return lines, machine
 
 
 def present_input_error(message: str) -> tuple[list[str], dict[str, Any]]:
-    return [
+    lines = [
         "検査結果: 入力ファイルをUTF-8のMarkdown commentとして読めません",
         "contextual checks: 実行していません",
         f"非許可表示: {AUTHORITY_NOTICE}",
-    ], {
+    ]
+    lines.extend(_problem_lines(_input_error_problem()))
+    return lines, {
         "gtp": "1.0",
         "command": "check",
         "recognized": None,

@@ -1,0 +1,161 @@
+{
+  "labels": [
+    "何が問題か",
+    "どこが問題か",
+    "なぜそう判断したか",
+    "どこを直すか",
+    "何を直さないか",
+    "次の安全な一手",
+    "最初に確認するURL",
+    "解決したと判断する条件"
+  ],
+  "diagnostic_url": "https://github.com/o/r/issues/1#issuecomment-9",
+  "halt": {
+    "invalid_record": [
+      "GTP Recordの形式、内容、編集状態のいずれかが不正です",
+      "対象IssueのRecord履歴",
+      "diagnostic token: invalid_record",
+      "Record履歴を確認し、人間が必要ならStopと後継Issueを選ぶ（修正候補。根本的な修正責任は未確定）",
+      "既存Carrierの編集・削除、Record grammar、state語彙",
+      "最初のURLのCarrierとcomment履歴をread-onlyで確認する",
+      "https://github.com/o/r/issues/1#issuecomment-9",
+      "既存Carrierを変更せず、人間判断後のvalid Stopで元Issueをstoppedにし、必要なら後継Issueで再開する"
+    ],
+    "conflicting_records": [
+      "同じ役割のRecordが競合しています",
+      "対象IssueのRecord履歴",
+      "diagnostic token: conflicting_records",
+      "競合したRecord履歴を確認し、人間がStopと後継Issueを選ぶ（修正候補。根本的な修正責任は未確定）",
+      "既存Carrierの編集・削除、Recordのjoin、Record grammar",
+      "最初のURLから同じ役割のLogical Recordをread-onlyで確認する",
+      "https://github.com/o/r/issues/1#issuecomment-9",
+      "既存Recordを変更せず、人間判断後のvalid Stopで元Issueをstoppedにし、後継Issueで一意のContractから再開する"
+    ],
+    "invalid_transition": [
+      "Recordの順序または参照関係が成立していません",
+      "対象IssueのRecord履歴",
+      "diagnostic token: invalid_transition",
+      "Record順序と参照を確認し、人間がStopと後継Issueを選ぶ（修正候補。根本的な修正責任は未確定）",
+      "既存Carrierの編集・削除、Record順序の書換え、state語彙",
+      "最初のURLと先行Recordをread-onlyで時系列確認する",
+      "https://github.com/o/r/issues/1#issuecomment-9",
+      "既存Recordを変更せず、人間判断後のvalid Stopで元Issueをstoppedにし、後継Issueで正しい順序から再開する"
+    ],
+    "invalid_binding": [
+      "Issue、branch、PR、scopeの束縛が一致しません",
+      "Issue、branch、PR、scopeのbinding",
+      "diagnostic token: invalid_binding",
+      "diagnostic URLが示すbranch、PR、scopeの参照関係（修正候補。根本的な修正責任は未確定）",
+      "4 Record、6 state、7 halt reason、Record grammar",
+      "最初のURLで参照関係とPR変更fileをread-onlyで比較する",
+      "https://github.com/o/r/issues/1#issuecomment-9",
+      "再取得でIssue、branch、PR、scopeのbindingが一致してhaltが消える、または人間判断後に後継Issueへ移る"
+    ],
+    "invalid_evidence": [
+      "Done Conditionに対応するEvidenceを確認できません",
+      "Done Claim、Evidence resource、source head",
+      "diagnostic token: invalid_evidence",
+      "Evidenceのkey、kind、resource状態、source head binding（修正候補。根本的な修正責任は未確定）",
+      "Contract、state語彙、既存Done Carrierの編集・削除",
+      "最初のURLでEvidence resourceの状態とSHAをread-onlyで確認する",
+      "https://github.com/o/r/issues/1#issuecomment-9",
+      "Evidence resourceが成功状態でDoneのsource headと一致してhaltが消える、または人間判断後に後継Issueへ移る"
+    ],
+    "stale_evidence": [
+      "EvidenceがDoneのsource head SHAと一致しません",
+      "Done Claim、Evidence resource、source head",
+      "diagnostic token: stale_evidence",
+      "新しいsource headを扱う通常の後継Issue（修正候補。根本的な修正責任は未確定）",
+      "既存Done Carrier、Evidence URL、source履歴の書換え",
+      "最初のURLでDone、Evidence、現在のPR headをread-onlyで比較する",
+      "https://github.com/o/r/issues/1#issuecomment-9",
+      "元のDoneと履歴を変更せずvalid Stopで元Issueをstoppedにし、後継Issueで新しいheadへ束縛する"
+    ],
+    "terminal_violation": [
+      "terminal stateの前後関係に違反するRecordまたはmergeがあります",
+      "terminal履歴と後続Recordまたはmerge",
+      "diagnostic token: terminal_violation",
+      "必要作業を扱う通常の別Issue（修正候補。元Issueの修正責任は確定しない）",
+      "元Issueのterminal履歴、新Record追加、元Issueの回復claim",
+      "先に成立したterminal resultを保持し、別Issueの確認条件を人間と決める",
+      "https://github.com/o/r/issues/1#issuecomment-9",
+      "元Issueでは解消不能。terminal resultとviolationを保持し、別IssueのContract、PR、Evidence、native mergeを確認する"
+    ]
+  },
+  "acquisition": [
+    "GitHub情報を完全に取得できずstateを決定できません",
+    "GitHub取得経路",
+    "acquisition error: acquisition_incomplete",
+    "取得・認証・snapshot経路（修正責任未確定）",
+    "GTP Record、state、halt reason",
+    "同じresourceをread-onlyで再取得する",
+    "https://api.github.com/repos/o/r/issues/1",
+    "取得がcompleteとなりstateを再構成できる"
+  ],
+  "safe_observations": {
+    "scope_outside": {
+      "paths": ["README.md", "docs/outside.md"],
+      "private_message": "private diagnostic must not be displayed",
+      "private_exception": "private exception must not be displayed",
+      "reason": "diagnostic token: invalid_binding; paths: README.md, docs/outside.md"
+    },
+    "http_403": {
+      "code": "acquisition_incomplete",
+      "status": 403,
+      "private_message": "credential detail must not be displayed",
+      "reason": "acquisition error: acquisition_incomplete; status: 403"
+    }
+  },
+  "check": {
+    "unrecognized": [
+      "投稿前MarkdownにExact MarkerがなくGTP Carrierとして認識できません",
+      "投稿前Carrier",
+      "check result: recognized=false",
+      "投稿予定MarkdownのExact MarkerとCarrier全体（修正候補。根本的な修正責任は未確定）",
+      "未確認のIssue、branch、PR、protocol vocabulary",
+      "入力fileに完全なCarrierを作成してgtp checkを再実行する",
+      "URLなし（投稿前入力）",
+      "recognizedとschema_validがともにtrueになる"
+    ],
+    "format": [
+      "投稿前GTP CarrierのMarkdown構造が形式に適合しません",
+      "投稿前Carrier",
+      "check error: invalid_carrier at $",
+      "error pathが示すCarrier構造（修正候補。根本的な修正責任は未確定）",
+      "未確認のIssue、branch、PR、Record grammar",
+      "error codeとpathの入力箇所を修正してgtp checkを再実行する",
+      "URLなし（投稿前入力）",
+      "recognizedとschema_validがともにtrueになる"
+    ],
+    "json": [
+      "投稿前GTP CarrierのJSONをstrict JSONとして読めません",
+      "投稿前CarrierのJSON",
+      "check error: invalid_json at $",
+      "error pathが示すJSON（修正候補。根本的な修正責任は未確定）",
+      "未確認のIssue、branch、PR、GTP state",
+      "error codeとpathのJSONを修正してgtp checkを再実行する",
+      "URLなし（投稿前入力）",
+      "recognizedとschema_validがともにtrueになる"
+    ],
+    "schema": [
+      "投稿前GTP Recordがclosed schemaに適合しません",
+      "投稿前CarrierのRecord JSON",
+      "check error: unknown_field at $.unexpected",
+      "error pathが示すschema不適合箇所（修正候補。根本的な修正責任は未確定）",
+      "未確認のIssue、branch、PR、公開protocol vocabulary",
+      "error codeとpathのfieldだけを修正してgtp checkを再実行する",
+      "URLなし（投稿前入力）",
+      "recognizedとschema_validがともにtrueになる"
+    ],
+    "input_error": [
+      "入力fileをUTF-8のMarkdown commentとして取得できません",
+      "投稿前入力の取得経路",
+      "input_errorを観測しました",
+      "入力fileの存在、読取権限、UTF-8 encoding（修正候補。根本的な修正責任は未確定）",
+      "未確認のIssue、branch、PR、GTP Record",
+      "入力fileを読める状態にしてgtp checkを再実行する",
+      "URLなし（投稿前入力）",
+      "input_errorがなくなりCarrier検査結果を取得できる"
+    ]
+  }
+}
