@@ -81,12 +81,15 @@ GitHub情報を完全に取得できない場合はstateを推測しません。
 
 CLI `1.0.2`は[PyPI](https://pypi.org/project/github-task-protocol/1.0.2/)と[GitHub Release](https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.2)へ公開済みです。再downloadとhash・clean install・live statusの検証結果は[`acceptance/public-release-v1.0.2.json`](acceptance/public-release-v1.0.2.json)にあります。GTPを使うだけならCLIのinstallは不要です。
 
+現在のsource candidateは`1.0.3`（公開前）です。tag、GitHub Release、PyPIにはまだ公開していないため、利用commandは検証済みの`1.0.2`に固定します。
+
 ```console
 uvx --from github-task-protocol==1.0.2 gtp status <issue-url>
 uvx --from github-task-protocol==1.0.2 gtp check <comment.md>
 ```
 
-- `status`はGitHubへGETだけを行い、日本語6項目の後にmachine JSONを出します。Evidenceの存在・種類・状態・source headとの結び付きを検査しますが、完了条件の自然言語上の充足までは自動判定しません。
+- 公開済み`1.0.2`の`status`はGitHubへGETだけを行い、日本語6項目の後にmachine JSONを出します。Evidenceの存在・種類・状態・source headとの結び付きを検査しますが、完了条件の自然言語上の充足までは自動判定しません。
+- source candidate `1.0.3`は、blocker時だけ先頭6項目の直後に8項目の「問題の整理」を表示します。normal state、machine JSON、exit code、`authority: none`は変更しません。
 - `check`は投稿前のMarkdown comment全文をoffline検査します。Issue上でもvalidだとは主張しません。
 - exit code、緑色のCheck Run、Evidence URLは、変更やmergeの許可ではありません。
 
