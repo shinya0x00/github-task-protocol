@@ -52,6 +52,37 @@ def _problem_lines(values: tuple[str, ...]) -> list[str]:
     ]
 
 
+def _halt_observation(machine: dict[str, Any], token: str) -> str:
+    observation = f"diagnostic token: {token}"
+    diagnostics = machine.get("diagnostics")
+    diagnostic = (
+        diagnostics[0] if isinstance(diagnostics, list) and diagnostics else None
+    )
+    detail = diagnostic.get("detail") if isinstance(diagnostic, dict) else None
+    paths = detail.get("paths") if isinstance(detail, dict) else None
+    safe_paths = (
+        [path for path in paths if isinstance(path, str)]
+        if isinstance(paths, list)
+        else []
+    )
+    if safe_paths:
+        observation += f"; paths: {', '.join(safe_paths)}"
+    return observation
+
+
+def _acquisition_observation(error: dict[str, Any] | None) -> str:
+    code = (
+        error.get("code", "acquisition_incomplete")
+        if error
+        else "acquisition_incomplete"
+    )
+    observation = f"acquisition error: {code}"
+    status = error.get("status") if error else None
+    if isinstance(status, int) and not isinstance(status, bool):
+        observation += f"; status: {status}"
+    return observation
+
+
 def _status_problem(machine: dict[str, Any]) -> tuple[str, ...] | None:
     if machine["state"] == "halt":
         token = machine["halt_reason"] or "unknown"
@@ -68,7 +99,7 @@ def _status_problem(machine: dict[str, Any]) -> tuple[str, ...] | None:
         return (
             HALT_MESSAGES.get(token, "protocol上の不適合を確認しました"),
             layer,
-            f"diagnostic token: {token}",
+            _halt_observation(machine, token),
             repair,
             excluded,
             next_step,
@@ -77,11 +108,11 @@ def _status_problem(machine: dict[str, Any]) -> tuple[str, ...] | None:
         )
     if machine["state"] is None:
         errors = machine["acquisition_errors"]
-        code = errors[0].get("code", "acquisition_incomplete") if errors else "acquisition_incomplete"
+        error = errors[0] if errors and isinstance(errors[0], dict) else None
         return (
             "GitHub情報を完全に取得できずstateを決定できません",
             "GitHub取得経路",
-            f"acquisition error: {code}",
+            _acquisition_observation(error),
             "取得・認証・snapshot経路（修正責任未確定）",
             "GTP Record、state、halt reason",
             "同じresourceをread-onlyで再取得する",

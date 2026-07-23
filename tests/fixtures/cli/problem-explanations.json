@@ -92,6 +92,20 @@
     "https://api.github.com/repos/o/r/issues/1",
     "取得がcompleteとなりstateを再構成できる"
   ],
+  "safe_observations": {
+    "scope_outside": {
+      "paths": ["README.md", "docs/outside.md"],
+      "private_message": "private diagnostic must not be displayed",
+      "private_exception": "private exception must not be displayed",
+      "reason": "diagnostic token: invalid_binding; paths: README.md, docs/outside.md"
+    },
+    "http_403": {
+      "code": "acquisition_incomplete",
+      "status": 403,
+      "private_message": "credential detail must not be displayed",
+      "reason": "acquisition error: acquisition_incomplete; status: 403"
+    }
+  },
   "check": {
     "unrecognized": [
       "投稿前MarkdownにExact MarkerがなくGTP Carrierとして認識できません",

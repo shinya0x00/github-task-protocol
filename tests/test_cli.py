@@ -469,6 +469,51 @@ class CliTests(unittest.TestCase):
             matrix["check"]["input_error"], self.problem_values(human, labels)
         )
 
+    def test_status_problem_whitelists_safe_observations(self) -> None:
+        matrix = json.loads(
+            (CLI_FIXTURES / "problem-explanations.json").read_text(encoding="utf-8")
+        )
+        labels = matrix["labels"]
+        issue_url = "https://github.com/o/r/issues/1"
+        scope = matrix["safe_observations"]["scope_outside"]
+        observed = StatusResult(
+            issue_url,
+            "halt",
+            [Diagnostic(
+                "invalid_binding",
+                (matrix["diagnostic_url"],),
+                {
+                    "paths": scope["paths"],
+                    "message": scope["private_message"],
+                    "exception": scope["private_exception"],
+                    "provider": "private-provider",
+                },
+            )],
+        )
+        with patch("gtp.cli.evaluate_issue", return_value=observed):
+            _, human, _ = self.call(["status", issue_url])
+        reason = self.problem_values(human, labels)[2]
+        self.assertEqual(scope["reason"], reason)
+        self.assertNotIn(scope["private_message"], "\n".join(human))
+        self.assertNotIn(scope["private_exception"], "\n".join(human))
+        self.assertNotIn("private-provider", "\n".join(human))
+
+        acquisition = matrix["safe_observations"]["http_403"]
+        observed = StatusResult(
+            issue_url,
+            None,
+            acquisition_errors=[{
+                "code": acquisition["code"],
+                "status": acquisition["status"],
+                "message": acquisition["private_message"],
+            }],
+        )
+        with patch("gtp.cli.evaluate_issue", return_value=observed):
+            _, human, _ = self.call(["status", issue_url])
+        reason = self.problem_values(human, labels)[2]
+        self.assertEqual(acquisition["reason"], reason)
+        self.assertNotIn(acquisition["private_message"], "\n".join(human))
+
     def test_problem_explanation_falls_back_to_existing_primary_url(self) -> None:
         fallback = "https://github.com/o/r/issues/1#issuecomment-3"
         observed = StatusResult(
@@ -707,6 +752,11 @@ class CliTests(unittest.TestCase):
                     self.assertNotIn("問題の整理:", human)
                 if case.get("reason"):
                     self.assertEqual(case["reason"], output["diagnostics"][0]["token"])
+                if case["name"] == "scope outside":
+                    self.assertIn(
+                        "diagnostic token: invalid_binding; paths: README.md",
+                        "\n".join(human),
+                    )
                 if case.get("first_url"):
                     self.assertEqual(case["first_url"], output["primary_url"])
                     self.assertEqual(
