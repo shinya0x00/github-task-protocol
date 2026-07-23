@@ -1,0 +1,67 @@
+{
+  "schema": "gtp-setup-preflight/v1",
+  "mutation_surface": [
+    "working_tree",
+    "branches",
+    "issue",
+    "comments",
+    "labels",
+    "pull_requests"
+  ],
+  "cases": [
+    {
+      "id": "no_instruction",
+      "result": "instructionなし",
+      "continue_setup": true,
+      "expected_display": "既存のbranch-first setupを続行する",
+      "before_snapshot": {"working_tree": "clean", "branches": ["main"], "default_branch_head": "0123456789abcdef0123456789abcdef01234567", "issue": null, "comments": 0, "labels": [], "pull_requests": []},
+      "after_snapshot": {"working_tree": "clean", "branches": ["main"], "default_branch_head": "0123456789abcdef0123456789abcdef01234567", "issue": null, "comments": 0, "labels": [], "pull_requests": []},
+      "mutation_callbacks": 0
+    },
+    {
+      "id": "compatible_instruction",
+      "result": "両立可能",
+      "continue_setup": true,
+      "expected_display": "既存instructionを保持してbranch-first setupを続行する",
+      "before_snapshot": {"working_tree": "clean", "branches": ["main"], "default_branch_head": "0123456789abcdef0123456789abcdef01234567", "issue": null, "comments": 0, "labels": [], "pull_requests": []},
+      "after_snapshot": {"working_tree": "clean", "branches": ["main"], "default_branch_head": "0123456789abcdef0123456789abcdef01234567", "issue": null, "comments": 0, "labels": [], "pull_requests": []},
+      "mutation_callbacks": 0
+    },
+    {
+      "id": "unconnected_dependency",
+      "result": "未接続dependency",
+      "continue_setup": false,
+      "expected_display": {
+        "何が問題か": "既存instructionが要求するproduction dependencyへ接続できません",
+        "どこが問題か": "setup先の外部Operation接続",
+        "なぜそう判断したか": "instructionは確認できましたがproduction providerを取得できません",
+        "どこを直すか": "外部Operationのproviderまたはactivation owner（修正候補）",
+        "何を直さないか": "working tree、branch、GTP Record、Issue、comment、label、PR",
+        "次の安全な一手": "確認済みowner URLをread-onlyで開き、人間が通常Issueでの修正を判断する",
+        "最初に確認するURL": "https://github.com/example/operation/issues/16",
+        "解決したと判断する条件": "production dependencyへ接続でき、同じpreflightが両立可能になる"
+      },
+      "before_snapshot": {"working_tree": "clean", "branches": ["main"], "default_branch_head": "0123456789abcdef0123456789abcdef01234567", "issue": null, "comments": 0, "labels": [], "pull_requests": []},
+      "after_snapshot": {"working_tree": "clean", "branches": ["main"], "default_branch_head": "0123456789abcdef0123456789abcdef01234567", "issue": null, "comments": 0, "labels": [], "pull_requests": []},
+      "mutation_callbacks": 0
+    },
+    {
+      "id": "authority_conflict",
+      "result": "別authority／意味衝突",
+      "continue_setup": false,
+      "expected_display": {
+        "何が問題か": "既存instructionとGTP adapterのauthorityまたは意味が衝突します",
+        "どこが問題か": "setup先のinstructionとtask protocol authority",
+        "なぜそう判断したか": "両方を保持したまま一意の指示として適用できません",
+        "どこを直すか": "修正責任未確定。人間が採用するauthorityを判断します",
+        "何を直さないか": "既存instruction、working tree、branch、GTP Record、Issue、comment、label、PR",
+        "次の安全な一手": "既存instructionと導入予定adapterをread-onlyで比較して人間へ戻す",
+        "最初に確認するURL": "修正先Issue未確認",
+        "解決したと判断する条件": "人間がauthorityを決め、同じpreflightが両立可能になる"
+      },
+      "before_snapshot": {"working_tree": "clean", "branches": ["main"], "default_branch_head": "0123456789abcdef0123456789abcdef01234567", "issue": null, "comments": 0, "labels": [], "pull_requests": []},
+      "after_snapshot": {"working_tree": "clean", "branches": ["main"], "default_branch_head": "0123456789abcdef0123456789abcdef01234567", "issue": null, "comments": 0, "labels": [], "pull_requests": []},
+      "mutation_callbacks": 0
+    }
+  ]
+}

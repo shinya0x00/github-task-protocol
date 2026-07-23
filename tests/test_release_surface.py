@@ -93,6 +93,76 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertNotIn("package registryへ一般公開していません", readme)
         self.assertNotIn("![", readme)
 
+    def test_setup_preflight_contract(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        fixture = json.loads(
+            (ROOT / "tests" / "fixtures" / "setup-preflight.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual("gtp-setup-preflight/v1", fixture["schema"])
+        self.assertEqual(
+            [
+                "instructionなし",
+                "両立可能",
+                "未接続dependency",
+                "別authority／意味衝突",
+            ],
+            [case["result"] for case in fixture["cases"]],
+        )
+        self.assertEqual(
+            [True, True, False, False],
+            [case["continue_setup"] for case in fixture["cases"]],
+        )
+        self.assertEqual(
+            [
+                "working_tree",
+                "branches",
+                "issue",
+                "comments",
+                "labels",
+                "pull_requests",
+            ],
+            fixture["mutation_surface"],
+        )
+        blocker_labels = [
+            "何が問題か",
+            "どこが問題か",
+            "なぜそう判断したか",
+            "どこを直すか",
+            "何を直さないか",
+            "次の安全な一手",
+            "最初に確認するURL",
+            "解決したと判断する条件",
+        ]
+        for case in fixture["cases"]:
+            self.assertEqual(case["before_snapshot"], case["after_snapshot"])
+            self.assertEqual(0, case["mutation_callbacks"])
+            self.assertIn(f"`{case['result']}`", readme)
+            if case["continue_setup"]:
+                self.assertIsInstance(case["expected_display"], str)
+            else:
+                self.assertEqual(blocker_labels, list(case["expected_display"]))
+        external, conflict = fixture["cases"][2:]
+        self.assertTrue(
+            external["expected_display"]["最初に確認するURL"].startswith(
+                "https://github.com/"
+            )
+        )
+        self.assertEqual(
+            "修正先Issue未確認",
+            conflict["expected_display"]["最初に確認するURL"],
+        )
+        preflight = readme.index("### file・branch変更前のpreflight")
+        branch_creation = readme.index("target fileを変更する前にrepositoryのdefault branch")
+        self.assertLess(preflight, branch_creation)
+        for label in blocker_labels:
+            self.assertIn(f"「{label}」", readme)
+        self.assertIn("working tree、branch、Issue、comment、label、PRを変更せず", readme)
+        self.assertIn("repair Issueも自動作成しません", readme)
+        self.assertIn("owner URLはread-only取得で確認できた場合だけ", readme)
+        self.assertIn("`修正先Issue未確認`", readme)
+
     def test_explicit_setup_delivery_defers_external_acceptance_until_merge(self) -> None:
         evidence = json.loads(
             (
