@@ -14,7 +14,7 @@
     "invalid_record": [
       "GTP Recordの形式、内容、編集状態のいずれかが不正です",
       "対象IssueのGTP記録があるcomment",
-      "Issue commentをGTP Recordとして読み取れませんでした",
+      "Issue commentを、変更されていない一意のGTP記録として確定できませんでした",
       "最初のURLのcomment内容を確認し、過去commentは直さず、人間が必要ならStopと後継Issueを選ぶ（修正候補。根本的な修正責任は未確定）",
       "過去のIssue commentを編集・削除しない。GTPの仕様を変更しない",
       "最初のURLのcommentと前後のGTP記録をread-onlyで確認する",
@@ -42,14 +42,14 @@
       "既存Recordを変更せず、人間判断後のvalid Stopで元Issueをstoppedにし、後継Issueで正しい順序から再開する"
     ],
     "invalid_binding": [
-      "Issueに記録されたbranch、PR、変更範囲の対応を確認できません",
-      "Issueで変更してよい範囲とbranch・PRの対応",
-      "Issueに記録されたbranch、PR、変更範囲の対応を確認できませんでした",
-      "最初のURLでIssueの変更範囲とPRの変更fileを比較する（修正候補。根本的な修正責任は未確定）",
-      "Issueに既に投稿された記録とGTP.mdの仕様",
-      "最初のURLでIssueの変更範囲とPRの変更fileをread-onlyで比較する",
+      "Issueの記録が指す対象とGitHub上の対象が一致しません",
+      "Issueの記録が指す対象とGitHub上で確認した対象",
+      "Issueの記録が指す対象とGitHub上で確認した対象が一致しませんでした",
+      "最初のURLで記録の参照先とGitHub上の対象を比較する（修正候補。根本的な修正責任は未確定）",
+      "一致を確認できていない記録やGitHub上の対象を推測で変更しない",
+      "最初のURLで記録の参照先とGitHub上の対象をread-onlyで比較する",
       "https://github.com/o/r/issues/1#issuecomment-9",
-      "再取得でIssueに記録されたbranch、PR、変更範囲の対応を確認できる、または人間判断後に後継Issueへ移る"
+      "再取得で記録の参照先とGitHub上の対象が一致する、または人間判断後に後継Issueへ移る"
     ],
     "invalid_evidence": [
       "Done Conditionに対応するEvidenceを確認できません",

@@ -536,6 +536,26 @@ class CliTests(unittest.TestCase):
         self.assertEqual(fallback, output["primary_url"])
         self.assertEqual(fallback, self.problem_values(human, labels)[6])
 
+    def test_invalid_record_causes_share_a_non_speculative_human_reason(self) -> None:
+        labels = json.loads(
+            (CLI_FIXTURES / "problem-explanations.json").read_text(encoding="utf-8")
+        )["labels"]
+        expected = "Issue commentを、変更されていない一意のGTP記録として確定できませんでした"
+        issue_url = "https://github.com/o/r/issues/1"
+        for cause in ("malformed", "edited", "id_collision"):
+            observed = StatusResult(
+                issue_url,
+                "halt",
+                [Diagnostic("invalid_record", (f"{issue_url}#issuecomment-1",), {"cause": cause})],
+            )
+            with self.subTest(cause=cause), patch(
+                "gtp.cli.evaluate_issue", return_value=observed
+            ):
+                _, human, output = self.call(["status", issue_url])
+                values = self.problem_values(human, labels)
+                self.assertEqual(expected, values[2])
+                self.assertEqual("invalid_record", output["diagnostics"][0]["token"])
+
     def test_status_without_state_exits_two(self) -> None:
         observed = StatusResult(
             "https://github.com/o/r/issues/1",
@@ -776,6 +796,22 @@ class CliTests(unittest.TestCase):
                     problem = "\n".join(values)
                     self.assertNotIn("binding", problem)
                     self.assertNotIn("束縛", problem)
+                if case["name"] in {"default branch is rejected", "late successor"}:
+                    values = self.problem_values(
+                        human,
+                        json.loads(
+                            (CLI_FIXTURES / "problem-explanations.json").read_text(
+                                encoding="utf-8"
+                            )
+                        )["labels"],
+                    )
+                    problem = "\n".join(values)
+                    self.assertIn(
+                        "Issueの記録が指す対象とGitHub上の対象が一致しません",
+                        values[0],
+                    )
+                    self.assertNotIn("PRの変更file", problem)
+                    self.assertNotIn("変更してよい範囲", problem)
                 if case.get("first_url"):
                     self.assertEqual(case["first_url"], output["primary_url"])
                     self.assertEqual(

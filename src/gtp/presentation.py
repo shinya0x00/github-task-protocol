@@ -19,10 +19,10 @@ HALT_MESSAGES = {
     "terminal_violation": "terminal stateの前後関係に違反するRecordまたはmergeがあります",
 }
 HALT_OBSERVATIONS = {
-    "invalid_record": "Issue commentをGTP Recordとして読み取れませんでした",
+    "invalid_record": "Issue commentを、変更されていない一意のGTP記録として確定できませんでした",
     "conflicting_records": "Issueに同じ役割のGTP Recordが複数あります",
     "invalid_transition": "GTP Recordの順序または参照先を確認できませんでした",
-    "invalid_binding": "Issueに記録されたbranch、PR、変更範囲の対応を確認できませんでした",
+    "invalid_binding": "Issueの記録が指す対象とGitHub上で確認した対象が一致しませんでした",
     "invalid_evidence": "Done Conditionに対応するEvidence URLまたは成功状態を確認できませんでした",
     "stale_evidence": "Evidenceが示すcommitとDoneが示すsource headが異なります",
     "terminal_violation": "完了または停止の後に追加のGTP Recordまたはmergeが見つかりました",
@@ -137,7 +137,20 @@ def _status_problem(machine: dict[str, Any]) -> tuple[str, ...] | None:
                     "（修正候補。最終判断は人間）"
                 )
             else:
-                what = "Issueに記録されたbranch、PR、変更範囲の対応を確認できません"
+                what = "Issueの記録が指す対象とGitHub上の対象が一致しません"
+                layer = "Issueの記録が指す対象とGitHub上で確認した対象"
+                repair = (
+                    "最初のURLで記録の参照先とGitHub上の対象を比較する"
+                    "（修正候補。根本的な修正責任は未確定）"
+                )
+                excluded = "一致を確認できていない記録やGitHub上の対象を推測で変更しない"
+                next_step = (
+                    "最初のURLで記録の参照先とGitHub上の対象をread-onlyで比較する"
+                )
+                resolution = (
+                    "再取得で記録の参照先とGitHub上の対象が一致する、"
+                    "または人間判断後に後継Issueへ移る"
+                )
         else:
             what = HALT_MESSAGES.get(token, "protocol上の不適合を確認しました")
         return (
