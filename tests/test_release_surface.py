@@ -118,6 +118,8 @@ class ReleaseSurfaceTests(unittest.TestCase):
             [
                 "working_tree",
                 "branches",
+                "commits",
+                "pushes",
                 "issue",
                 "comments",
                 "labels",
@@ -137,7 +139,14 @@ class ReleaseSurfaceTests(unittest.TestCase):
         ]
         for case in fixture["cases"]:
             self.assertEqual(case["before_snapshot"], case["after_snapshot"])
-            self.assertEqual(0, case["mutation_callbacks"])
+            self.assertEqual(
+                fixture["mutation_surface"], list(case["mutation_callbacks"])
+            )
+            self.assertTrue(
+                all(count == 0 for count in case["mutation_callbacks"].values())
+            )
+            self.assertEqual(0, case["mutation_callbacks"]["commits"])
+            self.assertEqual(0, case["mutation_callbacks"]["pushes"])
             self.assertIn(f"`{case['result']}`", readme)
             if case["continue_setup"]:
                 self.assertIsInstance(case["expected_display"], str)
@@ -153,12 +162,22 @@ class ReleaseSurfaceTests(unittest.TestCase):
             "修正先Issue未確認",
             conflict["expected_display"]["最初に確認するURL"],
         )
+        self.assertIn(
+            "test／mock providerによるproduction代用",
+            external["expected_display"]["何を直さないか"],
+        )
         preflight = readme.index("### file・branch変更前のpreflight")
         branch_creation = readme.index("target fileを変更する前にrepositoryのdefault branch")
         self.assertLess(preflight, branch_creation)
         for label in blocker_labels:
             self.assertIn(f"「{label}」", readme)
-        self.assertIn("working tree、branch、Issue、comment、label、PRを変更せず", readme)
+        self.assertIn(
+            "test／mock providerでproduction dependencyを代用せず", readme
+        )
+        self.assertIn(
+            "working tree、branch、commit、push、Issue、comment、label、PRを変更せず",
+            readme,
+        )
         self.assertIn("repair Issueも自動作成しません", readme)
         self.assertIn("owner URLはread-only取得で確認できた場合だけ", readme)
         self.assertIn("`修正先Issue未確認`", readme)
