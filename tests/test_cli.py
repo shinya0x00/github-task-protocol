@@ -19,6 +19,7 @@ from gtp.status import StatusResult
 FIXTURE = Path(__file__).parent / "fixtures" / "carriers" / "contract-valid.md"
 HTTP_FIXTURES = Path(__file__).parent / "fixtures" / "http"
 CLI_FIXTURES = Path(__file__).parent / "fixtures" / "cli"
+HUMAN_FIXTURES = Path(__file__).parent / "fixtures" / "human-posts"
 
 
 class CliTests(unittest.TestCase):
@@ -312,6 +313,104 @@ class CliTests(unittest.TestCase):
             },
             set(output),
         )
+
+    def test_check_record_target_is_the_unchanged_default(self) -> None:
+        default = self.capture(["check", str(FIXTURE)])
+        explicit = self.capture(["check", "--target", "record", str(FIXTURE)])
+        self.assertEqual(default, explicit)
+
+        args = build_parser().parse_args(["check", str(FIXTURE)])
+        self.assertEqual("record", args.target)
+
+    def test_check_accepts_valid_issue_pr_and_comment_targets(self) -> None:
+        fixture = HUMAN_FIXTURES / "valid.md"
+        for target in ("issue", "pr", "comment"):
+            with self.subTest(target=target):
+                code, human, output = self.call(
+                    ["check", "--target", target, str(fixture)]
+                )
+                self.assertEqual(0, code)
+                self.assertIn("投稿前要件に適合しました", human[0])
+                self.assertEqual(
+                    {
+                        "gtp",
+                        "command",
+                        "target",
+                        "valid",
+                        "errors",
+                        "authority",
+                        "contextual_checks",
+                    },
+                    set(output),
+                )
+                self.assertEqual("1.0", output["gtp"])
+                self.assertEqual("check", output["command"])
+                self.assertEqual(target, output["target"])
+                self.assertTrue(output["valid"])
+                self.assertEqual([], output["errors"])
+                self.assertEqual("none", output["authority"])
+                self.assertEqual("not_run", output["contextual_checks"])
+
+    def test_check_rejects_the_exact_pr117_body(self) -> None:
+        code, human, output = self.call(
+            ["check", "--target", "pr", str(HUMAN_FIXTURES / "pr117.md")]
+        )
+        self.assertEqual(1, code)
+        self.assertIn("投稿前要件に適合しません", human[0])
+        self.assertEqual("pr", output["target"])
+        self.assertFalse(output["valid"])
+        self.assertIn(
+            "invalid_first_heading",
+            [error["code"] for error in output["errors"]],
+        )
+        labels = json.loads(
+            (CLI_FIXTURES / "problem-explanations.json").read_text(encoding="utf-8")
+        )["labels"]
+        values = self.problem_values(human, labels)
+        self.assertEqual(8, len(values))
+        self.assertTrue(all(value.strip() for value in values))
+
+    def test_marker_typo_never_falls_back_from_record_to_human_check(self) -> None:
+        source = (
+            "<!-- gtp-record:v2 -->\n"
+            + (HUMAN_FIXTURES / "valid.md").read_text(encoding="utf-8")
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "marker-typo.md"
+            path.write_text(source, encoding="utf-8")
+            default_code, default_human, default_output = self.call(
+                ["check", str(path)]
+            )
+            human_code, _, human_output = self.call(
+                ["check", "--target", "issue", str(path)]
+            )
+
+        self.assertEqual(1, default_code)
+        self.assertIn("通常comment", default_human[0])
+        self.assertFalse(default_output["recognized"])
+        self.assertIsNone(default_output["schema_valid"])
+        self.assertNotIn("target", default_output)
+        self.assertNotIn("valid", default_output)
+
+        self.assertEqual(0, human_code)
+        self.assertEqual("issue", human_output["target"])
+        self.assertTrue(human_output["valid"])
+
+    def test_human_target_input_error_exits_two(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            missing = Path(directory) / "missing.md"
+            code, human, output = self.call(
+                ["check", "--target", "issue", str(missing)]
+            )
+        self.assertEqual(2, code)
+        self.assertIn("読めません", human[0])
+        self.assertEqual("input_error", output["errors"][0]["code"])
+        labels = json.loads(
+            (CLI_FIXTURES / "problem-explanations.json").read_text(encoding="utf-8")
+        )["labels"]
+        values = self.problem_values(human, labels)
+        self.assertEqual(8, len(values))
+        self.assertTrue(all(value.strip() for value in values))
 
     def test_check_normal_comment_exits_one(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

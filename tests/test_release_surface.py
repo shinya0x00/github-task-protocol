@@ -217,13 +217,24 @@ class ReleaseSurfaceTests(unittest.TestCase):
             "https://github.com/shinya0x00/github-task-protocol/blob/"
             f"{candidate}/"
         )
+        frozen_sources = {
+            "GTP.md": "cee9b146dcb80dcaf5a31fe06b56299be7eba5df325cc92aee243e8ddd1fbdb8",
+            "DESIGN.md": "55838ca418fe5aa36f07d86b251b2ff9b3d8fd7e8abfc0f339c64ab87bb30c95",
+            "README.md": "f3507553c37dc9ee0beeb729c664906c8cd4ae075b802e11a866b80a60ea20a4",
+            "tests/fixtures/http/live-binding-matrix.json": "e302e43182b34f8df390f6dc0e08ec52a9ffc0c5084dd3de028aa663a5f4428a",
+            "tests/fixtures/setup-preflight.json": "d77aa5673587366b9bc8f6ab31ed7e93d0eb8ab4b189037f5d614d21a5d84acc",
+        }
+        observed_sources = set()
         for case in lock["cases"].values():
             for source in case["sources"]:
                 self.assertTrue(source["url"].startswith(source_prefix))
-                path = ROOT / source["url"][len(source_prefix):]
-                self.assertEqual(
-                    hashlib.sha256(path.read_bytes()).hexdigest(), source["sha256"]
-                )
+                # The fixed-commit URL, not the mutable worktree path, owns these bytes.
+                path = Path(source["url"][len(source_prefix):])
+                self.assertFalse(path.is_absolute())
+                self.assertNotIn("..", path.parts)
+                self.assertEqual(frozen_sources[path.as_posix()], source["sha256"])
+                observed_sources.add(path.as_posix())
+        self.assertEqual(set(frozen_sources), observed_sources)
         record_input = lock["cases"]["record"]["exact_input"]
         self.assertEqual({"malformed", "edited", "id_collision"}, set(record_input))
         self.assertIn("<!-- gtp-record:v1 -->", record_input["malformed"][0]["body"])
