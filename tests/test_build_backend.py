@@ -28,6 +28,7 @@ class BuildBackendTests(unittest.TestCase):
             with ZipFile(Path(directory) / filename) as wheel:
                 names = set(wheel.namelist())
                 self.assertIn("gtp/cli.py", names)
+                self.assertIn("gtp/human_post.py", names)
                 self.assertIn("gtp/presentation.py", names)
                 self.assertIn(
                     f"{dist_info}/licenses/LICENSE", names
@@ -98,6 +99,30 @@ class BuildBackendTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
+            valid_human = subprocess.run(
+                [
+                    str(command),
+                    "check",
+                    "--target",
+                    "issue",
+                    str(Path(__file__).parent / "fixtures" / "human-posts" / "valid.md"),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            invalid_human = subprocess.run(
+                [
+                    str(command),
+                    "check",
+                    "--target",
+                    "pr",
+                    str(Path(__file__).parent / "fixtures" / "human-posts" / "pr117.md"),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
             status = subprocess.run(
                 [str(command), "status", "not-a-github-issue-url"],
                 check=False,
@@ -113,6 +138,12 @@ class BuildBackendTests(unittest.TestCase):
         self.assertEqual(0, checked.returncode)
         self.assertIn("offline schemaに適合", checked.stdout)
         self.assertIn('"command": "check"', checked.stdout)
+        self.assertEqual(0, valid_human.returncode)
+        self.assertIn('"target": "issue"', valid_human.stdout)
+        self.assertIn('"valid": true', valid_human.stdout)
+        self.assertEqual(1, invalid_human.returncode)
+        self.assertIn('"target": "pr"', invalid_human.stdout)
+        self.assertIn('"code": "invalid_first_heading"', invalid_human.stdout)
         self.assertEqual(2, status.returncode)
         self.assertIn("状態: 不明", status.stdout)
         self.assertIn('"command": "status"', status.stdout)

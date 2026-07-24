@@ -101,9 +101,24 @@ uvx --from github-task-protocol==1.0.2 gtp status <issue-url>
 uvx --from github-task-protocol==1.0.2 gtp check <comment.md>
 ```
 
+source candidate `1.0.3`で人向けGitHub投稿を行うOperationは、投稿直前に次の明示targetを実行し、exit `0`の場合だけ投稿します。これは未公開candidateの例であり、公開済み`1.0.2`に`--target`があるという案内ではありません。
+
+```console
+PYTHONPATH=src python3 -m gtp check <record-comment.md>
+PYTHONPATH=src python3 -m gtp check --target issue <issue-body.md>
+PYTHONPATH=src python3 -m gtp check --target pr <pr-body.md>
+PYTHONPATH=src python3 -m gtp check --target comment <normal-comment.md>
+```
+
+target省略は`--target record`と同じです。人向けtargetは「何が起きたか」「何が変わるか」「何は変わらないか」「人間が次に判断すること」を、この順のH2として必須にし、任意の技術情報を最後の「技術的な検証情報」へ分離します。
+
+`check`自身はGitHubへの投稿を実行または横取りしません。直接clientの未検査投稿は検出できないため、投稿するOperationが上記gateを接続します。
+
 - 公開済み`1.0.2`の`status`はGitHubへGETだけを行い、日本語6項目の後にmachine JSONを出します。Evidenceの存在・種類・状態・source headとの結び付きを検査しますが、完了条件の自然言語上の充足までは自動判定しません。
 - source candidate `1.0.3`は、blocker時だけ先頭6項目の直後に8項目の「問題の整理」を表示します。normal state、machine JSON、exit code、`authority: none`は変更しません。
-- `check`は投稿前のMarkdown comment全文をoffline検査します。Issue上でもvalidだとは主張しません。
+- 公開済み`1.0.2`の`check`はGTP Record入りcommentをoffline検査します。source candidateだけが明示targetでIssue本文、PR本文、通常commentも検査します。
+- human targetの`valid`は構造・先頭言語・技術情報配置の最低条件だけを示し、内容の真実性、人間の理解、GitHub上の状態を検査しません。
+- Issue #118本文はcheckerと4-section migrationより前に作成されており、validatorが受理したEvidenceではありません。
 - exit code、緑色のCheck Run、Evidence URLは、変更やmergeの許可ではありません。
 
 ## 仕様と判断記録

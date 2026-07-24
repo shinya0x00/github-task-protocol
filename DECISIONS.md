@@ -6,9 +6,11 @@
 
 ## 現在の判断を読む順序
 
-1. ADR-027: `GTP.md`を唯一の公開正本とし、4 Record・6 state・7 halt reasonへ限定した理由。
-2. ADR-028: Exact Carrier、closed schema、pure reducerを中間不整合なく切り替えた理由。
-3. ADR-029: GitHub live bindingをGET-onlyとし、Acquisition Errorをhaltから分離した理由。
+1. [ADR-036](adr/0036-human-github-post-check.md): 人向けGitHub投稿を明示targetのoffline checkへ追加し、Record default compatibilityを維持する理由。
+2. [ADR-035](adr/0035-human-actionable-problem-explanations.md): blockerを人間が修正判断へ変換できるread-only projectionとして説明する理由。
+3. ADR-027: `GTP.md`を唯一の公開正本とし、4 Record・6 state・7 halt reasonへ限定した理由。
+4. ADR-028: Exact Carrier、closed schema、pure reducerを中間不整合なく切り替えた理由。
+5. ADR-029: GitHub live bindingをGET-onlyとし、Acquisition Errorをhaltから分離した理由。
 
 ADR-001〜ADR-026は設計履歴として残す。現行`GTP.md`と矛盾する旧語彙や修復機構を、現在の公開仕様として使用しない。
 
@@ -256,6 +258,7 @@ GitHub metadataなしで検査できるのは、次に限定する。
 
 - Status: Accepted
 - Date: 2026-07-19
+- Superseded by: ADR-036（Carrier-only target制限のみ。offline/no-networkとcontextual checks未実施は維持）
 
 ### 背景
 
@@ -330,6 +333,7 @@ GitHub metadataなしで検査できるのは、次に限定する。
 
 - Status: Accepted
 - Date: 2026-07-19
+- Superseded by: ADR-036（人向けtargetの最初のsectionにおける日本語countのみ。Record scalarとCarrier要約の境界は維持）
 
 ### 背景
 
