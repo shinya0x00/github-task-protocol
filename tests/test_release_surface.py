@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 import re
 import tomllib
@@ -181,6 +182,178 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn("repair Issueも自動作成しません", readme)
         self.assertIn("owner URLはread-only取得で確認できた場合だけ", readme)
         self.assertIn("`修正先Issue未確認`", readme)
+
+    def test_problem_explanation_acceptance_is_bound_and_non_mutating(self) -> None:
+        root = ROOT / "acceptance" / "problem-explanations"
+        run = json.loads((root / "run.json").read_text(encoding="utf-8"))
+        probe = (root / "human-probe.md").read_text(encoding="utf-8")
+        self.assertEqual(
+            "github-task-protocol-problem-explanation-acceptance/v2",
+            run["schema"],
+        )
+        self.assertEqual("accepted", run["status"])
+        self.assertEqual("1.0.3", run["candidate"]["version"])
+        self.assertEqual("1.0", run["candidate"]["protocol"])
+        self.assertTrue(run["candidate"]["clean_install"])
+        self.assertEqual(131, run["candidate"]["installed_test_count"])
+        candidate = run["candidate"]["sha"]
+        lock = run["expected_lock"]
+        canonical = json.dumps(
+            lock["cases"],
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        self.assertEqual(
+            hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
+            lock["cases_sha256"],
+        )
+        self.assertEqual(
+            "https://github.com/shinya0x00/github-task-protocol/"
+            "issues/113#issuecomment-5068513697",
+            lock["evidence_url"],
+        )
+        source_prefix = (
+            "https://github.com/shinya0x00/github-task-protocol/blob/"
+            f"{candidate}/"
+        )
+        for case in lock["cases"].values():
+            for source in case["sources"]:
+                self.assertTrue(source["url"].startswith(source_prefix))
+                path = ROOT / source["url"][len(source_prefix):]
+                self.assertEqual(
+                    hashlib.sha256(path.read_bytes()).hexdigest(), source["sha256"]
+                )
+        record_input = lock["cases"]["record"]["exact_input"]
+        self.assertEqual({"malformed", "edited", "id_collision"}, set(record_input))
+        self.assertIn("<!-- gtp-record:v1 -->", record_input["malformed"][0]["body"])
+        self.assertNotEqual(
+            record_input["edited"][0]["created_at"],
+            record_input["edited"][0]["updated_at"],
+        )
+        self.assertEqual(2, len(record_input["id_collision"]))
+        self.assertNotEqual(
+            record_input["id_collision"][0]["body"],
+            record_input["id_collision"][1]["body"],
+        )
+        self.assertEqual(
+            {"record", "binding", "evidence", "acquisition", "carrier", "setup", "normal"},
+            set(run["cases"]),
+        )
+
+        def observed_reason(machine):
+            if machine is None:
+                return None
+            if machine.get("halt_reason"):
+                return machine["halt_reason"]
+            if machine.get("acquisition_errors"):
+                return machine["acquisition_errors"][0]["code"]
+            if machine.get("errors"):
+                return machine["errors"][0]["code"]
+            return None
+
+        def problem_present(stdout):
+            return "問題の整理:" in stdout
+
+        def problem_block(stdout):
+            lines = stdout.splitlines()
+            start = lines.index("問題の整理:")
+            return "\n".join(lines[start:start + 9])
+
+        comparisons = []
+        for name, case in run["cases"].items():
+            with self.subTest(case=name):
+                expected = lock["cases"][name]["expected_result"]
+                machine = case["machine_json"]
+                observed_state = machine.get("state") if machine else None
+                values = [
+                    case["exact_input"] == lock["cases"][name]["exact_input"],
+                    case["expected_result"] == expected,
+                    observed_state == expected["state"],
+                    observed_reason(machine) == expected["reason"],
+                    case["exit_code"] == expected["exit_code"],
+                    problem_present(case["stdout"])
+                    == (expected["problem_block"] == "present"),
+                ]
+                self.assertTrue(all(values))
+                comparisons.extend(values)
+                self.assertTrue(case["owner_evidence"].startswith("https://github.com/"))
+                self.assertTrue(case["not_inferred"])
+        for variant in run["cases"]["record"]["variant_observations"].values():
+            self.assertEqual("halt", variant["machine_json"]["state"])
+            self.assertEqual("invalid_record", variant["machine_json"]["halt_reason"])
+            self.assertEqual(0, variant["exit_code"])
+            self.assertTrue(problem_present(variant["stdout"]))
+
+        boundary = run["mutation_boundary"]
+        before = boundary["local_worktree_before"]
+        after = boundary["local_worktree_after"]
+        self.assertEqual(
+            hashlib.sha256(before.encode()).hexdigest(),
+            boundary["local_worktree_before_sha256"],
+        )
+        self.assertEqual(
+            hashlib.sha256(after.encode()).hexdigest(),
+            boundary["local_worktree_after_sha256"],
+        )
+        self.assertEqual(before, after)
+        methods = [
+            method
+            for case_methods in boundary["http_methods"].values()
+            for method in case_methods
+        ]
+        self.assertTrue(all(method == "GET" for method in methods))
+        self.assertEqual(
+            run["cases"]["setup"]["mutation_callbacks"],
+            boundary["setup_callbacks"],
+        )
+        self.assertTrue(all(value == 0 for value in boundary["setup_callbacks"].values()))
+        self.assertEqual(boundary["live_before"], boundary["live_after"])
+        self.assertEqual(
+            run["cases"]["normal"]["before_snapshot"], boundary["live_before"]
+        )
+        self.assertEqual(
+            run["cases"]["normal"]["after_snapshot"], boundary["live_after"]
+        )
+        self.assertEqual(
+            "halt / invalid_record", run["self_regression_guard"]["observed"]
+        )
+        self.assertFalse(
+            run["self_regression_guard"]["unmanaged_crash_or_missing_output"]
+        )
+        self.assertEqual("accepted", run["human_probe"]["status"])
+        self.assertEqual("問題なし", run["human_probe"]["A"])
+        self.assertEqual("問題なし", run["human_probe"]["B"])
+        for label, case_name in (("A", "record"), ("B", "binding")):
+            match = re.search(
+                rf"## {label}\n\nPresented SHA-256: `([0-9a-f]{{64}})`"
+                rf"\n\n```text\n(.*?)\n```",
+                probe,
+                flags=re.DOTALL,
+            )
+            self.assertIsNotNone(match)
+            presented_hash, presented_text = match.groups()
+            self.assertEqual(
+                hashlib.sha256(presented_text.encode()).hexdigest(), presented_hash
+            )
+            self.assertEqual(
+                problem_block(run["cases"][case_name]["stdout"]), presented_text
+            )
+            self.assertEqual(
+                run["human_probe"]["presented_problem_sha256"][label],
+                presented_hash,
+            )
+        self.assertEqual(
+            all(comparisons),
+            run["claim_boundary"]["production_outputs_match_expected"],
+        )
+        self.assertTrue(run["claim_boundary"]["production_outputs_match_expected"])
+        self.assertTrue(run["claim_boundary"]["human_comprehension_accepted"])
+        self.assertFalse(run["claim_boundary"]["production_code_changed"])
+        self.assertFalse(run["claim_boundary"]["merge_authority"])
+        self.assertIn("Status: accepted", probe)
+        self.assertEqual(2, probe.count("回答: 問題なし"))
+        self.assertNotIn("回答: pending", probe)
 
     def test_explicit_setup_delivery_defers_external_acceptance_until_merge(self) -> None:
         evidence = json.loads(

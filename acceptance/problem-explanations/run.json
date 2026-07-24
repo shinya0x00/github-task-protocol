@@ -1,0 +1,1401 @@
+{
+  "schema": "github-task-protocol-problem-explanation-acceptance/v2",
+  "status": "accepted",
+  "source_issue": "https://github.com/shinya0x00/github-task-protocol/issues/113",
+  "candidate": {
+    "sha": "46103e0fdd41364f98e098518f6b91211fb1f5ea",
+    "version": "1.0.3",
+    "protocol": "1.0",
+    "wheel_sha256": "bb381a93dec2c3d98f76a5a37041b559a4162e2ed703dc9028effa9dc1ca9bdc",
+    "sdist_sha256": "733f588ab95582f908eb0feffdda3536244ed5c9aa0413283081b71ce17b13cf",
+    "clean_install": true,
+    "installed_test_count": 131
+  },
+  "expected_lock": {
+    "evidence_url": "https://github.com/shinya0x00/github-task-protocol/issues/113#issuecomment-5068513697",
+    "created_at": "2026-07-24T09:54:49Z",
+    "cases_sha256": "b1eae2812a59e269dd17f97fc3848ee404e3d4b6ee6afe04d134c8a5b630bbb4",
+    "cases": {
+      "record": {
+        "sources": [
+          {
+            "url": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/GTP.md",
+            "sha256": "cee9b146dcb80dcaf5a31fe06b56299be7eba5df325cc92aee243e8ddd1fbdb8"
+          },
+          {
+            "url": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/DESIGN.md",
+            "sha256": "55838ca418fe5aa36f07d86b251b2ff9b3d8fd7e8abfc0f339c64ab87bb30c95"
+          }
+        ],
+        "exact_input": {
+          "malformed": [
+            {
+              "id": 101,
+              "created_at": "2026-07-19T00:00:01Z",
+              "updated_at": "2026-07-19T00:00:01Z",
+              "body": "<!-- gtp-record:v1 -->\ninvalid"
+            }
+          ],
+          "edited": [
+            {
+              "id": 101,
+              "created_at": "2026-07-19T00:00:01Z",
+              "updated_at": "2026-07-19T00:01:01Z",
+              "body": "<!-- gtp-record:v1 -->\n要約\n\n<details><summary>記録(JSON)</summary>\n\n```json\n{\n  \"gtp\": \"1.0\",\n  \"type\": \"contract\",\n  \"id\": \"01234567-89ab-4def-8123-456789abcdef\",\n  \"goal\": \"A\",\n  \"scope\": [\n    \"src/\"\n  ],\n  \"done_conditions\": {\n    \"proof\": {\n      \"text\": \"proof\",\n      \"evidence_kind\": \"artifact\"\n    }\n  }\n}\n```\n\n</details>\n"
+            }
+          ],
+          "id_collision": [
+            {
+              "id": 101,
+              "created_at": "2026-07-19T00:00:01Z",
+              "updated_at": "2026-07-19T00:00:01Z",
+              "body": "<!-- gtp-record:v1 -->\n要約\n\n<details><summary>記録(JSON)</summary>\n\n```json\n{\n  \"gtp\": \"1.0\",\n  \"type\": \"contract\",\n  \"id\": \"01234567-89ab-4def-8123-456789abcdef\",\n  \"goal\": \"A\",\n  \"scope\": [\n    \"src/\"\n  ],\n  \"done_conditions\": {\n    \"proof\": {\n      \"text\": \"proof\",\n      \"evidence_kind\": \"artifact\"\n    }\n  }\n}\n```\n\n</details>\n"
+            },
+            {
+              "id": 102,
+              "created_at": "2026-07-19T00:00:02Z",
+              "updated_at": "2026-07-19T00:00:02Z",
+              "body": "<!-- gtp-record:v1 -->\n要約\n\n<details><summary>記録(JSON)</summary>\n\n```json\n{\n  \"gtp\": \"1.0\",\n  \"type\": \"contract\",\n  \"id\": \"01234567-89ab-4def-8123-456789abcdef\",\n  \"goal\": \"B\",\n  \"scope\": [\n    \"src/\"\n  ],\n  \"done_conditions\": {\n    \"proof\": {\n      \"text\": \"proof\",\n      \"evidence_kind\": \"artifact\"\n    }\n  }\n}\n```\n\n</details>\n"
+            }
+          ]
+        },
+        "expected_result": {
+          "state": "halt",
+          "reason": "invalid_record",
+          "exit_code": 0,
+          "problem_block": "present"
+        }
+      },
+      "binding": {
+        "sources": [
+          {
+            "url": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/GTP.md",
+            "sha256": "cee9b146dcb80dcaf5a31fe06b56299be7eba5df325cc92aee243e8ddd1fbdb8"
+          },
+          {
+            "url": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/DESIGN.md",
+            "sha256": "55838ca418fe5aa36f07d86b251b2ff9b3d8fd7e8abfc0f339c64ab87bb30c95"
+          },
+          {
+            "url": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/tests/fixtures/http/live-binding-matrix.json",
+            "sha256": "e302e43182b34f8df390f6dc0e08ec52a9ffc0c5084dd3de028aa663a5f4428a"
+          }
+        ],
+        "fixture_selector": "scope outside",
+        "exact_input": {
+          "name": "scope outside",
+          "records": [
+            "contract",
+            "start"
+          ],
+          "candidate_count": 1,
+          "files": [
+            {
+              "filename": "README.md",
+              "status": "modified"
+            }
+          ],
+          "state": "halt",
+          "reason": "invalid_binding"
+        },
+        "expected_result": {
+          "state": "halt",
+          "reason": "invalid_binding",
+          "exit_code": 0,
+          "problem_block": "present"
+        }
+      },
+      "evidence": {
+        "sources": [
+          {
+            "url": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/GTP.md",
+            "sha256": "cee9b146dcb80dcaf5a31fe06b56299be7eba5df325cc92aee243e8ddd1fbdb8"
+          },
+          {
+            "url": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/DESIGN.md",
+            "sha256": "55838ca418fe5aa36f07d86b251b2ff9b3d8fd7e8abfc0f339c64ab87bb30c95"
+          },
+          {
+            "url": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/tests/fixtures/http/live-binding-matrix.json",
+            "sha256": "e302e43182b34f8df390f6dc0e08ec52a9ffc0c5084dd3de028aa663a5f4428a"
+          }
+        ],
+        "fixture_selector": "done head stale",
+        "exact_input": {
+          "name": "done head stale",
+          "records": [
+            "contract",
+            "start",
+            "done"
+          ],
+          "pr_sha": "ffffffffffffffffffffffffffffffffffffffff",
+          "state": "halt",
+          "reason": "stale_evidence",
+          "first_url": "https://github.com/o/r/issues/1#issuecomment-103"
+        },
+        "expected_result": {
+          "state": "halt",
+          "reason": "stale_evidence",
+          "exit_code": 0,
+          "problem_block": "present"
+        }
+      },
+      "acquisition": {
+        "sources": [
+          {
+            "url": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/GTP.md",
+            "sha256": "cee9b146dcb80dcaf5a31fe06b56299be7eba5df325cc92aee243e8ddd1fbdb8"
+          },
+          {
+            "url": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/DESIGN.md",
+            "sha256": "55838ca418fe5aa36f07d86b251b2ff9b3d8fd7e8abfc0f339c64ab87bb30c95"
+          },
+          {
+            "url": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/tests/fixtures/http/live-binding-matrix.json",
+            "sha256": "e302e43182b34f8df390f6dc0e08ec52a9ffc0c5084dd3de028aa663a5f4428a"
+          }
+        ],
+        "fixture_selector": "branch 404 is ambiguous",
+        "exact_input": {
+          "name": "branch 404 is ambiguous",
+          "records": [
+            "contract",
+            "start"
+          ],
+          "branch_exists": false,
+          "state": null,
+          "acquisition_code": "acquisition_incomplete"
+        },
+        "expected_result": {
+          "state": null,
+          "reason": "acquisition_incomplete",
+          "exit_code": 2,
+          "problem_block": "present"
+        }
+      },
+      "carrier": {
+        "sources": [
+          {
+            "url": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/GTP.md",
+            "sha256": "cee9b146dcb80dcaf5a31fe06b56299be7eba5df325cc92aee243e8ddd1fbdb8"
+          },
+          {
+            "url": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/DESIGN.md",
+            "sha256": "55838ca418fe5aa36f07d86b251b2ff9b3d8fd7e8abfc0f339c64ab87bb30c95"
+          }
+        ],
+        "exact_input": "<!-- gtp-record:v1 -->\n壊れたCarrier\n\n<details><summary>記録(JSON)</summary>\n\n```json\n{\n```\n\n</details>\n",
+        "expected_result": {
+          "state": null,
+          "reason": "invalid_json",
+          "exit_code": 1,
+          "problem_block": "present"
+        }
+      },
+      "setup": {
+        "sources": [
+          {
+            "url": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/README.md",
+            "sha256": "f3507553c37dc9ee0beeb729c664906c8cd4ae075b802e11a866b80a60ea20a4"
+          },
+          {
+            "url": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/DESIGN.md",
+            "sha256": "55838ca418fe5aa36f07d86b251b2ff9b3d8fd7e8abfc0f339c64ab87bb30c95"
+          },
+          {
+            "url": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/tests/fixtures/setup-preflight.json",
+            "sha256": "d77aa5673587366b9bc8f6ab31ed7e93d0eb8ab4b189037f5d614d21a5d84acc"
+          }
+        ],
+        "fixture_selector": "unconnected_dependency",
+        "exact_input": {
+          "id": "unconnected_dependency",
+          "result": "未接続dependency",
+          "continue_setup": false,
+          "expected_display": {
+            "何が問題か": "既存instructionが要求するproduction dependencyへ接続できません",
+            "どこが問題か": "setup先の外部Operation接続",
+            "なぜそう判断したか": "instructionは確認できましたがproduction providerを取得できません",
+            "どこを直すか": "外部Operationのproviderまたはactivation owner（修正候補）",
+            "何を直さないか": "test／mock providerによるproduction代用、working tree、branch、commit、push、GTP Record、Issue、comment、label、PR",
+            "次の安全な一手": "確認済みowner URLをread-onlyで開き、人間が通常Issueでの修正を判断する",
+            "最初に確認するURL": "https://github.com/example/operation/issues/16",
+            "解決したと判断する条件": "production dependencyへ接続でき、同じpreflightが両立可能になる"
+          },
+          "before_snapshot": {
+            "working_tree": "clean",
+            "branches": [
+              "main"
+            ],
+            "default_branch_head": "0123456789abcdef0123456789abcdef01234567",
+            "issue": null,
+            "comments": 0,
+            "labels": [],
+            "pull_requests": []
+          },
+          "after_snapshot": {
+            "working_tree": "clean",
+            "branches": [
+              "main"
+            ],
+            "default_branch_head": "0123456789abcdef0123456789abcdef01234567",
+            "issue": null,
+            "comments": 0,
+            "labels": [],
+            "pull_requests": []
+          },
+          "mutation_callbacks": {
+            "working_tree": 0,
+            "branches": 0,
+            "commits": 0,
+            "pushes": 0,
+            "issue": 0,
+            "comments": 0,
+            "labels": 0,
+            "pull_requests": 0
+          }
+        },
+        "expected_result": {
+          "state": null,
+          "reason": null,
+          "exit_code": null,
+          "problem_block": "present"
+        }
+      },
+      "normal": {
+        "sources": [
+          {
+            "url": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/GTP.md",
+            "sha256": "cee9b146dcb80dcaf5a31fe06b56299be7eba5df325cc92aee243e8ddd1fbdb8"
+          },
+          {
+            "url": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/DESIGN.md",
+            "sha256": "55838ca418fe5aa36f07d86b251b2ff9b3d8fd7e8abfc0f339c64ab87bb30c95"
+          }
+        ],
+        "exact_input": "https://github.com/shinya0x00/github-task-protocol/issues/112",
+        "expected_result": {
+          "state": "done",
+          "reason": null,
+          "exit_code": 0,
+          "problem_block": "absent"
+        }
+      }
+    }
+  },
+  "cases": {
+    "record": {
+      "exit_code": 0,
+      "stdout": "状態: halt\n停止要否: このtransitionは進められません\n次の行動: 最初のURLを確認し、記録を推測で補わず人間へ戻してください\n理由: invalid_record — GTP Recordの形式、内容、編集状態のいずれかが不正です\n最初のURL: https://github.com/o/r/issues/1#issuecomment-101\n非許可表示: この出力は変更・完了・mergeの許可を与えません\n問題の整理:\n  1. 何が問題か: GTP Recordの形式、内容、編集状態のいずれかが不正です\n  2. どこが問題か: 対象IssueのGTP記録があるcomment\n  3. なぜそう判断したか: Issue commentを、変更されていない一意のGTP記録として確定できませんでした\n  4. どこを直すか: 最初のURLのcomment内容を確認し、過去commentは直さず、人間が必要ならStopと後継Issueを選ぶ（修正候補。根本的な修正責任は未確定）\n  5. 何を直さないか: 過去のIssue commentを編集・削除しない。GTPの仕様を変更しない\n  6. 次の安全な一手: 最初のURLのcommentと前後のGTP記録をread-onlyで確認する\n  7. 最初に確認するURL: https://github.com/o/r/issues/1#issuecomment-101\n  8. 解決したと判断する条件: 過去commentを変更せず、人間判断後のvalid Stopで元Issueをstoppedにし、必要なら後継Issueで再開する\nかんたんな説明:\n  結論: このIssueの完了は確認できません。作業を止めて人が確認してください。\n  次にすること: 原因の記録を開いてください: https://github.com/o/r/issues/1#issuecomment-101\n  ここまでが人向けの説明です。続くJSONは機械処理用です。",
+      "stderr": "",
+      "machine_json": {
+        "acquisition": "complete",
+        "acquisition_errors": [],
+        "authority": "none",
+        "bound_pr": null,
+        "branch": null,
+        "command": "status",
+        "contract": null,
+        "details": [],
+        "diagnostics": [
+          {
+            "token": "invalid_record",
+            "urls": [
+              "https://github.com/o/r/issues/1#issuecomment-101"
+            ]
+          }
+        ],
+        "done": null,
+        "gtp": "1.0",
+        "halt_reason": "invalid_record",
+        "issue_url": "https://github.com/o/r/issues/1",
+        "next_action": "inspect_halt",
+        "pr_candidate": null,
+        "primary_url": "https://github.com/o/r/issues/1#issuecomment-101",
+        "start": null,
+        "state": "halt",
+        "stop": null,
+        "task_context": {
+          "branch": null,
+          "conditions": {},
+          "evidence_limits": [
+            "Check RunがDone Conditionの内容を十分に検査したこと",
+            "Artifactの内容がDone Conditionを満たすこと",
+            "Issue本文・通常commentに未解決事項がないこと",
+            "actor本人性",
+            "credential安全性",
+            "GitHub外情報を参照しなかったこと"
+          ],
+          "goal": null,
+          "handoff_semantics": "Issue本文・通常commentの意味は自動判定しない",
+          "handoff_url": "https://github.com/o/r/issues/1",
+          "not_proven": [
+            "Contract未確認"
+          ],
+          "pr": null,
+          "scope": []
+        }
+      },
+      "exact_input": {
+        "malformed": [
+          {
+            "id": 101,
+            "created_at": "2026-07-19T00:00:01Z",
+            "updated_at": "2026-07-19T00:00:01Z",
+            "body": "<!-- gtp-record:v1 -->\ninvalid"
+          }
+        ],
+        "edited": [
+          {
+            "id": 101,
+            "created_at": "2026-07-19T00:00:01Z",
+            "updated_at": "2026-07-19T00:01:01Z",
+            "body": "<!-- gtp-record:v1 -->\n要約\n\n<details><summary>記録(JSON)</summary>\n\n```json\n{\n  \"gtp\": \"1.0\",\n  \"type\": \"contract\",\n  \"id\": \"01234567-89ab-4def-8123-456789abcdef\",\n  \"goal\": \"A\",\n  \"scope\": [\n    \"src/\"\n  ],\n  \"done_conditions\": {\n    \"proof\": {\n      \"text\": \"proof\",\n      \"evidence_kind\": \"artifact\"\n    }\n  }\n}\n```\n\n</details>\n"
+          }
+        ],
+        "id_collision": [
+          {
+            "id": 101,
+            "created_at": "2026-07-19T00:00:01Z",
+            "updated_at": "2026-07-19T00:00:01Z",
+            "body": "<!-- gtp-record:v1 -->\n要約\n\n<details><summary>記録(JSON)</summary>\n\n```json\n{\n  \"gtp\": \"1.0\",\n  \"type\": \"contract\",\n  \"id\": \"01234567-89ab-4def-8123-456789abcdef\",\n  \"goal\": \"A\",\n  \"scope\": [\n    \"src/\"\n  ],\n  \"done_conditions\": {\n    \"proof\": {\n      \"text\": \"proof\",\n      \"evidence_kind\": \"artifact\"\n    }\n  }\n}\n```\n\n</details>\n"
+          },
+          {
+            "id": 102,
+            "created_at": "2026-07-19T00:00:02Z",
+            "updated_at": "2026-07-19T00:00:02Z",
+            "body": "<!-- gtp-record:v1 -->\n要約\n\n<details><summary>記録(JSON)</summary>\n\n```json\n{\n  \"gtp\": \"1.0\",\n  \"type\": \"contract\",\n  \"id\": \"01234567-89ab-4def-8123-456789abcdef\",\n  \"goal\": \"B\",\n  \"scope\": [\n    \"src/\"\n  ],\n  \"done_conditions\": {\n    \"proof\": {\n      \"text\": \"proof\",\n      \"evidence_kind\": \"artifact\"\n    }\n  }\n}\n```\n\n</details>\n"
+          }
+        ]
+      },
+      "variant_observations": {
+        "malformed": {
+          "exit_code": 0,
+          "stdout": "状態: halt\n停止要否: このtransitionは進められません\n次の行動: 最初のURLを確認し、記録を推測で補わず人間へ戻してください\n理由: invalid_record — GTP Recordの形式、内容、編集状態のいずれかが不正です\n最初のURL: https://github.com/o/r/issues/1#issuecomment-101\n非許可表示: この出力は変更・完了・mergeの許可を与えません\n問題の整理:\n  1. 何が問題か: GTP Recordの形式、内容、編集状態のいずれかが不正です\n  2. どこが問題か: 対象IssueのGTP記録があるcomment\n  3. なぜそう判断したか: Issue commentを、変更されていない一意のGTP記録として確定できませんでした\n  4. どこを直すか: 最初のURLのcomment内容を確認し、過去commentは直さず、人間が必要ならStopと後継Issueを選ぶ（修正候補。根本的な修正責任は未確定）\n  5. 何を直さないか: 過去のIssue commentを編集・削除しない。GTPの仕様を変更しない\n  6. 次の安全な一手: 最初のURLのcommentと前後のGTP記録をread-onlyで確認する\n  7. 最初に確認するURL: https://github.com/o/r/issues/1#issuecomment-101\n  8. 解決したと判断する条件: 過去commentを変更せず、人間判断後のvalid Stopで元Issueをstoppedにし、必要なら後継Issueで再開する\nかんたんな説明:\n  結論: このIssueの完了は確認できません。作業を止めて人が確認してください。\n  次にすること: 原因の記録を開いてください: https://github.com/o/r/issues/1#issuecomment-101\n  ここまでが人向けの説明です。続くJSONは機械処理用です。",
+          "stderr": "",
+          "machine_json": {
+            "acquisition": "complete",
+            "acquisition_errors": [],
+            "authority": "none",
+            "bound_pr": null,
+            "branch": null,
+            "command": "status",
+            "contract": null,
+            "details": [],
+            "diagnostics": [
+              {
+                "token": "invalid_record",
+                "urls": [
+                  "https://github.com/o/r/issues/1#issuecomment-101"
+                ]
+              }
+            ],
+            "done": null,
+            "gtp": "1.0",
+            "halt_reason": "invalid_record",
+            "issue_url": "https://github.com/o/r/issues/1",
+            "next_action": "inspect_halt",
+            "pr_candidate": null,
+            "primary_url": "https://github.com/o/r/issues/1#issuecomment-101",
+            "start": null,
+            "state": "halt",
+            "stop": null,
+            "task_context": {
+              "branch": null,
+              "conditions": {},
+              "evidence_limits": [
+                "Check RunがDone Conditionの内容を十分に検査したこと",
+                "Artifactの内容がDone Conditionを満たすこと",
+                "Issue本文・通常commentに未解決事項がないこと",
+                "actor本人性",
+                "credential安全性",
+                "GitHub外情報を参照しなかったこと"
+              ],
+              "goal": null,
+              "handoff_semantics": "Issue本文・通常commentの意味は自動判定しない",
+              "handoff_url": "https://github.com/o/r/issues/1",
+              "not_proven": [
+                "Contract未確認"
+              ],
+              "pr": null,
+              "scope": []
+            }
+          }
+        },
+        "edited": {
+          "exit_code": 0,
+          "stdout": "状態: halt\n停止要否: このtransitionは進められません\n次の行動: 最初のURLを確認し、記録を推測で補わず人間へ戻してください\n理由: invalid_record — GTP Recordの形式、内容、編集状態のいずれかが不正です\n最初のURL: https://github.com/o/r/issues/1#issuecomment-101\n非許可表示: この出力は変更・完了・mergeの許可を与えません\n問題の整理:\n  1. 何が問題か: GTP Recordの形式、内容、編集状態のいずれかが不正です\n  2. どこが問題か: 対象IssueのGTP記録があるcomment\n  3. なぜそう判断したか: Issue commentを、変更されていない一意のGTP記録として確定できませんでした\n  4. どこを直すか: 最初のURLのcomment内容を確認し、過去commentは直さず、人間が必要ならStopと後継Issueを選ぶ（修正候補。根本的な修正責任は未確定）\n  5. 何を直さないか: 過去のIssue commentを編集・削除しない。GTPの仕様を変更しない\n  6. 次の安全な一手: 最初のURLのcommentと前後のGTP記録をread-onlyで確認する\n  7. 最初に確認するURL: https://github.com/o/r/issues/1#issuecomment-101\n  8. 解決したと判断する条件: 過去commentを変更せず、人間判断後のvalid Stopで元Issueをstoppedにし、必要なら後継Issueで再開する\nかんたんな説明:\n  結論: このIssueの完了は確認できません。作業を止めて人が確認してください。\n  次にすること: 原因の記録を開いてください: https://github.com/o/r/issues/1#issuecomment-101\n  ここまでが人向けの説明です。続くJSONは機械処理用です。",
+          "stderr": "",
+          "machine_json": {
+            "acquisition": "complete",
+            "acquisition_errors": [],
+            "authority": "none",
+            "bound_pr": null,
+            "branch": null,
+            "command": "status",
+            "contract": null,
+            "details": [],
+            "diagnostics": [
+              {
+                "token": "invalid_record",
+                "urls": [
+                  "https://github.com/o/r/issues/1#issuecomment-101"
+                ]
+              }
+            ],
+            "done": null,
+            "gtp": "1.0",
+            "halt_reason": "invalid_record",
+            "issue_url": "https://github.com/o/r/issues/1",
+            "next_action": "inspect_halt",
+            "pr_candidate": null,
+            "primary_url": "https://github.com/o/r/issues/1#issuecomment-101",
+            "start": null,
+            "state": "halt",
+            "stop": null,
+            "task_context": {
+              "branch": null,
+              "conditions": {},
+              "evidence_limits": [
+                "Check RunがDone Conditionの内容を十分に検査したこと",
+                "Artifactの内容がDone Conditionを満たすこと",
+                "Issue本文・通常commentに未解決事項がないこと",
+                "actor本人性",
+                "credential安全性",
+                "GitHub外情報を参照しなかったこと"
+              ],
+              "goal": null,
+              "handoff_semantics": "Issue本文・通常commentの意味は自動判定しない",
+              "handoff_url": "https://github.com/o/r/issues/1",
+              "not_proven": [
+                "Contract未確認"
+              ],
+              "pr": null,
+              "scope": []
+            }
+          }
+        },
+        "id_collision": {
+          "exit_code": 0,
+          "stdout": "状態: halt\n停止要否: このtransitionは進められません\n次の行動: 最初のURLを確認し、記録を推測で補わず人間へ戻してください\n理由: invalid_record — GTP Recordの形式、内容、編集状態のいずれかが不正です\n最初のURL: https://github.com/o/r/issues/1#issuecomment-101\n非許可表示: この出力は変更・完了・mergeの許可を与えません\n問題の整理:\n  1. 何が問題か: GTP Recordの形式、内容、編集状態のいずれかが不正です\n  2. どこが問題か: 対象IssueのGTP記録があるcomment\n  3. なぜそう判断したか: Issue commentを、変更されていない一意のGTP記録として確定できませんでした\n  4. どこを直すか: 最初のURLのcomment内容を確認し、過去commentは直さず、人間が必要ならStopと後継Issueを選ぶ（修正候補。根本的な修正責任は未確定）\n  5. 何を直さないか: 過去のIssue commentを編集・削除しない。GTPの仕様を変更しない\n  6. 次の安全な一手: 最初のURLのcommentと前後のGTP記録をread-onlyで確認する\n  7. 最初に確認するURL: https://github.com/o/r/issues/1#issuecomment-101\n  8. 解決したと判断する条件: 過去commentを変更せず、人間判断後のvalid Stopで元Issueをstoppedにし、必要なら後継Issueで再開する\nかんたんな説明:\n  結論: このIssueの完了は確認できません。作業を止めて人が確認してください。\n  次にすること: 原因の記録を開いてください: https://github.com/o/r/issues/1#issuecomment-101\n  ここまでが人向けの説明です。続くJSONは機械処理用です。",
+          "stderr": "",
+          "machine_json": {
+            "acquisition": "complete",
+            "acquisition_errors": [],
+            "authority": "none",
+            "bound_pr": null,
+            "branch": null,
+            "command": "status",
+            "contract": null,
+            "details": [],
+            "diagnostics": [
+              {
+                "token": "invalid_record",
+                "urls": [
+                  "https://github.com/o/r/issues/1#issuecomment-101",
+                  "https://github.com/o/r/issues/1#issuecomment-102"
+                ]
+              }
+            ],
+            "done": null,
+            "gtp": "1.0",
+            "halt_reason": "invalid_record",
+            "issue_url": "https://github.com/o/r/issues/1",
+            "next_action": "inspect_halt",
+            "pr_candidate": null,
+            "primary_url": "https://github.com/o/r/issues/1#issuecomment-101",
+            "start": null,
+            "state": "halt",
+            "stop": null,
+            "task_context": {
+              "branch": null,
+              "conditions": {},
+              "evidence_limits": [
+                "Check RunがDone Conditionの内容を十分に検査したこと",
+                "Artifactの内容がDone Conditionを満たすこと",
+                "Issue本文・通常commentに未解決事項がないこと",
+                "actor本人性",
+                "credential安全性",
+                "GitHub外情報を参照しなかったこと"
+              ],
+              "goal": null,
+              "handoff_semantics": "Issue本文・通常commentの意味は自動判定しない",
+              "handoff_url": "https://github.com/o/r/issues/1",
+              "not_proven": [
+                "Contract未確認"
+              ],
+              "pr": null,
+              "scope": []
+            }
+          }
+        }
+      },
+      "http_methods": [
+        "GET"
+      ],
+      "expected_result": {
+        "state": "halt",
+        "reason": "invalid_record",
+        "exit_code": 0,
+        "problem_block": "present"
+      },
+      "comparison": {
+        "state_matches": true,
+        "reason_matches": true,
+        "exit_code_matches": true,
+        "problem_block_matches": true
+      },
+      "owner_evidence": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/src/gtp/status.py",
+      "not_inferred": [
+        "過去commentの修正",
+        "根本的な修正責任"
+      ],
+      "verdict": "matched"
+    },
+    "binding": {
+      "exact_input": {
+        "name": "scope outside",
+        "records": [
+          "contract",
+          "start"
+        ],
+        "candidate_count": 1,
+        "files": [
+          {
+            "filename": "README.md",
+            "status": "modified"
+          }
+        ],
+        "state": "halt",
+        "reason": "invalid_binding"
+      },
+      "exit_code": 0,
+      "stdout": "状態: halt\n停止要否: このtransitionは進められません\n次の行動: 最初のURLを確認し、記録を推測で補わず人間へ戻してください\n理由: invalid_binding — Issue、branch、PR、scopeの束縛が一致しません\n最初のURL: https://github.com/o/r/issues/1#issuecomment-102\n非許可表示: この出力は変更・完了・mergeの許可を与えません\n問題の整理:\n  1. 何が問題か: PRに、このIssueで変更してよい範囲外のfile README.mdがあります\n  2. どこが問題か: Issueで変更してよい範囲とbranch・PRの対応\n  3. なぜそう判断したか: このIssueで変更してよい範囲はsrc/ですが、PRに範囲外のfile README.mdが含まれています\n  4. どこを直すか: 範囲外のfileをこのPRから外すか、必要なら通常の後継Issueで扱う（修正候補。最終判断は人間）\n  5. 何を直さないか: Issueに既に投稿された記録とGTP.mdの仕様\n  6. 次の安全な一手: 最初のURLでIssueの変更範囲とPRの変更fileをread-onlyで比較する\n  7. 最初に確認するURL: https://github.com/o/r/issues/1#issuecomment-102\n  8. 解決したと判断する条件: 再取得でIssueに記録されたbranch、PR、変更範囲の対応を確認できる、または人間判断後に後継Issueへ移る\nかんたんな説明:\n  結論: このIssueの完了は確認できません。作業を止めて人が確認してください。\n  次にすること: 原因の記録を開いてください: https://github.com/o/r/issues/1#issuecomment-102\n  この作業の目的: HTTP matrix\n  変更してよい場所: src/\n  作業場所: branch agent/test / PR https://github.com/o/r/pull/7\n  未確認事項の確認先: https://github.com/o/r/issues/1（Issue本文・通常commentの意味は自動判定していません）\n  確認資料が足りない条件:\n    - proof exists（識別子: proof）\n      不足しているもの: 条件を確認するための証拠リンク\n  大事な点: 足りない記録を推測で補わないでください。この表示だけでは変更・完了・mergeできません。\n  ここまでが人向けの説明です。続くJSONは機械処理用です。",
+      "stderr": "",
+      "machine_json": {
+        "acquisition": "complete",
+        "acquisition_errors": [],
+        "authority": "none",
+        "bound_pr": null,
+        "branch": {
+          "name": "agent/test",
+          "observation": {
+            "exists": true
+          }
+        },
+        "command": "status",
+        "contract": {
+          "content": {
+            "done_conditions": {
+              "proof": {
+                "evidence_kind": "artifact",
+                "text": "proof exists"
+              }
+            },
+            "goal": "HTTP matrix",
+            "scope": [
+              "src/"
+            ]
+          },
+          "id": "01234567-89ab-4def-8123-456789abcdef",
+          "observation": {
+            "aliases": [
+              "https://github.com/o/r/issues/1#issuecomment-101"
+            ],
+            "comment_id": 101,
+            "url": "https://github.com/o/r/issues/1#issuecomment-101"
+          },
+          "type": "contract"
+        },
+        "details": [
+          {
+            "paths": [
+              "README.md"
+            ]
+          }
+        ],
+        "diagnostics": [
+          {
+            "detail": {
+              "paths": [
+                "README.md"
+              ]
+            },
+            "token": "invalid_binding",
+            "urls": [
+              "https://github.com/o/r/issues/1#issuecomment-102",
+              "https://github.com/o/r/pull/7"
+            ]
+          }
+        ],
+        "done": null,
+        "gtp": "1.0",
+        "halt_reason": "invalid_binding",
+        "issue_url": "https://github.com/o/r/issues/1",
+        "next_action": "inspect_halt",
+        "pr_candidate": "https://github.com/o/r/pull/7",
+        "primary_url": "https://github.com/o/r/issues/1#issuecomment-102",
+        "start": {
+          "content": {
+            "branch": "agent/test",
+            "contract_ref": "https://github.com/o/r/issues/1#issuecomment-101"
+          },
+          "id": "11234567-89ab-4def-8123-456789abcdef",
+          "observation": {
+            "aliases": [
+              "https://github.com/o/r/issues/1#issuecomment-102"
+            ],
+            "comment_id": 102,
+            "url": "https://github.com/o/r/issues/1#issuecomment-102"
+          },
+          "type": "start"
+        },
+        "state": "halt",
+        "stop": null,
+        "task_context": {
+          "branch": "agent/test",
+          "conditions": {
+            "proof": {
+              "evidence_kind": "artifact",
+              "evidence_status": "not_presented",
+              "evidence_url": null,
+              "text": "proof exists"
+            }
+          },
+          "evidence_limits": [
+            "Check RunがDone Conditionの内容を十分に検査したこと",
+            "Artifactの内容がDone Conditionを満たすこと",
+            "Issue本文・通常commentに未解決事項がないこと",
+            "actor本人性",
+            "credential安全性",
+            "GitHub外情報を参照しなかったこと"
+          ],
+          "goal": "HTTP matrix",
+          "handoff_semantics": "Issue本文・通常commentの意味は自動判定しない",
+          "handoff_url": "https://github.com/o/r/issues/1",
+          "not_proven": [
+            "proof: Evidence未提示",
+            "Done Claim未提示"
+          ],
+          "pr": "https://github.com/o/r/pull/7",
+          "scope": [
+            "src/"
+          ]
+        }
+      },
+      "http_methods": [
+        "GET"
+      ],
+      "expected_result": {
+        "state": "halt",
+        "reason": "invalid_binding",
+        "exit_code": 0,
+        "problem_block": "present"
+      },
+      "comparison": {
+        "state_matches": true,
+        "reason_matches": true,
+        "exit_code_matches": true,
+        "problem_block_matches": true
+      },
+      "owner_evidence": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/src/gtp/status.py",
+      "not_inferred": [
+        "範囲外fileを外すか後継Issueへ送るかの最終判断",
+        "根本的な修正責任"
+      ],
+      "verdict": "matched"
+    },
+    "evidence": {
+      "exact_input": {
+        "name": "done head stale",
+        "records": [
+          "contract",
+          "start",
+          "done"
+        ],
+        "pr_sha": "ffffffffffffffffffffffffffffffffffffffff",
+        "state": "halt",
+        "reason": "stale_evidence",
+        "first_url": "https://github.com/o/r/issues/1#issuecomment-103"
+      },
+      "exit_code": 0,
+      "stdout": "状態: halt\n停止要否: このtransitionは進められません\n次の行動: 最初のURLを確認し、記録を推測で補わず人間へ戻してください\n理由: stale_evidence — EvidenceがDoneのsource head SHAと一致しません\n最初のURL: https://github.com/o/r/issues/1#issuecomment-103\n非許可表示: この出力は変更・完了・mergeの許可を与えません\n問題の整理:\n  1. 何が問題か: EvidenceがDoneのsource head SHAと一致しません\n  2. どこが問題か: Done Claim、Evidence resource、source head\n  3. なぜそう判断したか: Evidenceが示すcommitとDoneが示すsource headが異なります\n  4. どこを直すか: 新しいsource headを扱う通常の後継Issue（修正候補。根本的な修正責任は未確定）\n  5. 何を直さないか: 既存Done Carrier、Evidence URL、source履歴の書換え\n  6. 次の安全な一手: 最初のURLでDone、Evidence、現在のPR headをread-onlyで比較する\n  7. 最初に確認するURL: https://github.com/o/r/issues/1#issuecomment-103\n  8. 解決したと判断する条件: 元のDoneと履歴を変更せずvalid Stopで元Issueをstoppedにし、後継Issueで新しいheadへ束縛する\nかんたんな説明:\n  結論: このIssueの完了は確認できません。作業を止めて人が確認してください。\n  次にすること: 原因の記録を開いてください: https://github.com/o/r/issues/1#issuecomment-103\n  この作業の目的: HTTP matrix\n  変更してよい場所: src/\n  作業場所: branch agent/test / PR https://github.com/o/r/pull/7\n  未確認事項の確認先: https://github.com/o/r/issues/1（Issue本文・通常commentの意味は自動判定していません）\n  記録に確認資料へのリンクがある条件（達成済みとはまだ断定しません）:\n    - proof exists（識別子: proof）\n      確認資料: https://github.com/o/r/blob/0123456789abcdef0123456789abcdef01234567/src/a.py\n  大事な点: 足りない記録を推測で補わないでください。この表示だけでは変更・完了・mergeできません。\n  ここまでが人向けの説明です。続くJSONは機械処理用です。",
+      "stderr": "",
+      "machine_json": {
+        "acquisition": "complete",
+        "acquisition_errors": [],
+        "authority": "none",
+        "bound_pr": "https://github.com/o/r/pull/7",
+        "branch": {
+          "name": "agent/test",
+          "observation": {}
+        },
+        "command": "status",
+        "contract": {
+          "content": {
+            "done_conditions": {
+              "proof": {
+                "evidence_kind": "artifact",
+                "text": "proof exists"
+              }
+            },
+            "goal": "HTTP matrix",
+            "scope": [
+              "src/"
+            ]
+          },
+          "id": "01234567-89ab-4def-8123-456789abcdef",
+          "observation": {
+            "aliases": [
+              "https://github.com/o/r/issues/1#issuecomment-101"
+            ],
+            "comment_id": 101,
+            "url": "https://github.com/o/r/issues/1#issuecomment-101"
+          },
+          "type": "contract"
+        },
+        "details": [],
+        "diagnostics": [
+          {
+            "token": "stale_evidence",
+            "urls": [
+              "https://github.com/o/r/issues/1#issuecomment-103",
+              "https://github.com/o/r/pull/7"
+            ]
+          }
+        ],
+        "done": {
+          "content": {
+            "evidence": {
+              "proof": "https://github.com/o/r/blob/0123456789abcdef0123456789abcdef01234567/src/a.py"
+            },
+            "head_sha": "0123456789abcdef0123456789abcdef01234567",
+            "pr_ref": "https://github.com/o/r/pull/7"
+          },
+          "id": "21234567-89ab-4def-8123-456789abcdef",
+          "observation": {
+            "aliases": [
+              "https://github.com/o/r/issues/1#issuecomment-103"
+            ],
+            "comment_id": 103,
+            "url": "https://github.com/o/r/issues/1#issuecomment-103"
+          },
+          "type": "done"
+        },
+        "gtp": "1.0",
+        "halt_reason": "stale_evidence",
+        "issue_url": "https://github.com/o/r/issues/1",
+        "next_action": "inspect_halt",
+        "pr_candidate": null,
+        "primary_url": "https://github.com/o/r/issues/1#issuecomment-103",
+        "start": {
+          "content": {
+            "branch": "agent/test",
+            "contract_ref": "https://github.com/o/r/issues/1#issuecomment-101"
+          },
+          "id": "11234567-89ab-4def-8123-456789abcdef",
+          "observation": {
+            "aliases": [
+              "https://github.com/o/r/issues/1#issuecomment-102"
+            ],
+            "comment_id": 102,
+            "url": "https://github.com/o/r/issues/1#issuecomment-102"
+          },
+          "type": "start"
+        },
+        "state": "halt",
+        "stop": null,
+        "task_context": {
+          "branch": "agent/test",
+          "conditions": {
+            "proof": {
+              "evidence_kind": "artifact",
+              "evidence_status": "presented",
+              "evidence_url": "https://github.com/o/r/blob/0123456789abcdef0123456789abcdef01234567/src/a.py",
+              "text": "proof exists"
+            }
+          },
+          "evidence_limits": [
+            "Check RunがDone Conditionの内容を十分に検査したこと",
+            "Artifactの内容がDone Conditionを満たすこと",
+            "Issue本文・通常commentに未解決事項がないこと",
+            "actor本人性",
+            "credential安全性",
+            "GitHub外情報を参照しなかったこと"
+          ],
+          "goal": "HTTP matrix",
+          "handoff_semantics": "Issue本文・通常commentの意味は自動判定しない",
+          "handoff_url": "https://github.com/o/r/issues/1",
+          "not_proven": [
+            "protocol不適合が未解決"
+          ],
+          "pr": "https://github.com/o/r/pull/7",
+          "scope": [
+            "src/"
+          ]
+        }
+      },
+      "http_methods": [
+        "GET"
+      ],
+      "expected_result": {
+        "state": "halt",
+        "reason": "stale_evidence",
+        "exit_code": 0,
+        "problem_block": "present"
+      },
+      "comparison": {
+        "state_matches": true,
+        "reason_matches": true,
+        "exit_code_matches": true,
+        "problem_block_matches": true
+      },
+      "owner_evidence": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/src/gtp/status.py",
+      "not_inferred": [
+        "既存DoneまたはEvidence URLの書換え",
+        "新しい作業の開始"
+      ],
+      "verdict": "matched"
+    },
+    "acquisition": {
+      "exact_input": {
+        "name": "branch 404 is ambiguous",
+        "records": [
+          "contract",
+          "start"
+        ],
+        "branch_exists": false,
+        "state": null,
+        "acquisition_code": "acquisition_incomplete"
+      },
+      "exit_code": 2,
+      "stdout": "状態: 不明\n停止要否: 状態を決められないため、このtransitionは進められません\n次の行動: GitHub情報を再取得してください\n理由: acquisition_incomplete — GitHub情報を完全に取得できず、stateを決定していません\n最初のURL: https://api.github.com/repos/o/r/branches/agent%2Ftest\n非許可表示: この出力は変更・完了・mergeの許可を与えません\n問題の整理:\n  1. 何が問題か: GitHub情報を完全に取得できずstateを決定できません\n  2. どこが問題か: GitHub取得経路\n  3. なぜそう判断したか: acquisition error: acquisition_incomplete; status: 404\n  4. どこを直すか: 取得・認証・snapshot経路（修正責任未確定）\n  5. 何を直さないか: GTP Record、state、halt reason\n  6. 次の安全な一手: 同じresourceをread-onlyで再取得する\n  7. 最初に確認するURL: https://api.github.com/repos/o/r/branches/agent%2Ftest\n  8. 解決したと判断する条件: 取得がcompleteとなりstateを再構成できる\nかんたんな説明:\n  結論: GitHub情報を最後まで取得できていないため、まだ判断できません。\n  次にすること: GitHub情報をもう一度取得してください。最初の確認先: https://api.github.com/repos/o/r/branches/agent%2Ftest\n  大事な点: 情報を取得できないことと、記録に矛盾があることは別です。\n  ここまでが人向けの説明です。続くJSONは機械処理用です。",
+      "stderr": "",
+      "machine_json": {
+        "acquisition": "incomplete",
+        "acquisition_errors": [
+          {
+            "code": "acquisition_incomplete",
+            "message": "GitHub API returned HTTP 404",
+            "resource": "https://api.github.com/repos/o/r/branches/agent%2Ftest",
+            "status": 404
+          }
+        ],
+        "authority": "none",
+        "bound_pr": null,
+        "branch": null,
+        "command": "status",
+        "contract": null,
+        "details": [],
+        "diagnostics": [],
+        "done": null,
+        "gtp": "1.0",
+        "halt_reason": null,
+        "issue_url": "https://github.com/o/r/issues/1",
+        "next_action": "retry_acquisition",
+        "pr_candidate": null,
+        "primary_url": "https://api.github.com/repos/o/r/branches/agent%2Ftest",
+        "start": null,
+        "state": null,
+        "stop": null,
+        "task_context": {
+          "branch": null,
+          "conditions": {},
+          "evidence_limits": [
+            "Check RunがDone Conditionの内容を十分に検査したこと",
+            "Artifactの内容がDone Conditionを満たすこと",
+            "Issue本文・通常commentに未解決事項がないこと",
+            "actor本人性",
+            "credential安全性",
+            "GitHub外情報を参照しなかったこと"
+          ],
+          "goal": null,
+          "handoff_semantics": "Issue本文・通常commentの意味は自動判定しない",
+          "handoff_url": "https://github.com/o/r/issues/1",
+          "not_proven": [
+            "GitHub情報の取得が不完全なためtask context未確認"
+          ],
+          "pr": null,
+          "scope": []
+        }
+      },
+      "http_methods": [
+        "GET"
+      ],
+      "expected_result": {
+        "state": null,
+        "reason": "acquisition_incomplete",
+        "exit_code": 2,
+        "problem_block": "present"
+      },
+      "comparison": {
+        "state_matches": true,
+        "reason_matches": true,
+        "exit_code_matches": true,
+        "problem_block_matches": true
+      },
+      "owner_evidence": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/src/gtp/github.py",
+      "not_inferred": [
+        "404がresource不在か権限不足か",
+        "protocol不適合"
+      ],
+      "verdict": "matched"
+    },
+    "carrier": {
+      "exit_code": 1,
+      "stdout": "検査結果: GTP Carrierとして認識しましたが、形式・JSON・schemaに適合しません\ncontextual checks: Issue上の参照関係とstateは検査していません\n非許可表示: この出力は変更・完了・mergeの許可を与えません\n問題の整理:\n  1. 何が問題か: 投稿前GTP CarrierのJSONをstrict JSONとして読めません\n  2. どこが問題か: 投稿前CarrierのJSON\n  3. なぜそう判断したか: check error: invalid_json at $\n  4. どこを直すか: error pathが示すJSON（修正候補。根本的な修正責任は未確定）\n  5. 何を直さないか: 未確認のIssue、branch、PR、GTP state\n  6. 次の安全な一手: error codeとpathのJSONを修正してgtp checkを再実行する\n  7. 最初に確認するURL: URLなし（投稿前入力）\n  8. 解決したと判断する条件: recognizedとschema_validがともにtrueになる",
+      "stderr": "",
+      "machine_json": {
+        "authority": "none",
+        "command": "check",
+        "contextual_checks": "not_run",
+        "errors": [
+          {
+            "code": "invalid_json",
+            "message": "Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
+            "path": "$"
+          }
+        ],
+        "gtp": "1.0",
+        "projected_state": null,
+        "recognized": true,
+        "record": null,
+        "schema_valid": false
+      },
+      "exact_input": "<!-- gtp-record:v1 -->\n壊れたCarrier\n\n<details><summary>記録(JSON)</summary>\n\n```json\n{\n```\n\n</details>\n",
+      "http_methods": [],
+      "expected_result": {
+        "state": null,
+        "reason": "invalid_json",
+        "exit_code": 1,
+        "problem_block": "present"
+      },
+      "comparison": {
+        "state_matches": true,
+        "reason_matches": true,
+        "exit_code_matches": true,
+        "problem_block_matches": true
+      },
+      "owner_evidence": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/src/gtp/carrier.py",
+      "not_inferred": [
+        "未取得のIssue、branch、PR state",
+        "根本的な修正責任"
+      ],
+      "verdict": "matched"
+    },
+    "setup": {
+      "exact_input": {
+        "id": "unconnected_dependency",
+        "result": "未接続dependency",
+        "continue_setup": false,
+        "expected_display": {
+          "何が問題か": "既存instructionが要求するproduction dependencyへ接続できません",
+          "どこが問題か": "setup先の外部Operation接続",
+          "なぜそう判断したか": "instructionは確認できましたがproduction providerを取得できません",
+          "どこを直すか": "外部Operationのproviderまたはactivation owner（修正候補）",
+          "何を直さないか": "test／mock providerによるproduction代用、working tree、branch、commit、push、GTP Record、Issue、comment、label、PR",
+          "次の安全な一手": "確認済みowner URLをread-onlyで開き、人間が通常Issueでの修正を判断する",
+          "最初に確認するURL": "https://github.com/example/operation/issues/16",
+          "解決したと判断する条件": "production dependencyへ接続でき、同じpreflightが両立可能になる"
+        },
+        "before_snapshot": {
+          "working_tree": "clean",
+          "branches": [
+            "main"
+          ],
+          "default_branch_head": "0123456789abcdef0123456789abcdef01234567",
+          "issue": null,
+          "comments": 0,
+          "labels": [],
+          "pull_requests": []
+        },
+        "after_snapshot": {
+          "working_tree": "clean",
+          "branches": [
+            "main"
+          ],
+          "default_branch_head": "0123456789abcdef0123456789abcdef01234567",
+          "issue": null,
+          "comments": 0,
+          "labels": [],
+          "pull_requests": []
+        },
+        "mutation_callbacks": {
+          "working_tree": 0,
+          "branches": 0,
+          "commits": 0,
+          "pushes": 0,
+          "issue": 0,
+          "comments": 0,
+          "labels": 0,
+          "pull_requests": 0
+        }
+      },
+      "exit_code": null,
+      "stdout": "問題の整理:\n  1. 何が問題か: 既存instructionが要求するproduction dependencyへ接続できません\n  2. どこが問題か: setup先の外部Operation接続\n  3. なぜそう判断したか: instructionは確認できましたがproduction providerを取得できません\n  4. どこを直すか: 外部Operationのproviderまたはactivation owner（修正候補）\n  5. 何を直さないか: test／mock providerによるproduction代用、working tree、branch、commit、push、GTP Record、Issue、comment、label、PR\n  6. 次の安全な一手: 確認済みowner URLをread-onlyで開き、人間が通常Issueでの修正を判断する\n  7. 最初に確認するURL: https://github.com/example/operation/issues/16\n  8. 解決したと判断する条件: production dependencyへ接続でき、同じpreflightが両立可能になる",
+      "stderr": "",
+      "machine_json": null,
+      "http_methods": [],
+      "mutation_callbacks": {
+        "working_tree": 0,
+        "branches": 0,
+        "commits": 0,
+        "pushes": 0,
+        "issue": 0,
+        "comments": 0,
+        "labels": 0,
+        "pull_requests": 0
+      },
+      "before_snapshot": {
+        "working_tree": "clean",
+        "branches": [
+          "main"
+        ],
+        "default_branch_head": "0123456789abcdef0123456789abcdef01234567",
+        "issue": null,
+        "comments": 0,
+        "labels": [],
+        "pull_requests": []
+      },
+      "after_snapshot": {
+        "working_tree": "clean",
+        "branches": [
+          "main"
+        ],
+        "default_branch_head": "0123456789abcdef0123456789abcdef01234567",
+        "issue": null,
+        "comments": 0,
+        "labels": [],
+        "pull_requests": []
+      },
+      "expected_result": {
+        "state": null,
+        "reason": null,
+        "exit_code": null,
+        "problem_block": "present"
+      },
+      "comparison": {
+        "state_matches": true,
+        "reason_matches": true,
+        "exit_code_matches": true,
+        "problem_block_matches": true
+      },
+      "owner_evidence": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/README.md",
+      "not_inferred": [
+        "test providerによる代用",
+        "repair Issueの自動作成"
+      ],
+      "verdict": "matched"
+    },
+    "normal": {
+      "exit_code": 0,
+      "stdout": "状態: done\n停止要否: 停止は不要です。完了状態です\n次の行動: 追加のprotocol actionはありません\n理由: Done Claimのsource head、Evidence binding、native mergeを確認しました\n最初のURL: https://github.com/shinya0x00/github-task-protocol/pull/114\n非許可表示: この出力は変更・完了・mergeの許可を与えません\nかんたんな説明:\n  結論: Done ClaimのEvidence bindingとnative mergeを確認しました。条件内容の充足はEvidenceを読んで判断してください。\n  この作業の目的: #101 human probeで分からなかった内部token、binding、protocol個数を人向けstatus問題説明から除き、壊れたRecordとscope外fileを具体的な日本語で示す\n  変更してよい場所: src/gtp/presentation.py、tests/test_cli.py、tests/fixtures/cli/problem-explanations.json\n  作業場所: branch agent/issue-112-plain-problem-language / PR https://github.com/shinya0x00/github-task-protocol/pull/114\n  未確認事項の確認先: https://github.com/shinya0x00/github-task-protocol/issues/112（Issue本文・通常commentの意味は自動判定していません）\n  Evidence bindingを確認した条件（条件内容の充足は自動判定していません）:\n    - clean build、clean install、production CLI E2E、全testがPython 3.11、3.12、3.13で成功する（識別子: build_install）\n      確認資料: https://github.com/shinya0x00/github-task-protocol/runs/89225085349\n    - machine JSON、全halt reason、Acquisition Error、check、normal state、exit code、authority none、GET-onlyが回帰しない（識別子: compatibility）\n      確認資料: https://github.com/shinya0x00/github-task-protocol/runs/89225085349\n    - AとBの8項目に未説明diagnostic token、binding、束縛、protocol構成要素の個数がなく、具体的な観測と禁止操作がある（識別子: plain_language）\n      確認資料: https://github.com/shinya0x00/github-task-protocol/blob/d9fa753a26f31666862c225eb36ec1968e2320e4/tests/fixtures/cli/problem-explanations.json\n    - sourceは未公開1.0.3、protocolは1.0、公開commandは1.0.2、production Pythonは2500行以内を維持する（識別子: release_boundary）\n      確認資料: https://github.com/shinya0x00/github-task-protocol/blob/d9fa753a26f31666862c225eb36ec1968e2320e4/README.md\n    - installed production CLI pathでinvalid_recordとscope外README.mdの新しい人向け表示が発火する（識別子: walking_skeleton）\n      確認資料: https://github.com/shinya0x00/github-task-protocol/runs/89225085349\n  ここまでが人向けの説明です。続くJSONは機械処理用です。",
+      "stderr": "",
+      "machine_json": {
+        "acquisition": "complete",
+        "acquisition_errors": [],
+        "authority": "none",
+        "bound_pr": "https://github.com/shinya0x00/github-task-protocol/pull/114",
+        "branch": {
+          "name": "agent/issue-112-plain-problem-language",
+          "observation": {}
+        },
+        "command": "status",
+        "contract": {
+          "content": {
+            "done_conditions": {
+              "build_install": {
+                "evidence_kind": "check",
+                "text": "clean build、clean install、production CLI E2E、全testがPython 3.11、3.12、3.13で成功する"
+              },
+              "compatibility": {
+                "evidence_kind": "check",
+                "text": "machine JSON、全halt reason、Acquisition Error、check、normal state、exit code、authority none、GET-onlyが回帰しない"
+              },
+              "plain_language": {
+                "evidence_kind": "artifact",
+                "text": "AとBの8項目に未説明diagnostic token、binding、束縛、protocol構成要素の個数がなく、具体的な観測と禁止操作がある"
+              },
+              "release_boundary": {
+                "evidence_kind": "artifact",
+                "text": "sourceは未公開1.0.3、protocolは1.0、公開commandは1.0.2、production Pythonは2500行以内を維持する"
+              },
+              "walking_skeleton": {
+                "evidence_kind": "check",
+                "text": "installed production CLI pathでinvalid_recordとscope外README.mdの新しい人向け表示が発火する"
+              }
+            },
+            "goal": "#101 human probeで分からなかった内部token、binding、protocol個数を人向けstatus問題説明から除き、壊れたRecordとscope外fileを具体的な日本語で示す",
+            "scope": [
+              "src/gtp/presentation.py",
+              "tests/test_cli.py",
+              "tests/fixtures/cli/problem-explanations.json"
+            ]
+          },
+          "id": "fcaf4c89-c0ee-49c8-b43b-0ba3eb180c58",
+          "observation": {
+            "aliases": [
+              "https://github.com/shinya0x00/github-task-protocol/issues/112#issuecomment-5059045081"
+            ],
+            "comment_id": 5059045081,
+            "url": "https://github.com/shinya0x00/github-task-protocol/issues/112#issuecomment-5059045081"
+          },
+          "type": "contract"
+        },
+        "details": [],
+        "diagnostics": [],
+        "done": {
+          "content": {
+            "evidence": {
+              "build_install": "https://github.com/shinya0x00/github-task-protocol/runs/89225085349",
+              "compatibility": "https://github.com/shinya0x00/github-task-protocol/runs/89225085349",
+              "plain_language": "https://github.com/shinya0x00/github-task-protocol/blob/d9fa753a26f31666862c225eb36ec1968e2320e4/tests/fixtures/cli/problem-explanations.json",
+              "release_boundary": "https://github.com/shinya0x00/github-task-protocol/blob/d9fa753a26f31666862c225eb36ec1968e2320e4/README.md",
+              "walking_skeleton": "https://github.com/shinya0x00/github-task-protocol/runs/89225085349"
+            },
+            "head_sha": "d9fa753a26f31666862c225eb36ec1968e2320e4",
+            "pr_ref": "https://github.com/shinya0x00/github-task-protocol/pull/114"
+          },
+          "id": "02f0bc6e-9ece-404a-80b9-3af357ad4b41",
+          "observation": {
+            "aliases": [
+              "https://github.com/shinya0x00/github-task-protocol/issues/112#issuecomment-5059252294"
+            ],
+            "comment_id": 5059252294,
+            "url": "https://github.com/shinya0x00/github-task-protocol/issues/112#issuecomment-5059252294"
+          },
+          "type": "done"
+        },
+        "gtp": "1.0",
+        "halt_reason": null,
+        "issue_url": "https://github.com/shinya0x00/github-task-protocol/issues/112",
+        "next_action": "none_done",
+        "pr_candidate": null,
+        "primary_url": "https://github.com/shinya0x00/github-task-protocol/pull/114",
+        "start": {
+          "content": {
+            "branch": "agent/issue-112-plain-problem-language",
+            "contract_ref": "https://github.com/shinya0x00/github-task-protocol/issues/112#issuecomment-5059045081"
+          },
+          "id": "9a2f610e-81b3-4a08-a8b4-fa30587a1bff",
+          "observation": {
+            "aliases": [
+              "https://github.com/shinya0x00/github-task-protocol/issues/112#issuecomment-5059050559"
+            ],
+            "comment_id": 5059050559,
+            "url": "https://github.com/shinya0x00/github-task-protocol/issues/112#issuecomment-5059050559"
+          },
+          "type": "start"
+        },
+        "state": "done",
+        "stop": null,
+        "task_context": {
+          "branch": "agent/issue-112-plain-problem-language",
+          "conditions": {
+            "build_install": {
+              "evidence_kind": "check",
+              "evidence_status": "presented",
+              "evidence_url": "https://github.com/shinya0x00/github-task-protocol/runs/89225085349",
+              "text": "clean build、clean install、production CLI E2E、全testがPython 3.11、3.12、3.13で成功する"
+            },
+            "compatibility": {
+              "evidence_kind": "check",
+              "evidence_status": "presented",
+              "evidence_url": "https://github.com/shinya0x00/github-task-protocol/runs/89225085349",
+              "text": "machine JSON、全halt reason、Acquisition Error、check、normal state、exit code、authority none、GET-onlyが回帰しない"
+            },
+            "plain_language": {
+              "evidence_kind": "artifact",
+              "evidence_status": "presented",
+              "evidence_url": "https://github.com/shinya0x00/github-task-protocol/blob/d9fa753a26f31666862c225eb36ec1968e2320e4/tests/fixtures/cli/problem-explanations.json",
+              "text": "AとBの8項目に未説明diagnostic token、binding、束縛、protocol構成要素の個数がなく、具体的な観測と禁止操作がある"
+            },
+            "release_boundary": {
+              "evidence_kind": "artifact",
+              "evidence_status": "presented",
+              "evidence_url": "https://github.com/shinya0x00/github-task-protocol/blob/d9fa753a26f31666862c225eb36ec1968e2320e4/README.md",
+              "text": "sourceは未公開1.0.3、protocolは1.0、公開commandは1.0.2、production Pythonは2500行以内を維持する"
+            },
+            "walking_skeleton": {
+              "evidence_kind": "check",
+              "evidence_status": "presented",
+              "evidence_url": "https://github.com/shinya0x00/github-task-protocol/runs/89225085349",
+              "text": "installed production CLI pathでinvalid_recordとscope外README.mdの新しい人向け表示が発火する"
+            }
+          },
+          "evidence_limits": [
+            "Check RunがDone Conditionの内容を十分に検査したこと",
+            "Artifactの内容がDone Conditionを満たすこと",
+            "Issue本文・通常commentに未解決事項がないこと",
+            "actor本人性",
+            "credential安全性",
+            "GitHub外情報を参照しなかったこと"
+          ],
+          "goal": "#101 human probeで分からなかった内部token、binding、protocol個数を人向けstatus問題説明から除き、壊れたRecordとscope外fileを具体的な日本語で示す",
+          "handoff_semantics": "Issue本文・通常commentの意味は自動判定しない",
+          "handoff_url": "https://github.com/shinya0x00/github-task-protocol/issues/112",
+          "not_proven": [
+            "Done Conditionの自然言語上の充足は自動判定していない"
+          ],
+          "pr": "https://github.com/shinya0x00/github-task-protocol/pull/114",
+          "scope": [
+            "src/gtp/presentation.py",
+            "tests/test_cli.py",
+            "tests/fixtures/cli/problem-explanations.json"
+          ]
+        }
+      },
+      "exact_input": "https://github.com/shinya0x00/github-task-protocol/issues/112",
+      "expected_result": {
+        "state": "done",
+        "reason": null,
+        "exit_code": 0,
+        "problem_block": "absent"
+      },
+      "comparison": {
+        "state_matches": true,
+        "reason_matches": true,
+        "exit_code_matches": true,
+        "problem_block_matches": true,
+        "authority_none": true,
+        "snapshots_equal": true
+      },
+      "owner_evidence": "https://github.com/shinya0x00/github-task-protocol/blob/46103e0fdd41364f98e098518f6b91211fb1f5ea/src/gtp/cli.py",
+      "not_inferred": [
+        "Done Conditionの自然言語上の充足",
+        "merge authority"
+      ],
+      "before_snapshot": {
+        "issue_url": "https://github.com/shinya0x00/github-task-protocol/issues/112",
+        "issue_state": "closed",
+        "issue_body_sha256": "1374f5276eb71aea4f8df3584e66f1e4e096ba5d30b537339846374af7cac5be",
+        "comment_ids": [
+          5059045081,
+          5059050559,
+          5059252294,
+          5064213723
+        ],
+        "labels": [],
+        "default_branch_head": "46103e0fdd41364f98e098518f6b91211fb1f5ea",
+        "branch_count": 13,
+        "branches_sha256": "8bec1a9b011bb2b6eb4fcd5806e05d2f39d177b8a7c12ace269e851a5ec90fbf",
+        "pull_request_count": 53,
+        "pull_requests_sha256": "9976e389da75873ac2ff0dc7a7d3ef4b151acd16984bb4959ddf6beb0e512af2"
+      },
+      "after_snapshot": {
+        "issue_url": "https://github.com/shinya0x00/github-task-protocol/issues/112",
+        "issue_state": "closed",
+        "issue_body_sha256": "1374f5276eb71aea4f8df3584e66f1e4e096ba5d30b537339846374af7cac5be",
+        "comment_ids": [
+          5059045081,
+          5059050559,
+          5059252294,
+          5064213723
+        ],
+        "labels": [],
+        "default_branch_head": "46103e0fdd41364f98e098518f6b91211fb1f5ea",
+        "branch_count": 13,
+        "branches_sha256": "8bec1a9b011bb2b6eb4fcd5806e05d2f39d177b8a7c12ace269e851a5ec90fbf",
+        "pull_request_count": 53,
+        "pull_requests_sha256": "9976e389da75873ac2ff0dc7a7d3ef4b151acd16984bb4959ddf6beb0e512af2"
+      },
+      "verdict": "matched"
+    }
+  },
+  "mutation_boundary": {
+    "local_worktree_before": "",
+    "local_worktree_after": "",
+    "local_worktree_before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "local_worktree_after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "http_methods": {
+      "record": [
+        "GET"
+      ],
+      "binding": [
+        "GET"
+      ],
+      "evidence": [
+        "GET"
+      ],
+      "acquisition": [
+        "GET"
+      ],
+      "carrier": [],
+      "setup": [],
+      "normal": []
+    },
+    "setup_callbacks": {
+      "working_tree": 0,
+      "branches": 0,
+      "commits": 0,
+      "pushes": 0,
+      "issue": 0,
+      "comments": 0,
+      "labels": 0,
+      "pull_requests": 0
+    },
+    "live_before": {
+      "issue_url": "https://github.com/shinya0x00/github-task-protocol/issues/112",
+      "issue_state": "closed",
+      "issue_body_sha256": "1374f5276eb71aea4f8df3584e66f1e4e096ba5d30b537339846374af7cac5be",
+      "comment_ids": [
+        5059045081,
+        5059050559,
+        5059252294,
+        5064213723
+      ],
+      "labels": [],
+      "default_branch_head": "46103e0fdd41364f98e098518f6b91211fb1f5ea",
+      "branch_count": 13,
+      "branches_sha256": "8bec1a9b011bb2b6eb4fcd5806e05d2f39d177b8a7c12ace269e851a5ec90fbf",
+      "pull_request_count": 53,
+      "pull_requests_sha256": "9976e389da75873ac2ff0dc7a7d3ef4b151acd16984bb4959ddf6beb0e512af2"
+    },
+    "live_after": {
+      "issue_url": "https://github.com/shinya0x00/github-task-protocol/issues/112",
+      "issue_state": "closed",
+      "issue_body_sha256": "1374f5276eb71aea4f8df3584e66f1e4e096ba5d30b537339846374af7cac5be",
+      "comment_ids": [
+        5059045081,
+        5059050559,
+        5059252294,
+        5064213723
+      ],
+      "labels": [],
+      "default_branch_head": "46103e0fdd41364f98e098518f6b91211fb1f5ea",
+      "branch_count": 13,
+      "branches_sha256": "8bec1a9b011bb2b6eb4fcd5806e05d2f39d177b8a7c12ace269e851a5ec90fbf",
+      "pull_request_count": 53,
+      "pull_requests_sha256": "9976e389da75873ac2ff0dc7a7d3ef4b151acd16984bb4959ddf6beb0e512af2"
+    }
+  },
+  "self_regression_guard": {
+    "malformed_exact_marker_expected": "halt / invalid_record",
+    "observed": "halt / invalid_record",
+    "unmanaged_crash_or_missing_output": false
+  },
+  "human_probe": {
+    "status": "accepted",
+    "artifact": "acceptance/problem-explanations/human-probe.md",
+    "A": "問題なし",
+    "B": "問題なし",
+    "method": "分かりにくい表現だけを指摘する",
+    "presented_problem_sha256": {
+      "A": "b6e59358aae4b11a227f98614e9d22f5d5e3494a93a938ff80fb583d90402088",
+      "B": "c9f020461ad9ef3066e808b11569104d9556ed49e6922697c95b44d2e297b9c9"
+    }
+  },
+  "claim_boundary": {
+    "production_outputs_match_expected": true,
+    "human_comprehension_accepted": true,
+    "production_code_changed": false,
+    "merge_authority": false
+  },
+  "evidence_limits": [
+    "fixture cases do not prove every live GitHub condition",
+    "setup case is a documented contract and fixture, not an executable setup runtime",
+    "human acceptance covers the displayed A and B candidate text",
+    "this artifact does not authorize merge or publication"
+  ],
+  "next_action": "validate this acceptance PR at its final source head, post Done after review, and wait for human native merge"
+}
