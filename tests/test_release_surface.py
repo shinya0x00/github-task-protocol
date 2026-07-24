@@ -355,6 +355,100 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertEqual(2, probe.count("回答: 問題なし"))
         self.assertNotIn("回答: pending", probe)
 
+    def test_problem_explanation_recovery_recalculates_merged_evidence(self) -> None:
+        root = ROOT / "acceptance" / "problem-explanations"
+        recovery = json.loads((root / "recovery.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            "github-task-protocol-problem-explanation-recovery/v1",
+            recovery["schema"],
+        )
+        self.assertEqual("candidate_pending_done_and_merge", recovery["status"])
+        self.assertEqual(
+            "https://github.com/shinya0x00/github-task-protocol/issues/116",
+            recovery["source_issue"],
+        )
+
+        predecessor = recovery["predecessor"]
+        observation = predecessor["gtp_observation"]
+        snapshot = predecessor["github_snapshot"]
+        canonical = json.dumps(
+            snapshot,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        self.assertEqual(
+            hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
+            predecessor["snapshot_sha256"],
+        )
+        self.assertEqual("halt", observation["state"])
+        self.assertEqual("terminal_violation", observation["halt_reason"])
+        self.assertFalse(observation["done_present"])
+        self.assertFalse(observation["stop_present"])
+        self.assertEqual(113, snapshot["issue"]["number"])
+        self.assertEqual("open", snapshot["issue"]["state"])
+        self.assertEqual(
+            len(snapshot["comments"]), snapshot["issue"]["comment_count"]
+        )
+        self.assertEqual(
+            ["contract_record", "start_record", "expected_lock"],
+            [comment["role"] for comment in snapshot["comments"]],
+        )
+        self.assertEqual(
+            observation["primary_url"],
+            "https://github.com/shinya0x00/github-task-protocol/"
+            "issues/113#issuecomment-5064223276",
+        )
+
+        pull_request = snapshot["pull_request"]
+        self.assertEqual(115, pull_request["number"])
+        self.assertTrue(pull_request["merged"])
+        self.assertEqual("closed", pull_request["state"])
+        self.assertEqual(
+            "4df2eaf7515010ec2c6c40cb92e5e0d9455e119c",
+            pull_request["head_sha"],
+        )
+        self.assertEqual(
+            "3082c6d573391bc0913f8ba13e0d966ce806b5e5",
+            pull_request["merge_commit_sha"],
+        )
+        self.assertIn(
+            recovery["merged_acceptance"]["source_pr"],
+            observation["diagnostic_urls"],
+        )
+        self.assertEqual(
+            pull_request["merge_commit_sha"],
+            recovery["merged_acceptance"]["main_merge_sha"],
+        )
+
+        merged_files = {
+            item["path"]: item for item in recovery["merged_acceptance"]["files"]
+        }
+        for path in (
+            "acceptance/problem-explanations/run.json",
+            "acceptance/problem-explanations/human-probe.md",
+        ):
+            self.assertEqual(
+                hashlib.sha256((ROOT / path).read_bytes()).hexdigest(),
+                merged_files[path]["sha256"],
+            )
+        base_test = merged_files["tests/test_release_surface.py"]
+        self.assertIn(
+            recovery["merged_acceptance"]["main_merge_sha"],
+            base_test["content_url"],
+        )
+        self.assertRegex(base_test["sha256"], r"^[0-9a-f]{64}$")
+
+        self.test_problem_explanation_acceptance_is_bound_and_non_mutating()
+        boundary = recovery["claim_boundary"]
+        self.assertFalse(boundary["predecessor_repaired"])
+        self.assertFalse(boundary["production_code_changed"])
+        self.assertFalse(boundary["human_response_reinterpreted"])
+        self.assertFalse(boundary["merge_authority"])
+        self.assertTrue(
+            boundary["successor_completion_requires_done_before_native_merge"]
+        )
+
     def test_explicit_setup_delivery_defers_external_acceptance_until_merge(self) -> None:
         evidence = json.loads(
             (

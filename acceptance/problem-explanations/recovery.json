@@ -1,0 +1,92 @@
+{
+  "schema": "github-task-protocol-problem-explanation-recovery/v1",
+  "status": "candidate_pending_done_and_merge",
+  "source_issue": "https://github.com/shinya0x00/github-task-protocol/issues/116",
+  "predecessor": {
+    "issue_url": "https://github.com/shinya0x00/github-task-protocol/issues/113",
+    "gtp_observation": {
+      "state": "halt",
+      "halt_reason": "terminal_violation",
+      "done_present": false,
+      "stop_present": false,
+      "primary_url": "https://github.com/shinya0x00/github-task-protocol/issues/113#issuecomment-5064223276",
+      "diagnostic_urls": [
+        "https://github.com/shinya0x00/github-task-protocol/issues/113#issuecomment-5064223276",
+        "https://github.com/shinya0x00/github-task-protocol/pull/115"
+      ]
+    },
+    "github_snapshot": {
+      "issue": {
+        "number": 113,
+        "state": "open",
+        "comment_count": 3,
+        "updated_at": "2026-07-24T09:54:49Z"
+      },
+      "comments": [
+        {
+          "id": 5064218645,
+          "created_at": "2026-07-23T22:37:39Z",
+          "updated_at": "2026-07-23T22:37:39Z",
+          "role": "contract_record"
+        },
+        {
+          "id": 5064223276,
+          "created_at": "2026-07-23T22:38:18Z",
+          "updated_at": "2026-07-23T22:38:18Z",
+          "role": "start_record"
+        },
+        {
+          "id": 5068513697,
+          "created_at": "2026-07-24T09:54:49Z",
+          "updated_at": "2026-07-24T09:54:49Z",
+          "role": "expected_lock"
+        }
+      ],
+      "pull_request": {
+        "number": 115,
+        "state": "closed",
+        "merged": true,
+        "draft": false,
+        "head_sha": "4df2eaf7515010ec2c6c40cb92e5e0d9455e119c",
+        "base_sha": "46103e0fdd41364f98e098518f6b91211fb1f5ea",
+        "merge_commit_sha": "3082c6d573391bc0913f8ba13e0d966ce806b5e5",
+        "merged_at": "2026-07-24T14:10:13Z",
+        "merged_by": "shinya0x00"
+      }
+    },
+    "snapshot_sha256": "f7f088185a1a841e3248484e59dea4edf6d5fe089c13b91f0e72fe16544e8e62"
+  },
+  "merged_acceptance": {
+    "main_merge_sha": "3082c6d573391bc0913f8ba13e0d966ce806b5e5",
+    "source_pr": "https://github.com/shinya0x00/github-task-protocol/pull/115",
+    "files": [
+      {
+        "path": "acceptance/problem-explanations/run.json",
+        "sha256": "77a31dcd77d1bd99f885e6cd5bdcfce2d90a207b69d32769385a7e00870fc854"
+      },
+      {
+        "path": "acceptance/problem-explanations/human-probe.md",
+        "sha256": "491d99f57fc2aa0af03c9b3dd2aa04533f2bc3898ef00dd883dc483187678250"
+      },
+      {
+        "path": "tests/test_release_surface.py",
+        "sha256": "d942632eb6ff6646c92fa0ddda3927977ccac6b3d870bb159fa013db209c373d",
+        "content_url": "https://github.com/shinya0x00/github-task-protocol/blob/3082c6d573391bc0913f8ba13e0d966ce806b5e5/tests/test_release_surface.py"
+      }
+    ],
+    "recalculated_by": "ReleaseSurfaceTests.test_problem_explanation_acceptance_is_bound_and_non_mutating"
+  },
+  "evidence_limits": [
+    "repository testはGitHub APIのlive stateを再取得せず、保存snapshotの内部整合を再計算する",
+    "main merge commit上のtest file hashは固定URLへ記録し、successorで変更した同fileからは再計算しない",
+    "human probe回答の意味を再解釈せず、merge済みbytesとの一致だけを確認する",
+    "このartifact、CI、Doneはmerge authorityを与えない"
+  ],
+  "claim_boundary": {
+    "predecessor_repaired": false,
+    "production_code_changed": false,
+    "human_response_reinterpreted": false,
+    "merge_authority": false,
+    "successor_completion_requires_done_before_native_merge": true
+  }
+}
