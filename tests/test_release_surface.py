@@ -182,6 +182,57 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn("owner URLはread-only取得で確認できた場合だけ", readme)
         self.assertIn("`修正先Issue未確認`", readme)
 
+    def test_problem_explanation_acceptance_is_bound_and_non_mutating(self) -> None:
+        root = ROOT / "acceptance" / "problem-explanations"
+        run = json.loads((root / "run.json").read_text(encoding="utf-8"))
+        probe = (root / "human-probe.md").read_text(encoding="utf-8")
+        self.assertEqual(
+            "github-task-protocol-problem-explanation-acceptance/v2",
+            run["schema"],
+        )
+        self.assertEqual("accepted", run["status"])
+        self.assertEqual("1.0.3", run["candidate"]["version"])
+        self.assertEqual("1.0", run["candidate"]["protocol"])
+        self.assertTrue(run["candidate"]["clean_install"])
+        self.assertEqual(131, run["candidate"]["installed_test_count"])
+        self.assertTrue(run["expected_results_locked_before_observation"])
+        self.assertEqual(
+            {"record", "binding", "evidence", "acquisition", "carrier", "setup", "normal"},
+            set(run["cases"]),
+        )
+        for name, case in run["cases"].items():
+            with self.subTest(case=name):
+                self.assertEqual("matched", case["verdict"])
+                self.assertIn("expected_result", case)
+                self.assertIn("stdout", case)
+                self.assertIn("stderr", case)
+                self.assertIn("machine_json", case)
+                self.assertTrue(case["owner_evidence"].startswith("https://github.com/"))
+                self.assertTrue(case["not_inferred"])
+                self.assertTrue(all(case["comparison"].values()))
+        boundary = run["mutation_boundary"]
+        self.assertTrue(boundary["local_worktree_equal"])
+        self.assertTrue(boundary["fixture_http_methods_get_only"])
+        self.assertTrue(boundary["setup_callbacks_zero"])
+        self.assertTrue(boundary["live_snapshots_equal"])
+        self.assertEqual(0, boundary["post_patch_put_delete_count"])
+        self.assertEqual(
+            "halt / invalid_record", run["self_regression_guard"]["observed"]
+        )
+        self.assertFalse(
+            run["self_regression_guard"]["unmanaged_crash_or_missing_output"]
+        )
+        self.assertEqual("accepted", run["human_probe"]["status"])
+        self.assertEqual("問題なし", run["human_probe"]["A"])
+        self.assertEqual("問題なし", run["human_probe"]["B"])
+        self.assertTrue(run["claim_boundary"]["production_outputs_match_expected"])
+        self.assertTrue(run["claim_boundary"]["human_comprehension_accepted"])
+        self.assertFalse(run["claim_boundary"]["production_code_changed"])
+        self.assertFalse(run["claim_boundary"]["merge_authority"])
+        self.assertIn("Status: accepted", probe)
+        self.assertEqual(2, probe.count("回答: 問題なし"))
+        self.assertNotIn("回答: pending", probe)
+
     def test_explicit_setup_delivery_defers_external_acceptance_until_merge(self) -> None:
         evidence = json.loads(
             (
