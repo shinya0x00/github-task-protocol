@@ -61,11 +61,36 @@ class BuildBackendTests(unittest.TestCase):
                 extracted = archive.extractfile(f"{root}/PKG-INFO")
                 self.assertIsNotNone(extracted)
                 pkg_info = extracted.read().decode("utf-8")
-        for required in ("GTP.md", "README.md", "LICENSE", "src", "tests"):
+                design_file = archive.extractfile(f"{root}/DESIGN.md")
+                adr_file = archive.extractfile(
+                    f"{root}/adr/0035-human-actionable-problem-explanations.md"
+                )
+                self.assertIsNotNone(design_file)
+                self.assertIsNotNone(adr_file)
+                design = design_file.read().decode("utf-8")
+                adr = adr_file.read().decode("utf-8")
+        for required in (
+            "GTP.md",
+            "README.md",
+            "DESIGN.md",
+            "DECISIONS.md",
+            "adr",
+            "LICENSE",
+            "src",
+            "tests",
+        ):
             self.assertTrue(
                 any(name == f"{root}/{required}" or name.startswith(f"{root}/{required}/") for name in names),
                 required,
             )
+        self.assertIn("](GTP.md)", design)
+        self.assertIn(f"{root}/GTP.md", names)
+        self.assertIn("](../DESIGN.md)", adr)
+        self.assertIn(f"{root}/DESIGN.md", names)
+        self.assertIn(
+            f"{root}/adr/0035-human-actionable-problem-explanations.md",
+            names,
+        )
         self.assertIn(f"{root}/PKG-INFO", names)
         self.assertIn("Metadata-Version: 2.4", pkg_info)
         self.assertIn(f"Name: {project['name']}", pkg_info)

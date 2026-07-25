@@ -81,12 +81,14 @@ Startより前から存在するPRは、そのtaskのcandidateやDoneとして�
 |---|---|
 | `unmanaged` | 有効なContractがない |
 | `ready` | ContractはあるがStart前 |
-| `in_progress` | 作業中、またはDone提示後のmerge待ち |
+| `in_progress` | 作業中、Done提示後のmerge待ち、またはCheck Runの完了待ち。Check Run待ちはPRがmerge済みでも`done`にしない |
 | `halt` | 特定transitionを矛盾や不適合のため進められない |
 | `done` | Doneのsource headへEvidence resourceが結び付き、そのPRがnative mergeされた。条件内容の十分性は人がEvidenceを読んで判断する |
 | `stopped` | Stopにより、このIssueでの作業を終了した |
 
 GitHub情報を完全に取得できない場合はstateを推測しません。404だけではresource不在と権限不足を区別できないため、これは`halt`ではなくAcquisition Errorです。
+
+未完了Check Runは成功Evidenceではありませんが、それだけで`halt`にはしません。変更やmergeを行わず、完了後に同じURLをread-onlyで再確認します。
 
 ## CLIは任意の検証器
 
@@ -102,7 +104,9 @@ uvx --from github-task-protocol==1.0.2 gtp check <comment.md>
 ```
 
 - 公開済み`1.0.2`の`status`はGitHubへGETだけを行い、日本語6項目の後にmachine JSONを出します。Evidenceの存在・種類・状態・source headとの結び付きを検査しますが、完了条件の自然言語上の充足までは自動判定しません。
-- source candidate `1.0.3`は、blocker時だけ先頭6項目の直後に8項目の「問題の整理」を表示します。normal state、machine JSON、exit code、`authority: none`は変更しません。
+- source candidate `1.0.3`は、`state: halt`のとき先頭6項目の直後に8項目の「問題の整理」を表示します。
+  この表示追加はmachine JSONのkey集合、exit code規則、`authority: none`を変更しません。
+- 未完了Check Runのstate、`next_action`、exit codeは、上記の非終端境界へ訂正します。
 - `check`は投稿前のMarkdown comment全文をoffline検査します。Issue上でもvalidだとは主張しません。
 - exit code、緑色のCheck Run、Evidence URLは、変更やmergeの許可ではありません。
 
