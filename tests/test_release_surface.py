@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import copy
 import json
 import hashlib
+import os
 from pathlib import Path
 import re
+import subprocess
 import tomllib
 import unittest
+from unittest.mock import patch
 
 import gtp
 
@@ -18,6 +22,92 @@ MATRIX = json.loads(
 )
 PROJECT = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
 PUBLISHED_CLI_VERSION = "1.0.2"
+ACCEPTANCE_CANDIDATE = "46103e0fdd41364f98e098518f6b91211fb1f5ea"
+RELEASE_LOCK_REQUIRED_ENV = "GTP_RELEASE_LOCK_REQUIRED"
+GIT_TIMEOUT_SECONDS = 10
+LOCKED_SOURCE_PATHS = {
+    "DESIGN.md",
+    "GTP.md",
+    "README.md",
+    "tests/fixtures/http/live-binding-matrix.json",
+    "tests/fixtures/setup-preflight.json",
+}
+
+
+def _git(*arguments: str) -> subprocess.CompletedProcess[bytes] | None:
+    """Run bounded, non-fetching git in ROOT, or None when it cannot finish."""
+    environment = {
+        key: value for key, value in os.environ.items() if not key.startswith("GIT_")
+    }
+    environment.update(
+        GIT_CEILING_DIRECTORIES=str(ROOT.resolve().parent),
+        GIT_NO_LAZY_FETCH="1",
+        GIT_TERMINAL_PROMPT="0",
+    )
+    try:
+        return subprocess.run(
+            ["git", "--no-replace-objects", "--no-lazy-fetch", *arguments],
+            cwd=ROOT,
+            capture_output=True,
+            env=environment,
+            stdin=subprocess.DEVNULL,
+            timeout=GIT_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
+def _blob_at(commit: str, relative_path: str) -> bytes | None:
+    """Exact bytes of a tracked path at a commit, ignoring any `refs/replace`."""
+    result = _git("cat-file", "blob", f"{commit}:{relative_path}")
+    if result is None or result.returncode != 0:
+        return None
+    return result.stdout
+
+
+def _verification_mode(*, blob_readable: bool, required: bool) -> str:
+    """Decide from explicit policy how to treat an unreadable pinned commit."""
+    if blob_readable:
+        return "verify"
+    return "fail" if required else "skip"
+
+
+def _release_lock_required() -> bool:
+    value = os.environ.get(RELEASE_LOCK_REQUIRED_ENV)
+    if value is None:
+        return False
+    if value == "1":
+        return True
+    raise ValueError(f"{RELEASE_LOCK_REQUIRED_ENV} must be 1 when set")
+
+
+def _observed_verification_mode(commit: str) -> str:
+    required = _release_lock_required()
+    return _verification_mode(
+        blob_readable=_blob_at(commit, "GTP.md") is not None,
+        required=required,
+    )
+
+
+def _locked_sources(lock: dict, candidate: str) -> list[tuple[str, str]]:
+    prefix = (
+        f"https://github.com/shinya0x00/github-task-protocol/blob/{candidate}/"
+    )
+    return [
+        (source["url"][len(prefix):], source["sha256"])
+        for case in lock["cases"].values()
+        for source in case["sources"]
+    ]
+
+
+def _locked_source_mismatches(lock: dict, candidate: str) -> list[str]:
+    """Relative paths whose recorded sha256 differs from the blob at the commit."""
+    mismatches = []
+    for relative_path, expected in _locked_sources(lock, candidate):
+        blob = _blob_at(candidate, relative_path)
+        if blob is None or hashlib.sha256(blob).hexdigest() != expected:
+            mismatches.append(relative_path)
+    return mismatches
 
 
 class ReleaseSurfaceTests(unittest.TestCase):
@@ -183,6 +273,132 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn("owner URLはread-only取得で確認できた場合だけ", readme)
         self.assertIn("`修正先Issue未確認`", readme)
 
+    def test_verification_mode_requires_explicit_policy(self) -> None:
+        # (blob_readable, required) -> mode
+        table = {
+            (True, True): "verify",
+            (True, False): "verify",
+            (False, True): "fail",
+            (False, False): "skip",
+        }
+        for (blob, required), expected in table.items():
+            with self.subTest(blob=blob, required=required):
+                self.assertEqual(
+                    expected,
+                    _verification_mode(
+                        blob_readable=blob,
+                        required=required,
+                    ),
+                )
+
+    def test_observed_verification_mode_uses_required_signal(self) -> None:
+        missing = "0" * 40
+        with patch.dict(os.environ, {RELEASE_LOCK_REQUIRED_ENV: "1"}):
+            self.assertEqual("fail", _observed_verification_mode(missing))
+        with patch.dict(os.environ):
+            os.environ.pop(RELEASE_LOCK_REQUIRED_ENV, None)
+            self.assertEqual("skip", _observed_verification_mode(missing))
+
+    def test_release_lock_requirement_rejects_unknown_value(self) -> None:
+        with patch.dict(os.environ, {RELEASE_LOCK_REQUIRED_ENV: "0"}):
+            with self.assertRaisesRegex(ValueError, "must be 1 when set"):
+                _observed_verification_mode("0" * 40)
+
+    def test_git_subprocess_is_bounded_and_hermetic(self) -> None:
+        with patch.dict(os.environ, {"GIT_DIR": "/unrelated/repository"}):
+            with patch(
+                "subprocess.run",
+                side_effect=subprocess.TimeoutExpired(
+                    ["git", "--version"], GIT_TIMEOUT_SECONDS
+                ),
+            ) as run:
+                self.assertIsNone(_git("--version"))
+        call = run.call_args
+        self.assertEqual(
+            ["git", "--no-replace-objects", "--no-lazy-fetch", "--version"],
+            call.args[0],
+        )
+        self.assertEqual(ROOT, call.kwargs["cwd"])
+        self.assertEqual(subprocess.DEVNULL, call.kwargs["stdin"])
+        self.assertTrue(call.kwargs["capture_output"])
+        self.assertEqual(GIT_TIMEOUT_SECONDS, call.kwargs["timeout"])
+        git_environment = {
+            key: value
+            for key, value in call.kwargs["env"].items()
+            if key.startswith("GIT_")
+        }
+        self.assertEqual(
+            {
+                "GIT_CEILING_DIRECTORIES": str(ROOT.resolve().parent),
+                "GIT_NO_LAZY_FETCH": "1",
+                "GIT_TERMINAL_PROMPT": "0",
+            },
+            git_environment,
+        )
+
+    def test_locked_release_sources_match_their_pinned_commit(self) -> None:
+        run = json.loads(
+            (ROOT / "acceptance" / "problem-explanations" / "run.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        candidate = run["candidate"]["sha"]
+        self.assertEqual(ACCEPTANCE_CANDIDATE, candidate)
+        mode = _observed_verification_mode(candidate)
+        if mode == "fail":
+            self.fail(
+                f"commit {candidate} cannot be read although release lock "
+                "verification is required; fetch the pinned commit "
+                "(actions/checkout fetch-depth: 0)"
+            )
+        if mode == "skip":
+            self.skipTest(
+                f"commit {candidate} cannot be read in this source tree, so the "
+                "locked source sha256 values cannot be verified here"
+            )
+        original = _blob_at(candidate, "GTP.md")
+        self.assertIsNotNone(original)
+        with patch.dict(
+            os.environ,
+            {
+                "GIT_DIR": str(ROOT / "missing-git-dir"),
+                "GIT_OBJECT_DIRECTORY": str(ROOT / "missing-object-directory"),
+            },
+        ):
+            self.assertEqual(original, _blob_at(candidate, "GTP.md"))
+        self.assertEqual([], _locked_source_mismatches(run["expected_lock"], candidate))
+
+    def test_a_self_consistent_but_wrong_lock_is_detected(self) -> None:
+        run = json.loads(
+            (ROOT / "acceptance" / "problem-explanations" / "run.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        candidate = run["candidate"]["sha"]
+        mode = _observed_verification_mode(candidate)
+        if mode == "fail":
+            self.fail(
+                f"commit {candidate} cannot be read although release lock "
+                "verification is required; fetch the pinned commit "
+                "(actions/checkout fetch-depth: 0)"
+            )
+        if mode == "skip":
+            self.skipTest(f"commit {candidate} cannot be read in this source tree")
+        # A lock regenerated from the wrong tree stays internally consistent, so
+        # only comparing against the pinned blobs can reject it.
+        wrong = copy.deepcopy(run["expected_lock"])
+        wrong["cases"]["record"]["sources"][0]["sha256"] = "0" * 64
+        corrupted = wrong["cases"]["record"]["sources"][0]["url"].rsplit(
+            f"{candidate}/", 1
+        )[1]
+        self.assertEqual([corrupted], _locked_source_mismatches(wrong, candidate))
+        canonical = json.dumps(
+            wrong["cases"], ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        )
+        wrong["cases_sha256"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        self.assertNotEqual(run["expected_lock"]["cases_sha256"], wrong["cases_sha256"])
+        self.assertEqual([corrupted], _locked_source_mismatches(wrong, candidate))
+
     def test_problem_explanation_acceptance_is_bound_and_non_mutating(self) -> None:
         root = ROOT / "acceptance" / "problem-explanations"
         run = json.loads((root / "run.json").read_text(encoding="utf-8"))
@@ -222,12 +438,16 @@ class ReleaseSurfaceTests(unittest.TestCase):
             "https://github.com/shinya0x00/github-task-protocol/blob/"
             f"{candidate}/"
         )
+        relative_paths = []
         for case in lock["cases"].values():
             for source in case["sources"]:
                 self.assertTrue(source["url"].startswith(source_prefix))
                 relative_path = Path(source["url"][len(source_prefix):])
                 self.assertNotIn("..", relative_path.parts)
                 self.assertRegex(source["sha256"], r"^[0-9a-f]{64}$")
+                relative_paths.append(relative_path.as_posix())
+        self.assertEqual(18, len(relative_paths))
+        self.assertEqual(LOCKED_SOURCE_PATHS, set(relative_paths))
         record_input = lock["cases"]["record"]["exact_input"]
         self.assertEqual({"malformed", "edited", "id_collision"}, set(record_input))
         self.assertIn("<!-- gtp-record:v1 -->", record_input["malformed"][0]["body"])
@@ -577,6 +797,13 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertEqual([ROOT / ".github" / "workflows" / "ci.yml"], workflows)
         workflow = workflows[0].read_text(encoding="utf-8")
         self.assertIn('python-version: ["3.11", "3.12", "3.13"]', workflow)
+        self.assertIn('GTP_RELEASE_LOCK_REQUIRED: "1"', workflow)
+        if (
+            os.environ.get("GITHUB_ACTIONS") == "true"
+            and os.environ.get("GITHUB_REPOSITORY")
+            == "shinya0x00/github-task-protocol"
+        ):
+            self.assertEqual("1", os.environ.get(RELEASE_LOCK_REQUIRED_ENV))
         self.assertIn("Build sdist and wheel without network", workflow)
         self.assertIn("Install wheel in clean environment", workflow)
         self.assertIn("Run installed status E2E", workflow)
