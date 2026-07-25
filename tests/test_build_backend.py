@@ -35,6 +35,11 @@ EXPECTED_WHEEL_SOURCE_MANIFEST = (
     "src/gtp/urls.py",
 )
 
+EXPECTED_REPOSITORY_ONLY_SOURCE_PATHS = (
+    ".github/workflows/ci.yml",
+    ".gitignore",
+)
+
 EXPECTED_SDIST_SOURCE_MANIFEST = (
     "DECISIONS.md",
     "DESIGN.md",
@@ -138,6 +143,162 @@ class BuildBackendTests(unittest.TestCase):
         self.assertNotIn(".glob(", backend_source)
         self.assertNotIn(".rglob(", backend_source)
         self.assertNotIn("git ls-files", backend_source)
+
+    def test_duplicate_paths_returns_each_duplicate_once_in_sorted_order(
+        self,
+    ) -> None:
+        self.assertEqual(
+            ["a.py", "b.py"],
+            build_backend._duplicate_paths(
+                ("b.py", "a.py", "b.py", "a.py", "a.py", "c.py")
+            ),
+        )
+
+    def test_tracked_source_manifest_accepts_the_exact_declared_set(self) -> None:
+        self.assertEqual(
+            EXPECTED_REPOSITORY_ONLY_SOURCE_PATHS,
+            build_backend._REPOSITORY_ONLY_SOURCE_PATHS,
+        )
+        tracked_paths = (
+            *EXPECTED_SDIST_SOURCE_MANIFEST,
+            *EXPECTED_REPOSITORY_ONLY_SOURCE_PATHS,
+        )
+
+        self.assertIsNone(
+            build_backend._validate_tracked_source_manifest(tracked_paths)
+        )
+
+    def test_tracked_source_manifest_rejects_an_undeclared_addition(self) -> None:
+        tracked_paths = (
+            *EXPECTED_SDIST_SOURCE_MANIFEST,
+            *EXPECTED_REPOSITORY_ONLY_SOURCE_PATHS,
+            "NOTICE.md",
+        )
+
+        with self.assertRaises(ValueError) as raised:
+            build_backend._validate_tracked_source_manifest(tracked_paths)
+        self.assertEqual(
+            "tracked source manifest mismatch: "
+            "undeclared=['NOTICE.md'], missing=[]",
+            str(raised.exception),
+        )
+
+    def test_tracked_source_manifest_rejects_a_missing_declared_path(self) -> None:
+        tracked_paths = tuple(
+            path
+            for path in (
+                *EXPECTED_SDIST_SOURCE_MANIFEST,
+                *EXPECTED_REPOSITORY_ONLY_SOURCE_PATHS,
+            )
+            if path != "README.md"
+        )
+
+        with self.assertRaises(ValueError) as raised:
+            build_backend._validate_tracked_source_manifest(tracked_paths)
+        self.assertEqual(
+            "tracked source manifest mismatch: "
+            "undeclared=[], missing=['README.md']",
+            str(raised.exception),
+        )
+
+    def test_tracked_source_manifest_rejects_duplicate_paths(self) -> None:
+        tracked_paths = (
+            *EXPECTED_SDIST_SOURCE_MANIFEST,
+            *EXPECTED_REPOSITORY_ONLY_SOURCE_PATHS,
+        )
+        duplicate_cases = (
+            (
+                "input",
+                "duplicate input paths: ['README.md']",
+                (*tracked_paths, "README.md"),
+                "SDIST_SOURCE_MANIFEST",
+                EXPECTED_SDIST_SOURCE_MANIFEST,
+            ),
+            (
+                "sdist",
+                "duplicate sdist paths: ['README.md']",
+                tracked_paths,
+                "SDIST_SOURCE_MANIFEST",
+                (*EXPECTED_SDIST_SOURCE_MANIFEST, "README.md"),
+            ),
+            (
+                "wheel",
+                "duplicate wheel paths: ['src/gtp/__init__.py']",
+                tracked_paths,
+                "WHEEL_SOURCE_MANIFEST",
+                (*EXPECTED_WHEEL_SOURCE_MANIFEST, "src/gtp/__init__.py"),
+            ),
+            (
+                "repository-only",
+                "duplicate repository-only paths: ['.gitignore']",
+                tracked_paths,
+                "_REPOSITORY_ONLY_SOURCE_PATHS",
+                (*EXPECTED_REPOSITORY_ONLY_SOURCE_PATHS, ".gitignore"),
+            ),
+        )
+        for (
+            label,
+            message,
+            supplied_paths,
+            attribute,
+            replacement,
+        ) in duplicate_cases:
+            with self.subTest(label=label):
+                with mock.patch.object(build_backend, attribute, replacement):
+                    with self.assertRaises(ValueError) as raised:
+                        build_backend._validate_tracked_source_manifest(
+                            supplied_paths
+                        )
+                self.assertEqual(message, str(raised.exception))
+
+    def test_tracked_source_manifest_rejects_wheel_paths_outside_sdist(self) -> None:
+        outside_path = "src/gtp/wheel-only.py"
+        tracked_paths = (
+            *EXPECTED_SDIST_SOURCE_MANIFEST,
+            *EXPECTED_REPOSITORY_ONLY_SOURCE_PATHS,
+        )
+
+        with mock.patch.object(
+            build_backend,
+            "WHEEL_SOURCE_MANIFEST",
+            (*EXPECTED_WHEEL_SOURCE_MANIFEST, outside_path),
+        ):
+            with self.assertRaises(ValueError) as raised:
+                build_backend._validate_tracked_source_manifest(tracked_paths)
+        self.assertEqual(
+            "wheel manifest is outside sdist: "
+            "['src/gtp/wheel-only.py']",
+            str(raised.exception),
+        )
+
+    def test_tracked_source_manifest_rejects_repository_only_sdist_overlap(
+        self,
+    ) -> None:
+        tracked_paths = (
+            *EXPECTED_SDIST_SOURCE_MANIFEST,
+            *EXPECTED_REPOSITORY_ONLY_SOURCE_PATHS,
+        )
+        with mock.patch.object(
+            build_backend,
+            "_REPOSITORY_ONLY_SOURCE_PATHS",
+            (".github/workflows/ci.yml", "README.md"),
+        ):
+            with self.assertRaises(ValueError) as raised:
+                build_backend._validate_tracked_source_manifest(tracked_paths)
+        self.assertEqual(
+            "duplicate sdist/repository-only paths: ['README.md']",
+            str(raised.exception),
+        )
+
+    def test_tracked_source_manifest_allows_repository_only_paths(self) -> None:
+        tracked_paths = (
+            *EXPECTED_SDIST_SOURCE_MANIFEST,
+            *EXPECTED_REPOSITORY_ONLY_SOURCE_PATHS,
+        )
+
+        self.assertIsNone(
+            build_backend._validate_tracked_source_manifest(tracked_paths)
+        )
 
     def test_invalid_source_date_epoch_fails_before_writing_an_artifact(self) -> None:
         for value in ("", "-1", "1.5", "not-an-integer"):
@@ -563,13 +724,43 @@ class BuildBackendTests(unittest.TestCase):
         self.assertIn("Metadata-Version: 2.4", pkg_info)
         self.assertIn(f"Name: {project['name']}", pkg_info)
         self.assertIn(f"Version: {project['version']}", pkg_info)
-        for stale in (
-            "現在のsource candidate",
-            "（公開前）",
-            "利用commandは検証済みの`1.0.2`に固定",
-        ):
-            self.assertNotIn(stale, readme)
-            self.assertNotIn(stale, pkg_info)
+        public_commands = (
+            "uvx --from github-task-protocol==1.0.2 gtp status <issue-url>",
+            "uvx --from github-task-protocol==1.0.2 gtp check <comment.md>",
+        )
+        package_identity_boundaries = (
+            "`pyproject.toml`は、このsourceからbuildするpackage versionとして"
+            "`1.0.3`を宣言しています。",
+            "この値はpublicationのEvidenceでも、"
+            "exact source commitのidentityでもありません。",
+        )
+        surfaces = {
+            "README": readme,
+            "sdist PKG-INFO": pkg_info,
+            "wheel METADATA": wheel_metadata.decode("utf-8"),
+        }
+        for surface_name, surface in surfaces.items():
+            with self.subTest(surface=surface_name):
+                self.assertEqual(
+                    public_commands,
+                    tuple(
+                        line
+                        for line in surface.splitlines()
+                        if line.startswith(
+                            "uvx --from github-task-protocol=="
+                        )
+                    ),
+                )
+                for boundary in package_identity_boundaries:
+                    self.assertIn(boundary, surface)
+                for forbidden in (
+                    "github-task-protocol==1.0.3",
+                    "source内容のidentity",
+                    "現在のsource candidate",
+                    "（公開前）",
+                    "利用commandは検証済みの`1.0.2`に固定",
+                ):
+                    self.assertNotIn(forbidden, surface)
 
     def test_installed_console_script_runs_status_and_check(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

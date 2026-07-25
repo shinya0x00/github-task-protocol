@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+from collections.abc import Iterable
 import csv
 import gzip
 from hashlib import sha256
@@ -114,12 +115,66 @@ SDIST_SOURCE_MANIFEST = (
     "tests/test_v1_conformance.py",
 )
 
+_REPOSITORY_ONLY_SOURCE_PATHS = (
+    ".github/workflows/ci.yml",
+    ".gitignore",
+)
+
 _DEFAULT_SOURCE_DATE_EPOCH = 0
 _ZIP_MIN_EPOCH = 315_532_800  # 1980-01-01, the earliest ZIP timestamp.
 _ZIP_MAX_EPOCH = 4_354_819_198  # 2107-12-31 23:59:58, the latest ZIP timestamp.
 _GZIP_MAX_EPOCH = (1 << 32) - 1
 _ARCHIVE_FILE_MODE = 0o644
 _ZIP_COMPRESSION_LEVEL = 9
+
+
+def _duplicate_paths(paths: Iterable[str]) -> list[str]:
+    seen: set[str] = set()
+    duplicates: set[str] = set()
+    for path in paths:
+        if path in seen:
+            duplicates.add(path)
+        else:
+            seen.add(path)
+    return sorted(duplicates)
+
+
+def _validate_tracked_source_manifest(tracked_paths: Iterable[str]) -> None:
+    tracked = tuple(tracked_paths)
+    manifests = (
+        ("input", tracked),
+        ("sdist", SDIST_SOURCE_MANIFEST),
+        ("wheel", WHEEL_SOURCE_MANIFEST),
+        ("repository-only", _REPOSITORY_ONLY_SOURCE_PATHS),
+    )
+    for label, paths in manifests:
+        duplicates = _duplicate_paths(paths)
+        if duplicates:
+            raise ValueError(f"duplicate {label} paths: {duplicates}")
+
+    sdist_paths = set(SDIST_SOURCE_MANIFEST)
+    repository_only_paths = set(_REPOSITORY_ONLY_SOURCE_PATHS)
+    repository_only_in_sdist = sorted(sdist_paths & repository_only_paths)
+    if repository_only_in_sdist:
+        raise ValueError(
+            "duplicate sdist/repository-only paths: "
+            f"{repository_only_in_sdist}"
+        )
+    wheel_outside_sdist = sorted(set(WHEEL_SOURCE_MANIFEST) - sdist_paths)
+    if wheel_outside_sdist:
+        raise ValueError(
+            f"wheel manifest is outside sdist: {wheel_outside_sdist}"
+        )
+
+    declared_paths = sdist_paths | repository_only_paths
+    tracked_path_set = set(tracked)
+    undeclared = sorted(tracked_path_set - declared_paths)
+    missing = sorted(declared_paths - tracked_path_set)
+    if undeclared or missing:
+        raise ValueError(
+            "tracked source manifest mismatch: "
+            f"undeclared={undeclared}, missing={missing}"
+        )
 
 
 def _source_date_epoch() -> int:

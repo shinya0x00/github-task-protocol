@@ -111,6 +111,17 @@ def _locked_source_mismatches(lock: dict, candidate: str) -> list[str]:
     return mismatches
 
 
+def _workflow_job(workflow: str, name: str) -> str:
+    """Return one top-level workflow job without parsing unrelated YAML."""
+    match = re.search(
+        rf"(?ms)^  {re.escape(name)}:\n(?P<body>.*?)(?=^  [a-z][a-z0-9-]*:\n|\Z)",
+        workflow,
+    )
+    if match is None:
+        raise AssertionError(f"workflow job not found: {name}")
+    return match.group("body")
+
+
 class ReleaseSurfaceTests(unittest.TestCase):
     def test_private_planning_metadata_is_absent(self) -> None:
         marker = "doc" + "trine"
@@ -179,7 +190,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn("[`GTP.md`](GTP.md)", readme)
         self.assertIn("人間がGTPを使うためにCLIをinstallする必要はありません", readme)
         self.assertIn(
-            "uvx --from github-task-protocol==X.Y.Z gtp status",
+            "uvx --from github-task-protocol==1.0.2 gtp status",
             readme,
         )
         self.assertNotIn("package registryへ一般公開していません", readme)
@@ -783,9 +794,16 @@ class ReleaseSurfaceTests(unittest.TestCase):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("CLI `1.0.2`は[PyPI]", readme)
         self.assertIn("public-release-v1.0.2.json", readme)
-        self.assertIn("`pyproject.toml`のpackage versionは`1.0.3`", readme)
-        self.assertIn("versionの公開状況を示すEvidenceではありません", readme)
-        self.assertIn("github-task-protocol==X.Y.Z", readme)
+        self.assertIn(
+            "`pyproject.toml`は、このsourceからbuildするpackage versionとして"
+            "`1.0.3`を宣言しています",
+            readme,
+        )
+        self.assertIn(
+            "この値はpublicationのEvidenceでも、exact source commitのidentityでもありません",
+            readme,
+        )
+        self.assertNotIn("source内容のidentity", readme)
         self.assertNotIn("現在のsource candidate", readme)
         self.assertTrue((ROOT / "acceptance" / "release-notes-v1.0.2.md").exists())
         decisions = (ROOT / "DECISIONS.md").read_text(encoding="utf-8")
@@ -804,9 +822,31 @@ class ReleaseSurfaceTests(unittest.TestCase):
             MATRIX["release_documents"],
         )
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertIn("`pyproject.toml`のpackage versionは`1.0.3`", readme)
-        self.assertIn("versionの公開状況を示すEvidenceではありません", readme)
-        self.assertIn("github-task-protocol==X.Y.Z", readme)
+        self.assertIn(
+            "`pyproject.toml`は、このsourceからbuildするpackage versionとして"
+            "`1.0.3`を宣言しています",
+            readme,
+        )
+        self.assertIn(
+            "この値はpublicationのEvidenceでも、exact source commitのidentityでもありません",
+            readme,
+        )
+        self.assertNotIn("source内容のidentity", readme)
+        public_commands = re.findall(
+            r"^uvx --from github-task-protocol==[^ ]+ gtp (?:status|check) .+$",
+            readme,
+            flags=re.MULTILINE,
+        )
+        self.assertEqual(
+            [
+                "uvx --from github-task-protocol==1.0.2 gtp status <issue-url>",
+                "uvx --from github-task-protocol==1.0.2 gtp check <comment.md>",
+            ],
+            public_commands,
+        )
+        self.assertEqual(2, readme.count("github-task-protocol==1.0.2"))
+        self.assertNotIn("github-task-protocol==1.0.3", readme)
+        self.assertNotIn("github-task-protocol==X.Y.Z", readme)
         self.assertIn(
             "https://pypi.org/project/github-task-protocol/X.Y.Z/", readme
         )
@@ -815,8 +855,24 @@ class ReleaseSurfaceTests(unittest.TestCase):
             "releases/tag/vX.Y.Z",
             readme,
         )
-        self.assertIn("両方が解決できることを確認した後だけ利用", readme)
+        self.assertIn("両方が解決できることを確認した後だけです", readme)
+        self.assertIn("下の2つのcommandの`1.0.2`だけを", readme)
         self.assertIn("public-release-v1.0.2.json", readme)
+        cli_section = readme.split("## CLIは任意の検証器", 1)[1].split(
+            "## 仕様と判断記録", 1
+        )[0]
+        for line in cli_section.splitlines():
+            if "1.0.2" not in line:
+                continue
+            for unstable_label in (
+                "latest",
+                "recommended",
+                "current",
+                "最新",
+                "推奨",
+                "現行",
+            ):
+                self.assertNotIn(unstable_label, line.lower())
         for unstable in (
             "現在のsource candidate",
             "`1.0.3`（公開前）",
@@ -896,9 +952,30 @@ class ReleaseSurfaceTests(unittest.TestCase):
             self.assertIn(value, adr)
         self.assertIn("PR artifactは検証専用", design)
         self.assertIn("main artifactだけを公開候補", design)
+        self.assertIn("同じmanifest oracle", design)
+        self.assertIn("merge tree", design)
+        self.assertIn("公開候補sdist／wheel", design)
+        self.assertIn("producer処理は実行しない", design)
+        self.assertIn("temporary directory", design)
+        self.assertIn("full 40文字のlowercase commit SHAだけ", design)
         self.assertIn("2つのclean source export", adr)
         self.assertIn("tag作成、GitHub Release、PyPI uploadは行わない", adr)
         self.assertIn("GTP Record、state、halt reason", adr)
+        self.assertIn("同じmanifest oracle", adr)
+        self.assertIn("merge tree", adr)
+        self.assertIn("公開候補sdist／wheel", adr)
+        self.assertIn("producer処理は実行しない", adr)
+        self.assertIn("temporary directory", adr)
+        self.assertIn("full 40文字のlowercase commit SHAだけ", adr)
+
+        notes = (ROOT / "acceptance" / "release-notes-v1.0.3.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("同じmanifest oracle", notes)
+        self.assertIn("merge tree", notes)
+        self.assertIn("公開候補sdist／wheel", notes)
+        self.assertIn("producer処理は実行しない", notes)
+        self.assertIn("temporary directory", notes)
 
     def test_repository_has_one_non_publish_ci_workflow(self) -> None:
         workflows = list((ROOT / ".github" / "workflows").glob("*.yml"))
@@ -958,8 +1035,27 @@ class ReleaseSurfaceTests(unittest.TestCase):
             },
             MATRIX["ci_release"]["artifacts"],
         )
+        for pin in pins.values():
+            self.assertRegex(pin, r"\A[0-9a-f]{40}\Z")
         for action, pin in pins.items():
             self.assertIn(f"{action}@{pin}", workflow)
+        uses_line_count = sum(
+            1
+            for line in workflow.splitlines()
+            if re.match(r"^\s*(?:-\s*)?uses:", line)
+        )
+        action_uses = re.findall(
+            r"^\s*(?:-\s*)?uses:\s+actions/([^@\s]+)@([0-9a-f]{40})\s*$",
+            workflow,
+            flags=re.MULTILINE,
+        )
+        self.assertEqual(uses_line_count, len(action_uses))
+        expected_uses = {
+            action.removeprefix("actions/"): pin for action, pin in pins.items()
+        }
+        self.assertEqual(set(expected_uses), {action for action, _ in action_uses})
+        for action, execution_identity in action_uses:
+            self.assertEqual(expected_uses[action], execution_identity)
         for mutable_ref in (
             "actions/checkout@v",
             "actions/setup-python@v",
@@ -975,9 +1071,33 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertGreaterEqual(workflow.count("ref: ${{ env.SOURCE_SHA }}"), 2)
         self.assertEqual(3, workflow.count("persist-credentials: false"))
         self.assertIn('git show -s --format=%ct "$SOURCE_SHA"', workflow)
-        self.assertIn('git ls-tree -r --name-only "$SOURCE_SHA"', workflow)
         self.assertGreaterEqual(workflow.count('git archive "$SOURCE_SHA"'), 2)
         self.assertIn("SOURCE_DATE_EPOCH", workflow)
+
+        build_job = _workflow_job(workflow, "build")
+        integration_job = _workflow_job(workflow, "integration")
+        oracle = "build_backend._validate_tracked_source_manifest"
+        self.assertEqual(2, workflow.count(oracle))
+        self.assertEqual(1, build_job.count(oracle))
+        self.assertEqual(1, integration_job.count(oracle))
+        self.assertIn('git ls-tree -r --name-only "$SOURCE_SHA"', build_job)
+        self.assertNotIn("git ls-tree -r --name-only HEAD", build_job)
+        self.assertIn("git ls-tree -r --name-only HEAD", integration_job)
+        self.assertNotIn('git ls-tree -r --name-only "$SOURCE_SHA"', integration_job)
+        # Full unit tests exercise the backend with temporary archives.  This
+        # boundary excludes the release-candidate producer pipeline itself.
+        for forbidden in (
+            "Build twice from clean exports",
+            "Rebuild the wheel from a fresh sdist environment",
+            "Check distribution metadata with Twine",
+            "Assemble checksummed artifact",
+            "actions/upload-artifact",
+            "needs: build",
+            "release-artifact",
+            "SHA256SUMS",
+            "BUILD-INFO",
+        ):
+            self.assertNotIn(forbidden, integration_job)
 
         self.assertIn('python-version: "3.11"', workflow)
         self.assertIn('python-version: ["3.11", "3.12", "3.13"]', workflow)

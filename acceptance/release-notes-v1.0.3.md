@@ -9,7 +9,7 @@
 - sdistとwheelはexplicit manifestに宣言したregular fileだけを収録する。archive memberの順序とmetadataを正規化する。CIはcommit timestampを`SOURCE_DATE_EPOCH`として渡し、未指定のbuildは固定値`0`を使う。
 - sdistは`DESIGN.md`、`DECISIONS.md`、`adr/`を収録し、current designとADR-035・ADR-036をarchive内で解決できるようにする。
 - CIはpull requestのsource headまたはmain push commitを`SOURCE_SHA`に固定する。Python 3.11 producerが2つのclean source exportから再buildしてbytesを比較し、`SHA256SUMS`と`BUILD-INFO`を添付する。
-- pull requestではsource-head artifact検査と別にsynthetic merge refを検査し、現在のmainとの統合結果もmerge前に確認する。merge refを公開候補のsourceにはしない。最後の`release-ready` Checkはbuild、3-version consumer matrix、integrationの結果を集約する。
+- pull requestではsource-head build jobが`SOURCE_SHA`のtree、integration jobがsynthetic mergeの`HEAD`（merge tree）を同じmanifest oracleへ渡す。integration jobはmerge treeのmanifest parityとfull unit test／budgetを検査するが、clean export、公開候補sdist／wheel、Twine、sidecar、Actions artifact uploadから成るproducer処理は実行しない。unit testがtemporary directoryで作るarchiveは公開候補ではない。merge refを公開候補のsourceにはしない。最後の`release-ready` Checkはbuild、3-version consumer matrix、integrationの結果を集約する。
 - Python 3.11、3.12、3.13のconsumerは同じbuild artifactをdownloadし、checksum、clean install、installed CLI、unit testを検査する。
 - READMEはsource versionとpublicationを分離し、特定versionの公開前後で意味が変わらないinstall案内にする。
 

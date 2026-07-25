@@ -55,20 +55,9 @@ jobs:
 
           import build_backend
 
-          tracked = set(Path(sys.argv[1]).read_text(encoding="utf-8").splitlines())
-          distribution = set(build_backend.SDIST_SOURCE_MANIFEST)
-          repository_only = {".github/workflows/ci.yml", ".gitignore"}
-          if tracked != distribution | repository_only:
-              missing = sorted(tracked - distribution - repository_only)
-              extra = sorted(distribution - tracked)
-              raise SystemExit(
-                  f"distribution manifest mismatch: undeclared={missing}, missing={extra}"
-              )
-          wheel = set(build_backend.WHEEL_SOURCE_MANIFEST)
-          if not wheel <= distribution:
-              raise SystemExit(
-                  f"wheel manifest is outside sdist: {sorted(wheel - distribution)}"
-              )
+          build_backend._validate_tracked_source_manifest(
+              Path(sys.argv[1]).read_text(encoding="utf-8").splitlines()
+          )
           PY
       - name: Check release budgets
         run: |
@@ -197,6 +186,21 @@ jobs:
           test "$(git rev-parse HEAD)" = "${{ github.sha }}"
           test "$(git rev-parse HEAD^1)" = "${{ github.event.pull_request.base.sha }}"
           test "$(git rev-parse HEAD^2)" = "${{ github.event.pull_request.head.sha }}"
+      - name: Match the explicit manifest to the synthetic merge tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git ls-tree -r --name-only HEAD > "$RUNNER_TEMP/merge-tree.txt"
+          python - "$RUNNER_TEMP/merge-tree.txt" <<'PY'
+          from pathlib import Path
+          import sys
+
+          import build_backend
+
+          build_backend._validate_tracked_source_manifest(
+              Path(sys.argv[1]).read_text(encoding="utf-8").splitlines()
+          )
+          PY
       - name: Run merge-result integration tests
         run: python -m unittest discover -s tests
         env:

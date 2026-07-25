@@ -96,11 +96,11 @@ GitHub情報を完全に取得できない場合はstateを推測しません。
 
 CLI `1.0.2`は[PyPI](https://pypi.org/project/github-task-protocol/1.0.2/)と[GitHub Release](https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.2)へ公開済みです。再downloadとhash・clean install・live statusの検証結果は[`acceptance/public-release-v1.0.2.json`](acceptance/public-release-v1.0.2.json)にあります。GTPを使うだけならCLIのinstallは不要です。
 
-`pyproject.toml`のpackage versionは`1.0.3`です。この値はsource内容のidentityであり、そのversionの公開状況を示すEvidenceではありません。CLIの`X.Y.Z`は、[PyPIのversion page](https://pypi.org/project/github-task-protocol/X.Y.Z/)と[GitHub Release](https://github.com/shinya0x00/github-task-protocol/releases/tag/vX.Y.Z)の両方が解決できることを確認した後だけ利用し、下のcommandをそのexact versionに置き換えます。
+`pyproject.toml`は、このsourceからbuildするpackage versionとして`1.0.3`を宣言しています。この値はpublicationのEvidenceでも、exact source commitのidentityでもありません。別の`X.Y.Z`を使うのは、[PyPIのversion page](https://pypi.org/project/github-task-protocol/X.Y.Z/)と[GitHub Release](https://github.com/shinya0x00/github-task-protocol/releases/tag/vX.Y.Z)の両方が解決できることを確認した後だけです。そのとき、下の2つのcommandの`1.0.2`だけを確認したexact versionに置き換えます。
 
 ```console
-uvx --from github-task-protocol==X.Y.Z gtp status <issue-url>
-uvx --from github-task-protocol==X.Y.Z gtp check <comment.md>
+uvx --from github-task-protocol==1.0.2 gtp status <issue-url>
+uvx --from github-task-protocol==1.0.2 gtp check <comment.md>
 ```
 
 - 公開済み`1.0.2`の`status`はGitHubへGETだけを行い、日本語6項目の後にmachine JSONを出します。Evidenceの存在・種類・状態・source headとの結び付きを検査しますが、完了条件の自然言語上の充足までは自動判定しません。
