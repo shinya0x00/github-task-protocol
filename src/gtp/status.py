@@ -26,6 +26,8 @@ class StatusResult:
     diagnostics: list[Diagnostic] = field(default_factory=list)
     current: dict[str, Any] = field(default_factory=dict)
     acquisition_errors: list[dict[str, Any]] = field(default_factory=list)
+    _pending_evidence_urls: tuple[str, ...] = field(default=(), kw_only=True, repr=False)
+    _native_merge_observed: bool | None = field(default=None, kw_only=True, repr=False)
 
     def projection(self) -> dict[str, Any]:
         return {
@@ -46,6 +48,7 @@ class _DoneLive:
     pr: dict[str, Any] | None = None
     diagnostics: list[Diagnostic] = field(default_factory=list)
     terminal_at: str | None = None
+    pending_evidence_urls: list[str] = field(default_factory=list)
 
 
 def _record_projection(observation: RecordObservation | None) -> dict[str, Any] | None:
@@ -267,9 +270,10 @@ def _live_evidence(
     issue_repo_id: int,
     contract: RecordObservation,
     done: RecordObservation,
-) -> tuple[list[Diagnostic], list[str]]:
+) -> tuple[list[Diagnostic], list[str], list[str]]:
     diagnostics: list[Diagnostic] = []
     completed_at: list[str] = []
+    pending: list[str] = []
     head_sha = done.record["head_sha"]
     for condition_id in sorted(contract.record["done_conditions"]):
         condition = contract.record["done_conditions"][condition_id]
@@ -299,6 +303,11 @@ def _live_evidence(
             resource = client.check_run(parsed.owner, parsed.repo, parsed.number or 0)
             if resource.get("head_sha") != head_sha:
                 diagnostics.append(_diagnostic("stale_evidence", done.comment.url, url))
+            elif resource.get("status") in {"queued", "in_progress", "requested", "waiting", "pending"}:
+                if resource.get("conclusion") is None:
+                    pending.append(url)
+                else:
+                    diagnostics.append(_diagnostic("invalid_evidence", done.comment.url, url))
             elif resource.get("status") != "completed":
                 diagnostics.append(_diagnostic("invalid_evidence", done.comment.url, url))
             elif resource.get("conclusion") != "success":
@@ -307,7 +316,7 @@ def _live_evidence(
                 raise AcquisitionError(url, "completed Check Run is missing completed_at")
             else:
                 completed_at.append(resource["completed_at"])
-    return diagnostics, completed_at
+    return diagnostics, completed_at, pending
 
 
 def _evaluate_done(
@@ -355,7 +364,7 @@ def _evaluate_done(
     evidence_diagnostics: list[Diagnostic] = []
     check_times: list[str] = []
     if not scope_diagnostics:
-        evidence_diagnostics, check_times = _live_evidence(
+        evidence_diagnostics, check_times, result.pending_evidence_urls = _live_evidence(
             client, repo_id, contract, done
         )
     pr_after = client.pull_request(pr_url.owner, pr_url.repo, pr_url.number or 0)
@@ -368,11 +377,9 @@ def _evaluate_done(
         result.diagnostics.extend(scope_diagnostics)
         return result
     if evidence_diagnostics:
-        if pr.get("merged_at"):
-            urls = [url for item in evidence_diagnostics for url in item.urls]
-            result.diagnostics.append(_diagnostic("invalid_evidence", *urls))
-        else:
-            result.diagnostics.extend(evidence_diagnostics)
+        result.diagnostics.extend(evidence_diagnostics)
+        return result
+    if result.pending_evidence_urls:
         return result
     merged_at = pr_after.get("merged_at")
     if isinstance(merged_at, str):
@@ -680,7 +687,11 @@ def _evaluate_acquired(
             if fold.diagnostics:
                 return StatusResult(issue_url, "halt", list(fold.diagnostics), current)
             if live.pr and live.pr.get("merged_at"):
-                return StatusResult(issue_url, "in_progress", [], current)
+                return StatusResult(
+                    issue_url, "in_progress", [], current,
+                    _pending_evidence_urls=tuple(live.pending_evidence_urls),
+                    _native_merge_observed=True,
+                )
             branch = client.branch(parsed.owner, parsed.repo, branch_name)
             branch_after = client.branch(parsed.owner, parsed.repo, branch_name)
             branch_resource = (
@@ -711,7 +722,11 @@ def _evaluate_acquired(
                     [_diagnostic("invalid_binding", fold.bound_start.comment.url)],
                     current,
                 )
-            return StatusResult(issue_url, "in_progress", [], current)
+            return StatusResult(
+                issue_url, "in_progress", [], current,
+                _pending_evidence_urls=tuple(live.pending_evidence_urls),
+                _native_merge_observed=False if live.pending_evidence_urls else None,
+            )
 
         if fold.diagnostics:
             return StatusResult(issue_url, "halt", list(fold.diagnostics), current)

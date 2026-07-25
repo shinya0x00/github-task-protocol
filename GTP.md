@@ -273,7 +273,7 @@ Issue commentはGitHub comment IDの昇順で読む。record内の自己申告�
 
 ### `in_progress`
 
-Startが唯一の先行Contractを`contract_ref`で指し、branchを束縛している。valid Doneがあってもnative merge前は`in_progress`であり、merge待ちとして説明する。
+Startが唯一の先行Contractを`contract_ref`で指し、branchを束縛している。Done Claimがvalidでもnative merge前は`in_progress`であり、merge待ちとして説明する。Check Runが`queued`、`in_progress`、`requested`、`waiting`、`pending`かつ`conclusion: null`なら、PRがmerge済みでも`in_progress`とし、完了後に同じURLをread-onlyで再取得する。
 
 ### `done`
 
@@ -331,6 +331,8 @@ Evidence kindは`check`と`artifact`だけである。
 
 - `check`は同じrepositoryのGitHub Check Runで、`status: completed`、`conclusion: success`、`head_sha == done.head_sha`を満たす。
 - `artifact`は同じrepositoryの`done.head_sha`に存在するfileのimmutable blob permalinkである。
+
+未完了Check Runは成功Evidenceではないが、それだけで`halt`にしない。SHA不一致、未知status、非終端statusと非null `conclusion`の組合せ、`completed`の非successはそれぞれ`stale_evidence`または`invalid_evidence`である。
 
 Check Runが証明するのはGitHubが指定SHAへsuccessを返したことまでであり、test内容の十分性までは証明しない。Artifactが証明するのは指定commitにfileが存在することまでであり、内容の真実性までは証明しない。
 

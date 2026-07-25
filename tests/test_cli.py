@@ -252,6 +252,10 @@ class CliTests(unittest.TestCase):
                     "conclusion": case.get("check_conclusion", "success"),
                     "completed_at": "2026-07-19T00:00:04Z",
                 }
+                if case.get("check_status_missing"):
+                    body.pop("status")
+                if case.get("check_completed_at_missing"):
+                    body.pop("completed_at")
             elif parsed.path == "/repos/o/r/contents/src/a.py":
                 if case.get("artifact_missing"):
                     raise HTTPError(url, 404, "not found", {}, None)
@@ -778,6 +782,8 @@ class CliTests(unittest.TestCase):
                     self.assertNotIn("問題の整理:", human)
                 if case.get("reason"):
                     self.assertEqual(case["reason"], output["diagnostics"][0]["token"])
+                if case.get("next_action"):
+                    self.assertEqual(case["next_action"], output["next_action"])
                 if case["name"] == "scope outside":
                     values = self.problem_values(
                         human,
@@ -814,9 +820,38 @@ class CliTests(unittest.TestCase):
                     self.assertNotIn("変更してよい範囲", problem)
                 if case.get("first_url"):
                     self.assertEqual(case["first_url"], output["primary_url"])
+                    if output["diagnostics"]:
+                        self.assertEqual(
+                            case["first_url"], output["diagnostics"][0]["urls"][0]
+                        )
+                if case.get("pending_check"):
+                    self.assertEqual(0, code)
+                    self.assertEqual([], output["diagnostics"])
+                    self.assertIsNone(output["halt_reason"])
+                    self.assertEqual("none", output["authority"])
+                    self.assertEqual("complete", output["acquisition"])
                     self.assertEqual(
-                        case["first_url"], output["diagnostics"][0]["urls"][0]
+                        {
+                            "gtp", "command", "issue_url", "state", "halt_reason",
+                            "details", "next_action", "primary_url", "authority",
+                            "acquisition", "contract", "start", "done", "stop",
+                            "branch", "pr_candidate", "bound_pr", "diagnostics",
+                            "acquisition_errors", "task_context",
+                        },
+                        set(output),
                     )
+                    self.assertIn("Check Run未完了", output["task_context"]["not_proven"])
+                    if case.get("native_merge_observed"):
+                        self.assertNotIn("native merge未確認", output["task_context"]["not_proven"])
+                    else:
+                        self.assertIn("native merge未確認", output["task_context"]["not_proven"])
+                    text = "\n".join(human)
+                    self.assertIn("Check Runは未完了です", text)
+                    self.assertIn("変更やmergeをせず", text)
+                    self.assertIn("同じURLをread-onlyで再確認", text)
+                    self.assertNotIn("Evidence bindingを確認", text)
+                    self.assertNotIn("native merge判断待ち", text)
+                    self.assertNotIn("作業を止め", text)
                 if case.get("missing_evidence_key"):
                     context = output["task_context"]
                     self.assertEqual("HTTP matrix", context["goal"])

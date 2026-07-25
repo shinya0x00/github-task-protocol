@@ -256,6 +256,8 @@ def _task_context(
     done: dict[str, Any] | None,
     branch: dict[str, Any] | None,
     pr: str | None,
+    pending_evidence_urls: tuple[str, ...],
+    native_merge_observed: bool | None,
 ) -> dict[str, Any]:
     contract_content = _content(contract)
     start_content = _content(start)
@@ -298,7 +300,11 @@ def _task_context(
                 not_proven.append(
                     "Done Conditionの自然言語上の充足は自動判定していない"
                 )
-            if state == "in_progress":
+            if pending_evidence_urls:
+                not_proven.append("Check Run未完了")
+                if native_merge_observed is False:
+                    not_proven.append("native merge未確認")
+            elif state == "in_progress":
                 not_proven.append("native merge未確認")
             elif state == "halt" and not missing:
                 not_proven.append("protocol不適合が未解決")
@@ -343,6 +349,8 @@ def _next_action(result: StatusResult) -> str:
         return "none_done"
     if result.state == "stopped":
         return "none_stopped"
+    if result._pending_evidence_urls:
+        return "retry_acquisition"
     if result.current.get("done") is not None:
         return "await_merge"
     if result.current.get("bound_pr") or result.current.get("pr_candidates"):
@@ -356,6 +364,8 @@ def _primary_url(result: StatusResult) -> str:
         return resource if isinstance(resource, str) else result.issue_url
     if result.diagnostics and result.diagnostics[0].urls:
         return result.diagnostics[0].urls[0]
+    if result._pending_evidence_urls:
+        return result._pending_evidence_urls[0]
     current = result.current
     if isinstance(current.get("bound_pr"), str):
         return current["bound_pr"]
@@ -419,15 +429,20 @@ def status_projection(result: StatusResult) -> dict[str, Any]:
             done=done,
             branch=branch,
             pr=pr,
+            pending_evidence_urls=result._pending_evidence_urls,
+            native_merge_observed=result._native_merge_observed,
         ),
     }
 
 
 def _plain_summary(machine: dict[str, Any], context: dict[str, Any]) -> list[str]:
     state = machine["state"]
+    pending = state == "in_progress" and machine["next_action"] == "retry_acquisition"
     conclusion = (
         "GitHub情報を最後まで取得できていないため、まだ判断できません。"
         if state is None
+        else "Check Runは未完了です。完了後に同じURLを再確認してください。"
+        if pending
         else "このIssueの完了は確認できません。作業を止めて人が確認してください。"
         if state == "halt"
         else (
@@ -522,6 +537,7 @@ def _plain_summary(machine: dict[str, Any], context: dict[str, Any]) -> list[str
 def _status_text(machine: dict[str, Any]) -> list[str]:
     state = machine["state"] if machine["state"] is not None else "不明"
     action = machine["next_action"]
+    pending = machine["state"] == "in_progress" and action == "retry_acquisition"
     branch = machine.get("branch")
     branch_name = branch.get("name") if isinstance(branch, dict) else None
     stop_text = {
@@ -547,6 +563,8 @@ def _status_text(machine: dict[str, Any]) -> list[str]:
         "none_stopped": "必要なら新しいIssueでContractから開始してください",
         "retry_acquisition": "GitHub情報を再取得してください",
     }[action]
+    if pending:
+        action_text = "変更やmergeをせず、Check Run完了後に同じURLをread-onlyで再確認してください"
     if machine["state"] is None:
         errors = machine["acquisition_errors"]
         code = errors[0].get("code", "acquisition_incomplete") if errors else "acquisition_incomplete"
@@ -554,6 +572,8 @@ def _status_text(machine: dict[str, Any]) -> list[str]:
     elif machine["state"] == "halt":
         token = machine["halt_reason"]
         reason = f"{token} — {HALT_MESSAGES.get(token, 'protocol上の矛盾または不適合を確認しました')}"
+    elif pending:
+        reason = "Check Runは未完了です"
     elif action == "await_merge":
         reason = "Done ClaimのEvidence bindingは確認済みですが、native mergeはまだ確認できません"
     elif action == "post_done":

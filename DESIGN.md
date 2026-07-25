@@ -25,11 +25,11 @@ pull requestのsource headにあるこの文書は正準候補である。reposi
 - readerはGitHub resourceをGET-onlyで取得し、`GTP.md`に従ってstate、diagnostic、Acquisition Errorを導出する。
 - machine projectionは既存のdiagnostic、acquisition error、`primary_url`、`authority: none`を返す。
 - human presentationは状態、停止要否、次の行動、理由、最初のURL、非許可表示とtask summaryを返す。
+- Issue #99で実装したCLI presentationは、`state: halt`のとき既存の診断事実から8項目の「問題の整理」を表示する。
 - READMEの明示setup手順はstable Releaseをexact commitへ固定し、file変更前にbranchを作る。
 
 ### Target / not yet implemented
 
-- blocker時だけ8項目の「問題の整理」を表示するCLI behaviorはIssue #99で実装する。
 - instruction、authority、外部dependencyをfile／branch変更前に判定するsetup preflightはIssue #100で実装する。
 - 外部Operation blockerの8項目表示は、#100のsetup境界と各Operation ownerが公開する観測事実を接続して実装する。
 
@@ -48,7 +48,7 @@ GitHub Issue comments + live GitHub resources
                     |
                     `--> human presentation
                          normal summary [Implemented]
-                         blocker時の問題の整理 [Target #99]
+                         state: halt時の問題の整理 [Implemented #99]
 
 explicit setup request + target repository observations
                     |
@@ -63,13 +63,14 @@ external Operation observations
  Operation ownerを参照するephemeral report [Target #100]
 ```
 
-- Targetのhuman presentationはmachine projectionと既存診断事実だけを説明し、stateやauthorityを再判定しない。
+- Implementedのhalt presentationはmachine projectionと既存診断事実だけを説明し、stateやauthorityを再判定しない。
 - Targetのsetup／adapter preflightはtarget fileまたはbranchを変更する前に既存instruction、authority、外部dependencyを読む。
 - 外部Operationの内部rule、provider、activationはそのOperationのownerが所有し、Target実装も推測または複製しない。
 
 ## 通常workflow
 
-blockerがなければ、次のworkflowと既存の通常表示を変更しない。
+Issue #99のhalt presentation追加は、blockerがない場合の次のworkflowと既存の通常表示を変更しない。
+未完了Check Runの再取得案内は、非終端境界の訂正として扱う。
 
 ```text
 Issue -> Contract -> Start -> branch -> PR -> Done -> Human native merge
@@ -167,7 +168,9 @@ productionの問題説明は、既存のstdout、stderr、machine JSON、diagnos
 - pull requestのfixed source headでは、`DESIGN.md`、`adr/0035-human-actionable-problem-explanations.md`、`DECISIONS.md`のpathと内容をcandidate artifactとして検査する。main URLが存在するとはClaimしない。
 - `DESIGN.md`と`adr/`がrepository canonical sourceへ昇格したことは、native merge後にmain上のpathをread-onlyで再取得して確認する。
 - 公開済み1.0.2のsdistは両pathを含まない。1.0.2のarchive内だけでcurrent designを再構成できるとはClaimしない。
-- 1.0.3 publicationを所有するIssue #102は、sdistへ`DESIGN.md`と`adr/`を収録し、archive内の相対linkを検証してから公開する。
+- 1.0.3 candidate sdistは`DESIGN.md`、`DECISIONS.md`、`adr/`を収録し、`DESIGN.md`から`GTP.md`、ADR-035から`../DESIGN.md`への相対linkをarchive内で検査する。
+- 1.0.3 publicationと公開後Evidenceは引き続きIssue #102が所有する。
+- `acceptance/explicit-setup-install/run.json`はdefault branchへの一時的なdirect pushを含むhistorical observationとして保持し、現行branch-first setupへの適合Evidenceとして再利用しない。
 
 ## 変更規則
 

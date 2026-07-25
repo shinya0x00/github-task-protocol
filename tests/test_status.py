@@ -193,16 +193,54 @@ class StatusTests(unittest.TestCase):
                 self.assertEqual("terminal_violation", result.diagnostics[0].token)
                 self.assertEqual(comments[3].url, result.diagnostics[0].urls[0])
 
-    def test_check_evidence_pending_is_invalid(self) -> None:
+    def test_known_nonterminal_checks_are_pending_for_open_or_merged_pr(self) -> None:
         check_contract = contract(IDS[0])
         check_contract["done_conditions"]["artifact"]["evidence_kind"] = "check"
         check_done = done(IDS[2])
         check_done["evidence"]["artifact"] = "https://github.com/o/r/runs/8"
         comments = [comment(1, check_contract), comment(2, start(IDS[1])), comment(3, check_done)]
-        check = {"head_sha": SHA, "status": "in_progress", "conclusion": None}
+        for status in ("queued", "in_progress", "requested", "waiting", "pending"):
+            for merged in (False, True):
+                with self.subTest(status=status, merged=merged):
+                    check = {"head_sha": SHA, "status": status, "conclusion": None}
+                    result = evaluate_issue(
+                        FakeGitHub(comments, branch=not merged, pr=pr(merged=merged), check=check),
+                        ISSUE,
+                    )
+                    self.assertEqual("in_progress", result.state)
+                    self.assertEqual([], result.diagnostics)
+                    self.assertEqual(("https://github.com/o/r/runs/8",), result._pending_evidence_urls)
+                    self.assertIs(merged, result._native_merge_observed)
+                    self.assertNotIn("_pending_evidence_urls", result.projection())
+                    self.assertNotIn("_native_merge_observed", result.projection())
+
+    def test_invalid_check_status_combinations_halt(self) -> None:
+        check_contract = contract(IDS[0])
+        check_contract["done_conditions"]["artifact"]["evidence_kind"] = "check"
+        check_done = done(IDS[2])
+        check_done["evidence"]["artifact"] = "https://github.com/o/r/runs/8"
+        comments = [comment(1, check_contract), comment(2, start(IDS[1])), comment(3, check_done)]
+        for check in (
+            {"head_sha": SHA, "status": "queued", "conclusion": "success"},
+            {"head_sha": SHA, "status": "mystery", "conclusion": None},
+            {"head_sha": SHA, "conclusion": None},
+            {"head_sha": SHA, "status": "completed", "conclusion": "failure"},
+        ):
+            with self.subTest(check=check):
+                result = evaluate_issue(FakeGitHub(comments, pr=pr(merged=False), check=check), ISSUE)
+                self.assertEqual("halt", result.state)
+                self.assertEqual("invalid_evidence", result.diagnostics[0].token)
+
+    def test_successful_check_without_completed_at_is_acquisition_error(self) -> None:
+        check_contract = contract(IDS[0])
+        check_contract["done_conditions"]["artifact"]["evidence_kind"] = "check"
+        check_done = done(IDS[2])
+        check_done["evidence"]["artifact"] = "https://github.com/o/r/runs/8"
+        comments = [comment(1, check_contract), comment(2, start(IDS[1])), comment(3, check_done)]
+        check = {"head_sha": SHA, "status": "completed", "conclusion": "success"}
         result = evaluate_issue(FakeGitHub(comments, pr=pr(merged=False), check=check), ISSUE)
-        self.assertEqual("halt", result.state)
-        self.assertEqual("invalid_evidence", result.diagnostics[0].token)
+        self.assertIsNone(result.state)
+        self.assertEqual("acquisition_incomplete", result.acquisition_errors[0]["code"])
 
     def test_failed_check_evidence_halts(self) -> None:
         check_contract = contract(IDS[0])
@@ -246,9 +284,69 @@ class StatusTests(unittest.TestCase):
             comment(2, start(IDS[1])),
             comment(3, check_done),
         ]
-        check = {"head_sha": "f" * 40, "status": "completed", "conclusion": "success"}
+        check = {"head_sha": "f" * 40, "status": "pending", "conclusion": None}
         result = evaluate_issue(FakeGitHub(comments, pr=pr(merged=False), check=check), ISSUE)
         self.assertEqual("stale_evidence", result.diagnostics[0].token)
+
+    def test_pending_with_other_evidence_uses_diagnostic_priority(self) -> None:
+        check_contract = contract(IDS[0])
+        check_contract["done_conditions"] = {
+            "pending": {"text": "pending", "evidence_kind": "check"},
+            "problem": {"text": "problem", "evidence_kind": "check"},
+        }
+        check_done = done(IDS[2])
+        check_done["evidence"] = {
+            "pending": "https://github.com/o/r/runs/8",
+            "problem": "https://github.com/o/r/runs/9",
+        }
+        comments = [comment(1, check_contract), comment(2, start(IDS[1])), comment(3, check_done)]
+
+        class MultipleChecks(FakeGitHub):
+            def __init__(self, problem, merged):
+                super().__init__(comments, branch=not merged, pr=pr(merged=merged))
+                self.problem = problem
+
+            def check_run(self, owner, repo, number):
+                if number == 8:
+                    return {"head_sha": SHA, "status": "pending", "conclusion": None}
+                return self.problem
+
+        cases = (
+            (
+                {
+                    "head_sha": SHA,
+                    "status": "completed",
+                    "conclusion": "success",
+                    "completed_at": "2026-07-19T00:00:04Z",
+                },
+                "in_progress",
+                None,
+            ),
+            (
+                {"head_sha": SHA, "status": "completed", "conclusion": "failure"},
+                "halt",
+                "invalid_evidence",
+            ),
+            (
+                {"head_sha": "f" * 40, "status": "pending", "conclusion": None},
+                "halt",
+                "stale_evidence",
+            ),
+        )
+        for merged in (False, True):
+            for problem, state, token in cases:
+                with self.subTest(merged=merged, state=state, token=token):
+                    result = evaluate_issue(MultipleChecks(problem, merged), ISSUE)
+                    self.assertEqual(state, result.state)
+                    if token is None:
+                        self.assertEqual([], result.diagnostics)
+                        self.assertEqual(
+                            ("https://github.com/o/r/runs/8",),
+                            result._pending_evidence_urls,
+                        )
+                        self.assertIs(merged, result._native_merge_observed)
+                    else:
+                        self.assertEqual(token, result.diagnostics[0].token)
 
     def test_evidence_from_another_repository_is_invalid(self) -> None:
         foreign_done = done(IDS[2])

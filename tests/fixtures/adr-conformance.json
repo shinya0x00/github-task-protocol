@@ -24,5 +24,14 @@
   "ADR-023": "test_status.StatusTests.test_merge_without_done_halts",
   "ADR-024": "test_v1_conformance.V1ConformanceTests.test_unordered_snapshot_is_acquisition_failure",
   "ADR-025": "test_reducer.ReducerTests.test_truth_table_fixture",
-  "ADR-026": "test_reducer.ReducerTests.test_record_after_stop_is_terminal_violation"
+  "ADR-026": "test_reducer.ReducerTests.test_record_after_stop_is_terminal_violation",
+  "ADR-027": "test_reducer.ReducerTests.test_reason_vocabulary_is_exact",
+  "ADR-028": "test_reducer.ReducerTests.test_truth_table_fixture",
+  "ADR-029": "test_cli.CliTests.test_status_required_live_binding_http_matrix",
+  "ADR-030": "test_build_backend.BuildBackendTests.test_installed_console_script_runs_status_and_check",
+  "ADR-031": "test_cli.CliTests.test_purpose_alignment_walking_skeleton_fires_all_attachments",
+  "ADR-032": "test_status.StatusTests.test_fresh_record_after_stop_is_terminal_violation",
+  "ADR-033": "test_status.StatusTests.test_pr_base_change_during_file_read_is_acquisition_error",
+  "ADR-034": "test_cli.CliTests.test_status_required_live_binding_http_matrix",
+  "ADR-035": "test_cli.CliTests.test_problem_explanation_walking_skeleton_fires_all_three_cli_paths"
 }
