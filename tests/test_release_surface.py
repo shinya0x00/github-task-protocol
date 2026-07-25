@@ -3,11 +3,13 @@ from __future__ import annotations
 import copy
 import json
 import hashlib
+import os
 from pathlib import Path
 import re
 import subprocess
 import tomllib
 import unittest
+from unittest.mock import patch
 
 import gtp
 
@@ -21,6 +23,8 @@ MATRIX = json.loads(
 PROJECT = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
 PUBLISHED_CLI_VERSION = "1.0.2"
 ACCEPTANCE_CANDIDATE = "46103e0fdd41364f98e098518f6b91211fb1f5ea"
+RELEASE_LOCK_REQUIRED_ENV = "GTP_RELEASE_LOCK_REQUIRED"
+GIT_TIMEOUT_SECONDS = 10
 LOCKED_SOURCE_PATHS = {
     "DESIGN.md",
     "GTP.md",
@@ -31,12 +35,25 @@ LOCKED_SOURCE_PATHS = {
 
 
 def _git(*arguments: str) -> subprocess.CompletedProcess[bytes] | None:
-    """Run git in ROOT, or None when no git client can be executed."""
+    """Run bounded, non-fetching git in ROOT, or None when it cannot finish."""
+    environment = {
+        key: value for key, value in os.environ.items() if not key.startswith("GIT_")
+    }
+    environment.update(
+        GIT_CEILING_DIRECTORIES=str(ROOT.resolve().parent),
+        GIT_NO_LAZY_FETCH="1",
+        GIT_TERMINAL_PROMPT="0",
+    )
     try:
         return subprocess.run(
-            ["git", "--no-replace-objects", *arguments], cwd=ROOT, capture_output=True
+            ["git", "--no-replace-objects", "--no-lazy-fetch", *arguments],
+            cwd=ROOT,
+            capture_output=True,
+            env=environment,
+            stdin=subprocess.DEVNULL,
+            timeout=GIT_TIMEOUT_SECONDS,
         )
-    except OSError:
+    except (OSError, subprocess.TimeoutExpired):
         return None
 
 
@@ -48,31 +65,27 @@ def _blob_at(commit: str, relative_path: str) -> bytes | None:
     return result.stdout
 
 
-def _verification_mode(
-    *, blob_readable: bool, git_available: bool, has_git_dir: bool, shallow: bool
-) -> str:
-    """Decide how to treat an unreadable pinned commit.
-
-    A distributed source tree may legitimately lack a git client, a `.git`, or
-    this repository's history, and none of those can verify the lock. A shallow
-    checkout of this repository is different: it would silently stop verifying,
-    so it must fail loudly instead.
-    """
+def _verification_mode(*, blob_readable: bool, required: bool) -> str:
+    """Decide from explicit policy how to treat an unreadable pinned commit."""
     if blob_readable:
         return "verify"
-    if not git_available or not has_git_dir:
-        return "skip"
-    return "fail" if shallow else "skip"
+    return "fail" if required else "skip"
+
+
+def _release_lock_required() -> bool:
+    value = os.environ.get(RELEASE_LOCK_REQUIRED_ENV)
+    if value is None:
+        return False
+    if value == "1":
+        return True
+    raise ValueError(f"{RELEASE_LOCK_REQUIRED_ENV} must be 1 when set")
 
 
 def _observed_verification_mode(commit: str) -> str:
-    version = _git("--version")
-    shallow = _git("rev-parse", "--is-shallow-repository")
+    required = _release_lock_required()
     return _verification_mode(
         blob_readable=_blob_at(commit, "GTP.md") is not None,
-        git_available=version is not None and version.returncode == 0,
-        has_git_dir=(ROOT / ".git").exists(),
-        shallow=shallow is not None and shallow.stdout.strip() == b"true",
+        required=required,
     )
 
 
@@ -260,28 +273,68 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn("owner URLはread-only取得で確認できた場合だけ", readme)
         self.assertIn("`修正先Issue未確認`", readme)
 
-    def test_verification_mode_covers_every_environment(self) -> None:
-        # (blob_readable, git_available, has_git_dir, shallow) -> mode
+    def test_verification_mode_requires_explicit_policy(self) -> None:
+        # (blob_readable, required) -> mode
         table = {
-            (True, True, True, False): "verify",
-            (True, True, True, True): "verify",
-            (False, True, True, True): "fail",
-            (False, True, True, False): "skip",
-            (False, True, False, False): "skip",
-            (False, False, True, True): "skip",
-            (False, False, False, False): "skip",
+            (True, True): "verify",
+            (True, False): "verify",
+            (False, True): "fail",
+            (False, False): "skip",
         }
-        for (blob, client, git_dir, shallow), expected in table.items():
-            with self.subTest(blob=blob, client=client, git_dir=git_dir, shallow=shallow):
+        for (blob, required), expected in table.items():
+            with self.subTest(blob=blob, required=required):
                 self.assertEqual(
                     expected,
                     _verification_mode(
                         blob_readable=blob,
-                        git_available=client,
-                        has_git_dir=git_dir,
-                        shallow=shallow,
+                        required=required,
                     ),
                 )
+
+    def test_observed_verification_mode_uses_required_signal(self) -> None:
+        missing = "0" * 40
+        with patch.dict(os.environ, {RELEASE_LOCK_REQUIRED_ENV: "1"}):
+            self.assertEqual("fail", _observed_verification_mode(missing))
+        with patch.dict(os.environ):
+            os.environ.pop(RELEASE_LOCK_REQUIRED_ENV, None)
+            self.assertEqual("skip", _observed_verification_mode(missing))
+
+    def test_release_lock_requirement_rejects_unknown_value(self) -> None:
+        with patch.dict(os.environ, {RELEASE_LOCK_REQUIRED_ENV: "0"}):
+            with self.assertRaisesRegex(ValueError, "must be 1 when set"):
+                _observed_verification_mode("0" * 40)
+
+    def test_git_subprocess_is_bounded_and_hermetic(self) -> None:
+        with patch.dict(os.environ, {"GIT_DIR": "/unrelated/repository"}):
+            with patch(
+                "subprocess.run",
+                side_effect=subprocess.TimeoutExpired(
+                    ["git", "--version"], GIT_TIMEOUT_SECONDS
+                ),
+            ) as run:
+                self.assertIsNone(_git("--version"))
+        call = run.call_args
+        self.assertEqual(
+            ["git", "--no-replace-objects", "--no-lazy-fetch", "--version"],
+            call.args[0],
+        )
+        self.assertEqual(ROOT, call.kwargs["cwd"])
+        self.assertEqual(subprocess.DEVNULL, call.kwargs["stdin"])
+        self.assertTrue(call.kwargs["capture_output"])
+        self.assertEqual(GIT_TIMEOUT_SECONDS, call.kwargs["timeout"])
+        git_environment = {
+            key: value
+            for key, value in call.kwargs["env"].items()
+            if key.startswith("GIT_")
+        }
+        self.assertEqual(
+            {
+                "GIT_CEILING_DIRECTORIES": str(ROOT.resolve().parent),
+                "GIT_NO_LAZY_FETCH": "1",
+                "GIT_TERMINAL_PROMPT": "0",
+            },
+            git_environment,
+        )
 
     def test_locked_release_sources_match_their_pinned_commit(self) -> None:
         run = json.loads(
@@ -294,8 +347,8 @@ class ReleaseSurfaceTests(unittest.TestCase):
         mode = _observed_verification_mode(candidate)
         if mode == "fail":
             self.fail(
-                f"commit {candidate} is unreachable in this shallow checkout, so "
-                "the release lock is no longer verified; fetch the full history "
+                f"commit {candidate} cannot be read although release lock "
+                "verification is required; fetch the pinned commit "
                 "(actions/checkout fetch-depth: 0)"
             )
         if mode == "skip":
@@ -303,6 +356,16 @@ class ReleaseSurfaceTests(unittest.TestCase):
                 f"commit {candidate} cannot be read in this source tree, so the "
                 "locked source sha256 values cannot be verified here"
             )
+        original = _blob_at(candidate, "GTP.md")
+        self.assertIsNotNone(original)
+        with patch.dict(
+            os.environ,
+            {
+                "GIT_DIR": str(ROOT / "missing-git-dir"),
+                "GIT_OBJECT_DIRECTORY": str(ROOT / "missing-object-directory"),
+            },
+        ):
+            self.assertEqual(original, _blob_at(candidate, "GTP.md"))
         self.assertEqual([], _locked_source_mismatches(run["expected_lock"], candidate))
 
     def test_a_self_consistent_but_wrong_lock_is_detected(self) -> None:
@@ -312,7 +375,14 @@ class ReleaseSurfaceTests(unittest.TestCase):
             )
         )
         candidate = run["candidate"]["sha"]
-        if _observed_verification_mode(candidate) != "verify":
+        mode = _observed_verification_mode(candidate)
+        if mode == "fail":
+            self.fail(
+                f"commit {candidate} cannot be read although release lock "
+                "verification is required; fetch the pinned commit "
+                "(actions/checkout fetch-depth: 0)"
+            )
+        if mode == "skip":
             self.skipTest(f"commit {candidate} cannot be read in this source tree")
         # A lock regenerated from the wrong tree stays internally consistent, so
         # only comparing against the pinned blobs can reject it.
@@ -727,6 +797,13 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertEqual([ROOT / ".github" / "workflows" / "ci.yml"], workflows)
         workflow = workflows[0].read_text(encoding="utf-8")
         self.assertIn('python-version: ["3.11", "3.12", "3.13"]', workflow)
+        self.assertIn('GTP_RELEASE_LOCK_REQUIRED: "1"', workflow)
+        if (
+            os.environ.get("GITHUB_ACTIONS") == "true"
+            and os.environ.get("GITHUB_REPOSITORY")
+            == "shinya0x00/github-task-protocol"
+        ):
+            self.assertEqual("1", os.environ.get(RELEASE_LOCK_REQUIRED_ENV))
         self.assertIn("Build sdist and wheel without network", workflow)
         self.assertIn("Install wheel in clean environment", workflow)
         self.assertIn("Run installed status E2E", workflow)

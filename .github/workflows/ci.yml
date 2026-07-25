@@ -27,6 +27,7 @@ jobs:
         run: python -m unittest discover -s tests
         env:
           PYTHONPATH: src
+          GTP_RELEASE_LOCK_REQUIRED: "1"
       - name: Check release budgets
         run: |
           python - <<'PY'
