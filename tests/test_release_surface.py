@@ -4,6 +4,7 @@ import json
 import hashlib
 from pathlib import Path
 import re
+import subprocess
 import tomllib
 import unittest
 
@@ -18,6 +19,17 @@ MATRIX = json.loads(
 )
 PROJECT = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
 PUBLISHED_CLI_VERSION = "1.0.2"
+
+
+def _blob_at(commit: str, relative_path: str) -> bytes | None:
+    """Exact bytes of a tracked path at a commit, or None when the object is
+    unreachable because the checkout is shallow or has no `.git` at all."""
+    result = subprocess.run(
+        ["git", "cat-file", "blob", f"{commit}:{relative_path}"],
+        cwd=ROOT,
+        capture_output=True,
+    )
+    return result.stdout if result.returncode == 0 else None
 
 
 class ReleaseSurfaceTests(unittest.TestCase):
@@ -222,12 +234,38 @@ class ReleaseSurfaceTests(unittest.TestCase):
             "https://github.com/shinya0x00/github-task-protocol/blob/"
             f"{candidate}/"
         )
+        if _blob_at(candidate, "GTP.md") is None:
+            # A source tree without `.git` (an unpacked sdist) genuinely cannot
+            # resolve the pinned commit. A repository that has `.git` but cannot
+            # reach it is a shallow or misconfigured checkout, which would
+            # silently stop verifying the lock, so fail instead of skipping.
+            self.assertFalse(
+                (ROOT / ".git").exists(),
+                f"commit {candidate} is unreachable in this repository; "
+                "check out the full history (actions/checkout fetch-depth: 0)",
+            )
+            self.skipTest(
+                f"commit {candidate} is unreachable without `.git`, so the "
+                "locked source sha256 values cannot be verified here"
+            )
+        verified = 0
         for case in lock["cases"].values():
             for source in case["sources"]:
                 self.assertTrue(source["url"].startswith(source_prefix))
                 relative_path = Path(source["url"][len(source_prefix):])
                 self.assertNotIn("..", relative_path.parts)
                 self.assertRegex(source["sha256"], r"^[0-9a-f]{64}$")
+                blob = _blob_at(candidate, relative_path.as_posix())
+                self.assertIsNotNone(blob, f"{relative_path} is absent at {candidate}")
+                self.assertEqual(
+                    hashlib.sha256(blob).hexdigest(),
+                    source["sha256"],
+                    f"{relative_path} does not match its locked sha256 at {candidate}",
+                )
+                verified += 1
+        self.assertEqual(
+            sum(len(case["sources"]) for case in lock["cases"].values()), verified
+        )
         record_input = lock["cases"]["record"]["exact_input"]
         self.assertEqual({"malformed", "edited", "id_collision"}, set(record_input))
         self.assertIn("<!-- gtp-record:v1 -->", record_input["malformed"][0]["body"])
@@ -438,10 +476,6 @@ class ReleaseSurfaceTests(unittest.TestCase):
         ]
         self.assertTrue(branch_first_requires_no_direct_push)
         self.assertFalse(observed_branch_first_compliance)
-        self.assertNotEqual(
-            branch_first_requires_no_direct_push,
-            observed_branch_first_compliance,
-        )
 
     def test_issue_url_probe_records_safe_branch_reuse(self) -> None:
         run = json.loads(
