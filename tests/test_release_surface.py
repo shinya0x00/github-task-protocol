@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import copy
 import json
 import hashlib
 from pathlib import Path
 import re
+import subprocess
 import tomllib
 import unittest
 
@@ -18,6 +20,81 @@ MATRIX = json.loads(
 )
 PROJECT = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
 PUBLISHED_CLI_VERSION = "1.0.2"
+ACCEPTANCE_CANDIDATE = "46103e0fdd41364f98e098518f6b91211fb1f5ea"
+LOCKED_SOURCE_PATHS = {
+    "DESIGN.md",
+    "GTP.md",
+    "README.md",
+    "tests/fixtures/http/live-binding-matrix.json",
+    "tests/fixtures/setup-preflight.json",
+}
+
+
+def _git(*arguments: str) -> subprocess.CompletedProcess[bytes] | None:
+    """Run git in ROOT, or None when no git client can be executed."""
+    try:
+        return subprocess.run(
+            ["git", "--no-replace-objects", *arguments], cwd=ROOT, capture_output=True
+        )
+    except OSError:
+        return None
+
+
+def _blob_at(commit: str, relative_path: str) -> bytes | None:
+    """Exact bytes of a tracked path at a commit, ignoring any `refs/replace`."""
+    result = _git("cat-file", "blob", f"{commit}:{relative_path}")
+    if result is None or result.returncode != 0:
+        return None
+    return result.stdout
+
+
+def _verification_mode(
+    *, blob_readable: bool, git_available: bool, has_git_dir: bool, shallow: bool
+) -> str:
+    """Decide how to treat an unreadable pinned commit.
+
+    A distributed source tree may legitimately lack a git client, a `.git`, or
+    this repository's history, and none of those can verify the lock. A shallow
+    checkout of this repository is different: it would silently stop verifying,
+    so it must fail loudly instead.
+    """
+    if blob_readable:
+        return "verify"
+    if not git_available or not has_git_dir:
+        return "skip"
+    return "fail" if shallow else "skip"
+
+
+def _observed_verification_mode(commit: str) -> str:
+    version = _git("--version")
+    shallow = _git("rev-parse", "--is-shallow-repository")
+    return _verification_mode(
+        blob_readable=_blob_at(commit, "GTP.md") is not None,
+        git_available=version is not None and version.returncode == 0,
+        has_git_dir=(ROOT / ".git").exists(),
+        shallow=shallow is not None and shallow.stdout.strip() == b"true",
+    )
+
+
+def _locked_sources(lock: dict, candidate: str) -> list[tuple[str, str]]:
+    prefix = (
+        f"https://github.com/shinya0x00/github-task-protocol/blob/{candidate}/"
+    )
+    return [
+        (source["url"][len(prefix):], source["sha256"])
+        for case in lock["cases"].values()
+        for source in case["sources"]
+    ]
+
+
+def _locked_source_mismatches(lock: dict, candidate: str) -> list[str]:
+    """Relative paths whose recorded sha256 differs from the blob at the commit."""
+    mismatches = []
+    for relative_path, expected in _locked_sources(lock, candidate):
+        blob = _blob_at(candidate, relative_path)
+        if blob is None or hashlib.sha256(blob).hexdigest() != expected:
+            mismatches.append(relative_path)
+    return mismatches
 
 
 class ReleaseSurfaceTests(unittest.TestCase):
@@ -183,6 +260,75 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn("owner URLはread-only取得で確認できた場合だけ", readme)
         self.assertIn("`修正先Issue未確認`", readme)
 
+    def test_verification_mode_covers_every_environment(self) -> None:
+        # (blob_readable, git_available, has_git_dir, shallow) -> mode
+        table = {
+            (True, True, True, False): "verify",
+            (True, True, True, True): "verify",
+            (False, True, True, True): "fail",
+            (False, True, True, False): "skip",
+            (False, True, False, False): "skip",
+            (False, False, True, True): "skip",
+            (False, False, False, False): "skip",
+        }
+        for (blob, client, git_dir, shallow), expected in table.items():
+            with self.subTest(blob=blob, client=client, git_dir=git_dir, shallow=shallow):
+                self.assertEqual(
+                    expected,
+                    _verification_mode(
+                        blob_readable=blob,
+                        git_available=client,
+                        has_git_dir=git_dir,
+                        shallow=shallow,
+                    ),
+                )
+
+    def test_locked_release_sources_match_their_pinned_commit(self) -> None:
+        run = json.loads(
+            (ROOT / "acceptance" / "problem-explanations" / "run.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        candidate = run["candidate"]["sha"]
+        self.assertEqual(ACCEPTANCE_CANDIDATE, candidate)
+        mode = _observed_verification_mode(candidate)
+        if mode == "fail":
+            self.fail(
+                f"commit {candidate} is unreachable in this shallow checkout, so "
+                "the release lock is no longer verified; fetch the full history "
+                "(actions/checkout fetch-depth: 0)"
+            )
+        if mode == "skip":
+            self.skipTest(
+                f"commit {candidate} cannot be read in this source tree, so the "
+                "locked source sha256 values cannot be verified here"
+            )
+        self.assertEqual([], _locked_source_mismatches(run["expected_lock"], candidate))
+
+    def test_a_self_consistent_but_wrong_lock_is_detected(self) -> None:
+        run = json.loads(
+            (ROOT / "acceptance" / "problem-explanations" / "run.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        candidate = run["candidate"]["sha"]
+        if _observed_verification_mode(candidate) != "verify":
+            self.skipTest(f"commit {candidate} cannot be read in this source tree")
+        # A lock regenerated from the wrong tree stays internally consistent, so
+        # only comparing against the pinned blobs can reject it.
+        wrong = copy.deepcopy(run["expected_lock"])
+        wrong["cases"]["record"]["sources"][0]["sha256"] = "0" * 64
+        corrupted = wrong["cases"]["record"]["sources"][0]["url"].rsplit(
+            f"{candidate}/", 1
+        )[1]
+        self.assertEqual([corrupted], _locked_source_mismatches(wrong, candidate))
+        canonical = json.dumps(
+            wrong["cases"], ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        )
+        wrong["cases_sha256"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        self.assertNotEqual(run["expected_lock"]["cases_sha256"], wrong["cases_sha256"])
+        self.assertEqual([corrupted], _locked_source_mismatches(wrong, candidate))
+
     def test_problem_explanation_acceptance_is_bound_and_non_mutating(self) -> None:
         root = ROOT / "acceptance" / "problem-explanations"
         run = json.loads((root / "run.json").read_text(encoding="utf-8"))
@@ -222,12 +368,16 @@ class ReleaseSurfaceTests(unittest.TestCase):
             "https://github.com/shinya0x00/github-task-protocol/blob/"
             f"{candidate}/"
         )
+        relative_paths = []
         for case in lock["cases"].values():
             for source in case["sources"]:
                 self.assertTrue(source["url"].startswith(source_prefix))
                 relative_path = Path(source["url"][len(source_prefix):])
                 self.assertNotIn("..", relative_path.parts)
                 self.assertRegex(source["sha256"], r"^[0-9a-f]{64}$")
+                relative_paths.append(relative_path.as_posix())
+        self.assertEqual(18, len(relative_paths))
+        self.assertEqual(LOCKED_SOURCE_PATHS, set(relative_paths))
         record_input = lock["cases"]["record"]["exact_input"]
         self.assertEqual({"malformed", "edited", "id_collision"}, set(record_input))
         self.assertIn("<!-- gtp-record:v1 -->", record_input["malformed"][0]["body"])
