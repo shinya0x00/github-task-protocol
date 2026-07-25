@@ -993,6 +993,14 @@ class ReleaseSurfaceTests(unittest.TestCase):
             workflow,
         )
         self.assertIn("Run merge-result integration tests", workflow)
+        self.assertIn("release-ready:", workflow)
+        self.assertIn("needs: [build, integration, test]", workflow)
+        self.assertIn("Gate the complete release-ready result", workflow)
+        self.assertIn('test "${{ needs.build.result }}" = "success"', workflow)
+        self.assertIn('test "${{ needs.test.result }}" = "success"', workflow)
+        self.assertIn(
+            'test "${{ needs.integration.result }}" = "success"', workflow
+        )
         self.assertIn("v1.0.3-pr-verification-${SOURCE_SHA}", workflow)
         self.assertIn("v1.0.3-main-candidate-${SOURCE_SHA}", workflow)
         self.assertIn("retention-days: 90", workflow)

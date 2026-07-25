@@ -272,3 +272,20 @@ jobs:
         run: '"$RUNNER_TEMP/venv-check/bin/python" -m unittest discover -s tests'
         env:
           GTP_RELEASE_LOCK_REQUIRED: "1"
+
+  release-ready:
+    if: always()
+    needs: [build, integration, test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gate the complete release-ready result
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ needs.build.result }}" = "success"
+          test "${{ needs.test.result }}" = "success"
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            test "${{ needs.integration.result }}" = "success"
+          else
+            test "${{ needs.integration.result }}" = "skipped"
+          fi

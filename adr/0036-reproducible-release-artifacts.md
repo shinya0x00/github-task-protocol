@@ -30,7 +30,7 @@ Python配布の既存形式であるsdistとwheel、再現可能buildで広く�
 
 - PR artifactは検証専用とし、`v1.0.3-pr-verification-<SOURCE_SHA>`と命名する。main artifactだけを公開候補とし、`v1.0.3-main-candidate-<SOURCE_SHA>`と命名する。どちらも保持期間は90日とする。
 - consumerのPython 3.11、Python 3.12、Python 3.13はproducerが1回uploadした同じartifactをdownloadし、`SHA256SUMS`、clean install、installed CLI、unit testを検査する。matrixごとに新しい配布物をbuildしない。
-- pull requestではsource-head artifact検査と分離して、GitHubのsynthetic merge refをintegration jobで検査する。merge refは現在のmainとの統合結果だけを所有し、artifact identityまたはDone Evidenceには使用しない。
+- pull requestではsource-head artifact検査と分離して、GitHubのsynthetic merge refをintegration jobで検査する。merge refは現在のmainとの統合結果だけを所有し、artifact identityまたはDone Evidenceには使用しない。`release-ready` Checkはbuild、3-version consumer matrix、PR時のintegrationの成功を集約する。
 - workflowの権限は`contents: read`だけとする。tag作成、GitHub Release、PyPI uploadは行わない。main artifactが生成された後のartifact ID、run URL、expiry、checksum、再検査手順は公開operationのownerに引き継ぐ。
 
 ## 不採用案
