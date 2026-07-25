@@ -304,7 +304,7 @@ def _live_evidence(
             if resource.get("head_sha") != head_sha:
                 diagnostics.append(_diagnostic("stale_evidence", done.comment.url, url))
             elif resource.get("status") in {"queued", "in_progress", "requested", "waiting", "pending"}:
-                if resource.get("conclusion") is None:
+                if "conclusion" in resource and resource["conclusion"] is None:
                     pending.append(url)
                 else:
                     diagnostics.append(_diagnostic("invalid_evidence", done.comment.url, url))

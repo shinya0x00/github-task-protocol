@@ -33,5 +33,6 @@
   "ADR-032": "test_status.StatusTests.test_fresh_record_after_stop_is_terminal_violation",
   "ADR-033": "test_status.StatusTests.test_pr_base_change_during_file_read_is_acquisition_error",
   "ADR-034": "test_cli.CliTests.test_status_required_live_binding_http_matrix",
-  "ADR-035": "test_cli.CliTests.test_problem_explanation_walking_skeleton_fires_all_three_cli_paths"
+  "ADR-035": "test_cli.CliTests.test_problem_explanation_walking_skeleton_fires_all_three_cli_paths",
+  "ADR-036": "test_build_backend.BuildBackendTests.test_same_sources_and_epoch_produce_byte_identical_normalized_archives"
 }

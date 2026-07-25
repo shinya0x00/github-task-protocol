@@ -8,26 +8,68 @@ on:
 permissions:
   contents: read
 
+env:
+  SOURCE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+  PYTHONDONTWRITEBYTECODE: "1"
+
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+    outputs:
+      artifact_name: ${{ steps.source.outputs.artifact_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          # Full history so the release lock is verified against its pinned commit.
+          ref: ${{ env.SOURCE_SHA }}
+          persist-credentials: false
+          # Full history is also required by the pinned release-lock checks.
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
-          python-version: ${{ matrix.python-version }}
-      - name: Run conformance tests
-        run: python -m unittest discover -s tests
-        env:
-          PYTHONPATH: src
-          GTP_RELEASE_LOCK_REQUIRED: "1"
+          python-version: "3.11"
+      - name: Bind build inputs to the exact source
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          source_date_epoch="$(git show -s --format=%ct "$SOURCE_SHA")"
+          test -n "$source_date_epoch"
+          echo "SOURCE_DATE_EPOCH=$source_date_epoch" >> "$GITHUB_ENV"
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            artifact_name="v1.0.3-pr-verification-${SOURCE_SHA}"
+          else
+            artifact_name="v1.0.3-main-candidate-${SOURCE_SHA}"
+          fi
+          echo "ARTIFACT_NAME=$artifact_name" >> "$GITHUB_ENV"
+          echo "artifact_name=$artifact_name" >> "$GITHUB_OUTPUT"
+      - name: Match the explicit manifest to the source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git ls-tree -r --name-only "$SOURCE_SHA" > "$RUNNER_TEMP/source-tree.txt"
+          python - "$RUNNER_TEMP/source-tree.txt" <<'PY'
+          from pathlib import Path
+          import sys
+
+          import build_backend
+
+          tracked = set(Path(sys.argv[1]).read_text(encoding="utf-8").splitlines())
+          distribution = set(build_backend.SDIST_SOURCE_MANIFEST)
+          repository_only = {".github/workflows/ci.yml", ".gitignore"}
+          if tracked != distribution | repository_only:
+              missing = sorted(tracked - distribution - repository_only)
+              extra = sorted(distribution - tracked)
+              raise SystemExit(
+                  f"distribution manifest mismatch: undeclared={missing}, missing={extra}"
+              )
+          wheel = set(build_backend.WHEEL_SOURCE_MANIFEST)
+          if not wheel <= distribution:
+              raise SystemExit(
+                  f"wheel manifest is outside sdist: {sorted(wheel - distribution)}"
+              )
+          PY
       - name: Check release budgets
         run: |
           python - <<'PY'
@@ -44,21 +86,189 @@ jobs:
           project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]
           assert project["dependencies"] == []
           PY
-      - name: Build sdist and wheel without network
+      - name: Build twice from clean exports
+        shell: bash
         run: |
-          mkdir dist
-          python -c 'import build_backend; print(build_backend.build_sdist("dist")); print(build_backend.build_wheel("dist"))'
-      - name: Install Twine
-        run: python -m pip install twine==6.2.0
+          set -euo pipefail
+          mkdir -p \
+            "$RUNNER_TEMP/source-a" \
+            "$RUNNER_TEMP/source-b" \
+            "$RUNNER_TEMP/dist-a" \
+            "$RUNNER_TEMP/dist-b"
+          git archive "$SOURCE_SHA" | tar -xf - -C "$RUNNER_TEMP/source-a"
+          git archive "$SOURCE_SHA" | tar -xf - -C "$RUNNER_TEMP/source-b"
+          (
+            cd "$RUNNER_TEMP/source-a"
+            python -c 'import build_backend, sys; print(build_backend.build_sdist(sys.argv[1])); print(build_backend.build_wheel(sys.argv[1]))' "$RUNNER_TEMP/dist-a"
+          )
+          (
+            cd "$RUNNER_TEMP/source-b"
+            python -c 'import build_backend, sys; print(build_backend.build_sdist(sys.argv[1])); print(build_backend.build_wheel(sys.argv[1]))' "$RUNNER_TEMP/dist-b"
+          )
+          cmp \
+            "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.3.tar.gz" \
+            "$RUNNER_TEMP/dist-b/github_task_protocol-1.0.3.tar.gz"
+          cmp \
+            "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.3-py3-none-any.whl" \
+            "$RUNNER_TEMP/dist-b/github_task_protocol-1.0.3-py3-none-any.whl"
+      - name: Rebuild the wheel from a fresh sdist environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/sdist-wheel-env"
+          mkdir "$RUNNER_TEMP/sdist-wheel"
+          "$RUNNER_TEMP/sdist-wheel-env/bin/python" -m pip wheel --no-index --no-deps \
+            --wheel-dir "$RUNNER_TEMP/sdist-wheel" \
+            "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.3.tar.gz"
+          cmp \
+            "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.3-py3-none-any.whl" \
+            "$RUNNER_TEMP/sdist-wheel/github_task_protocol-1.0.3-py3-none-any.whl"
       - name: Check distribution metadata with Twine
-        run: python -m twine check dist/*.tar.gz dist/*.whl
+        run: |
+          python -m pip install twine==6.2.0
+          python -m twine check "$RUNNER_TEMP"/dist-a/*.tar.gz "$RUNNER_TEMP"/dist-a/*.whl
+      - name: Assemble checksummed artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/release-artifact/dist"
+          cp "$RUNNER_TEMP"/dist-a/*.tar.gz "$RUNNER_TEMP/release-artifact/dist/"
+          cp "$RUNNER_TEMP"/dist-a/*.whl "$RUNNER_TEMP/release-artifact/dist/"
+          (
+            cd "$RUNNER_TEMP/release-artifact"
+            sha256sum dist/*.tar.gz dist/*.whl > SHA256SUMS
+          )
+          python - "$RUNNER_TEMP/release-artifact" <<'PY'
+          from hashlib import sha256
+          import importlib.metadata
+          import os
+          from pathlib import Path
+          import platform
+          import sys
+          import zlib
+
+          root = Path(sys.argv[1])
+          lines = [
+              f"SOURCE_SHA={os.environ['SOURCE_SHA']}",
+              f"SOURCE_DATE_EPOCH={os.environ['SOURCE_DATE_EPOCH']}",
+              f"GITHUB_RUN_ID={os.environ['GITHUB_RUN_ID']}",
+              f"GITHUB_RUN_ATTEMPT={os.environ['GITHUB_RUN_ATTEMPT']}",
+              f"ARTIFACT_NAME={os.environ['ARTIFACT_NAME']}",
+              "RETENTION_DAYS=90",
+              f"python_implementation={platform.python_implementation()}",
+              f"python_version={platform.python_version()}",
+              f"python_build={' '.join(platform.python_build())}",
+              f"zlib_compile_version={zlib.ZLIB_VERSION}",
+              f"zlib_runtime_version={zlib.ZLIB_RUNTIME_VERSION}",
+              f"pip_version={importlib.metadata.version('pip')}",
+              f"twine_version={importlib.metadata.version('twine')}",
+          ]
+          for path in sorted((root / "dist").iterdir()):
+              data = path.read_bytes()
+              lines.append(
+                  "file="
+                  f"{path.name}\tsize={len(data)}\tsha256={sha256(data).hexdigest()}"
+              )
+          (root / "BUILD-INFO").write_text("\n".join(lines) + "\n", encoding="utf-8")
+          PY
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ${{ steps.source.outputs.artifact_name }}
+          path: ${{ runner.temp }}/release-artifact
+          if-no-files-found: error
+          retention-days: 90
+
+  integration:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11"
+      - name: Bind the integration check to GitHub's synthetic merge
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${{ github.sha }}" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+          test "$(git rev-parse HEAD^1)" = "${{ github.event.pull_request.base.sha }}"
+          test "$(git rev-parse HEAD^2)" = "${{ github.event.pull_request.head.sha }}"
+      - name: Run merge-result integration tests
+        run: python -m unittest discover -s tests
+        env:
+          PYTHONPATH: src
+          GTP_RELEASE_LOCK_REQUIRED: "1"
+      - name: Check merge-result release budgets
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import tomllib
+
+          assert len(Path("GTP.md").read_text(encoding="utf-8").splitlines()) <= 400
+          assert len(Path("README.md").read_text(encoding="utf-8").splitlines()) <= 150
+          production = sum(
+              len(path.read_text(encoding="utf-8").splitlines())
+              for path in Path("src/gtp").glob("*.py")
+          )
+          assert production <= 2500
+          project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]
+          assert project["dependencies"] == []
+          PY
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: ${{ needs.build.outputs.artifact_name }}
+          path: ${{ runner.temp }}/release-artifact
+      - name: Verify downloaded artifact identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          grep -Fx "SOURCE_SHA=$SOURCE_SHA" "$RUNNER_TEMP/release-artifact/BUILD-INFO"
+          grep -Fx "ARTIFACT_NAME=${{ needs.build.outputs.artifact_name }}" \
+            "$RUNNER_TEMP/release-artifact/BUILD-INFO"
+          (
+            cd "$RUNNER_TEMP/release-artifact"
+            sha256sum -c SHA256SUMS
+          )
+          source_date_epoch="$(sed -n 's/^SOURCE_DATE_EPOCH=//p' "$RUNNER_TEMP/release-artifact/BUILD-INFO")"
+          [[ "$source_date_epoch" =~ ^[0-9]+$ ]]
+          test "$source_date_epoch" = "$(git show -s --format=%ct "$SOURCE_SHA")"
+          echo "SOURCE_DATE_EPOCH=$source_date_epoch" >> "$GITHUB_ENV"
       - name: Install wheel in clean environment
+        shell: bash
         run: |
-          python -m venv .venv-check
-          .venv-check/bin/python -m pip install --no-index --no-deps dist/*.whl
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/venv-check"
+          "$RUNNER_TEMP/venv-check/bin/python" -m pip install --no-index --no-deps \
+            "$RUNNER_TEMP"/release-artifact/dist/*.whl
       - name: Smoke test installed CLI
+        shell: bash
         run: |
-          .venv-check/bin/gtp check tests/fixtures/carriers/contract-valid.md
-          .venv-check/bin/python -c 'import subprocess; result = subprocess.run([".venv-check/bin/gtp", "status", "not-a-github-issue-url"]); raise SystemExit(0 if result.returncode == 2 else 1)'
-      - name: Run installed status E2E
-        run: .venv-check/bin/python -m unittest discover -s tests -p 'test_cli.py'
+          set -euo pipefail
+          "$RUNNER_TEMP/venv-check/bin/gtp" check tests/fixtures/carriers/contract-valid.md
+          "$RUNNER_TEMP/venv-check/bin/python" -c 'import subprocess, sys; result = subprocess.run([sys.argv[1], "status", "not-a-github-issue-url"]); raise SystemExit(0 if result.returncode == 2 else 1)' "$RUNNER_TEMP/venv-check/bin/gtp"
+      - name: Run all tests against the installed artifact
+        run: '"$RUNNER_TEMP/venv-check/bin/python" -m unittest discover -s tests'
+        env:
+          GTP_RELEASE_LOCK_REQUIRED: "1"
