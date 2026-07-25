@@ -21,14 +21,28 @@ PROJECT = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["
 PUBLISHED_CLI_VERSION = "1.0.2"
 
 
+def _git_available() -> bool:
+    try:
+        subprocess.run(
+            ["git", "--version"], cwd=ROOT, capture_output=True, check=True
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return False
+    return True
+
+
 def _blob_at(commit: str, relative_path: str) -> bytes | None:
-    """Exact bytes of a tracked path at a commit, or None when the object is
-    unreachable because the checkout is shallow or has no `.git` at all."""
-    result = subprocess.run(
-        ["git", "cat-file", "blob", f"{commit}:{relative_path}"],
-        cwd=ROOT,
-        capture_output=True,
-    )
+    """Exact bytes of a tracked path at a commit, or None when the object cannot
+    be read because no git client is present, the checkout is shallow, or the
+    tree has no `.git` at all."""
+    try:
+        result = subprocess.run(
+            ["git", "cat-file", "blob", f"{commit}:{relative_path}"],
+            cwd=ROOT,
+            capture_output=True,
+        )
+    except OSError:
+        return None
     return result.stdout if result.returncode == 0 else None
 
 
@@ -235,18 +249,19 @@ class ReleaseSurfaceTests(unittest.TestCase):
             f"{candidate}/"
         )
         if _blob_at(candidate, "GTP.md") is None:
-            # A source tree without `.git` (an unpacked sdist) genuinely cannot
-            # resolve the pinned commit. A repository that has `.git` but cannot
-            # reach it is a shallow or misconfigured checkout, which would
+            # Verification needs both a git client and the pinned commit.
+            # A distributed source tree may lack either, which is expected. A
+            # repository that has `.git` and a git client but still cannot reach
+            # the commit is a shallow or misconfigured checkout, which would
             # silently stop verifying the lock, so fail instead of skipping.
             self.assertFalse(
-                (ROOT / ".git").exists(),
+                _git_available() and (ROOT / ".git").exists(),
                 f"commit {candidate} is unreachable in this repository; "
                 "check out the full history (actions/checkout fetch-depth: 0)",
             )
             self.skipTest(
-                f"commit {candidate} is unreachable without `.git`, so the "
-                "locked source sha256 values cannot be verified here"
+                f"commit {candidate} cannot be read here, so the locked source "
+                "sha256 values cannot be verified in this source tree"
             )
         verified = 0
         for case in lock["cases"].values():
