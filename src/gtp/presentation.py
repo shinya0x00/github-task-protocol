@@ -112,12 +112,16 @@ def _status_problem(machine: dict[str, Any]) -> tuple[str, ...] | None:
                 "同じresourceを再取得し、期待するstateまたは別Issueの確認条件を確認する",
             ),
         )
+        what, observation = HALT_MESSAGES.get(token, "protocol上の不適合を確認しました"), _halt_observation(machine, token)
         if machine.get("gtp") == "1.1" and token == "invalid_transition":
             repair = "amendment後の旧Doneなら同じIssue・PRへre-Doneし、それ以外は人間がStopと後継Issueを選ぶ"
             resolution = "current Doneがeffective revisionを指すre-Doneでhaltが消える、または後継Issueへ移る"
         if machine.get("gtp") == "1.1" and token == "stale_evidence":
-            repair = "native merge前なら同じIssue・PRで、current effective revisionとcurrent PR headへ束縛し、全effective Done ConditionのEvidenceを含むre-Doneを提示する"
-            resolution = "current effective revisionとcurrent PR headへ束縛し、全effective Done ConditionのEvidenceを含むvalid re-Doneでhaltが消える。merge済みなら同じIssueでは修復しない"
+            compound_stale = any(isinstance(item, dict) and item.get("token") == "invalid_transition" for item in machine.get("diagnostics") or ())
+            if compound_stale:
+                what, layer, observation = "完了条件を追加した後にPRの内容が変わり、前回のDoneでは現在の完成候補を確認できません", "前回のDone、追加後の完了条件、現在のPR、条件ごとの確認資料", "前回のDoneと確認資料は変更前のPRを指しています。その後、完了条件が追加され、PRの内容も更新されました"
+            repair = "PRをmergeする前なら、追加後の現在の完了条件と現在のPRの内容に合わせ、すべての完了条件の確認資料をそろえてDoneを出し直す"
+            resolution = "現在の完了条件と現在のPRの内容について、すべての完了条件の確認資料をそろえたDoneを出し直すと、このhaltが消える。merge済みなら同じIssueではDoneを出し直せない"
         if token == "invalid_binding":
             diagnostics = machine.get("diagnostics")
             diagnostic = (
@@ -153,12 +157,10 @@ def _status_problem(machine: dict[str, Any]) -> tuple[str, ...] | None:
                     "再取得で記録の参照先とGitHub上の対象が一致する、"
                     "または人間判断後に後継Issueへ移る"
                 )
-        else:
-            what = HALT_MESSAGES.get(token, "protocol上の不適合を確認しました")
         return (
             what,
             layer,
-            _halt_observation(machine, token),
+            observation,
             repair,
             excluded,
             next_step,
@@ -540,8 +542,7 @@ def _plain_summary(machine: dict[str, Any], context: dict[str, Any]) -> list[str
 
 
 def _status_text(machine: dict[str, Any]) -> list[str]:
-    state = machine["state"] if machine["state"] is not None else "不明"
-    action = machine["next_action"]
+    state, action = machine["state"] if machine["state"] is not None else "不明", machine["next_action"]
     pending = machine["state"] == "in_progress" and action == "retry_acquisition"
     branch = machine.get("branch")
     branch_name = branch.get("name") if isinstance(branch, dict) else None
@@ -576,7 +577,8 @@ def _status_text(machine: dict[str, Any]) -> list[str]:
         reason = f"{code} — GitHub情報を完全に取得できず、stateを決定していません"
     elif machine["state"] == "halt":
         token = machine["halt_reason"]
-        reason = f"{token} — {HALT_MESSAGES.get(token, 'protocol上の矛盾または不適合を確認しました')}"
+        reason_message = _status_problem(machine)[0] if machine.get("gtp") == "1.1" and token == "stale_evidence" else HALT_MESSAGES.get(token, "protocol上の矛盾または不適合を確認しました")
+        reason = f"{token} — {reason_message}"
     elif pending:
         reason = "Check Runは未完了です"
     elif action == "await_merge":

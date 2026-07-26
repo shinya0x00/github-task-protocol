@@ -275,6 +275,53 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertNotIn("package registryへ一般公開していません", readme)
         self.assertNotIn("![", readme)
 
+    def test_readme_plain_first_display_contract_and_budget(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        section_order = [
+            "## 何ができるか",
+            "## protocol 1.1でできるようになったこと",
+            "## GTPの表示を読む",
+            "## 人が判断すること",
+            "## 正式なRecordとstate",
+            "## 導入",
+            "## CLIは任意の検証器",
+        ]
+        positions = [readme.index(section) for section in section_order]
+        self.assertEqual(positions, sorted(positions))
+
+        display = readme.split("## GTPの表示を読む", 1)[1].split(
+            "## 人が判断すること", 1
+        )[0]
+        normal = display.split("### 通常は6項目", 1)[1].split(
+            "### `halt`時は8項目を追加", 1
+        )[0]
+        halt = display.split("### `halt`時は8項目を追加", 1)[1]
+        labels = lambda block: re.findall(r"^\d+\. `([^`]+)`: ", block, re.MULTILINE)
+        self.assertEqual(
+            ["状態", "停止要否", "次の行動", "理由", "最初のURL", "非許可表示"],
+            labels(normal),
+        )
+        self.assertEqual(
+            [
+                "何が問題か",
+                "どこが問題か",
+                "なぜそう判断したか",
+                "どこを直すか",
+                "何を直さないか",
+                "次の安全な一手",
+                "最初に確認するURL",
+                "解決したと判断する条件",
+            ],
+            labels(halt),
+        )
+        self.assertIn("通常の6項目に加えて", halt)
+        self.assertIn("禁止命令でも許可でもありません", halt)
+        self.assertEqual(180, MATRIX["budgets"]["README.md"])
+        self.assertIn(
+            "[ADR-041](adr/0041-readme-human-entry-budget.md)",
+            readme,
+        )
+
     def test_setup_preflight_contract(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         fixture = json.loads(
@@ -819,7 +866,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
         )
         self.assertEqual(
             {
-                "README.md": 150,
+                "README.md": 180,
                 "GTP.md": 400,
                 "production_python_nonblank_lines": 2500,
             },
@@ -1532,6 +1579,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
                     "adr/0038-protocol-1-1-revisions-and-package-versioning.md",
                     "adr/0039-existing-instructions-and-issue-lifecycle-boundary.md",
                     "adr/0040-production-source-budget-and-formatting.md",
+                    "adr/0041-readme-human-entry-budget.md",
                 ],
                 "candidate_notes": "acceptance/release-notes-v1.0.4.md",
                 "published_history": {

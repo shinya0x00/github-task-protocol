@@ -142,11 +142,24 @@ class CliTests(unittest.TestCase):
             "reason": "superseded" if case.get("successor") else "abandoned",
             "successor_ref": "https://github.com/o/r/issues/2" if case.get("successor") else None,
         }
+        amendment = {
+            "gtp": "1.1",
+            "type": "amendment",
+            "id": "41234567-89ab-4def-8123-456789abcdef",
+            "predecessor_ref": f"{issue_url}#issuecomment-101",
+            "done_conditions": {
+                "extra": {
+                    "text": "extra proof exists",
+                    "evidence_kind": "artifact",
+                }
+            },
+        }
         records = {
             "contract": contract,
             "start": start,
             "done": done,
             "stop": stop,
+            "amendment": amendment,
         }
 
         def carrier(record):
@@ -832,10 +845,102 @@ class CliTests(unittest.TestCase):
             output["task_context"]["conditions"]["extra"]["evidence_status"],
         )
         for value in (problem[3], problem[7]):
-            self.assertIn("current effective revision", value)
-            self.assertIn("current PR head", value)
-            self.assertIn("全effective Done ConditionのEvidence", value)
-        self.assertIn("merge済みなら同じIssueでは修復しない", problem[7])
+            self.assertIn("現在の完了条件", value)
+            self.assertIn("現在のPRの内容", value)
+            self.assertIn("すべての完了条件", value)
+            self.assertIn("確認資料", value)
+        self.assertIn("Doneを出し直す", problem[3])
+        self.assertIn(
+            "merge済みなら同じIssueではDoneを出し直せない",
+            problem[7],
+        )
+
+    def test_protocol_11_compound_stale_http_path_explains_complete_repair_in_plain_japanese(self) -> None:
+        current_head = "f" * 40
+        code, human, output = self.call_http_matrix_case({
+            "records": ["contract", "start", "done", "amendment"],
+            "branch_sha": current_head,
+            "pr_sha": current_head,
+        })
+
+        labels = json.loads(
+            (CLI_FIXTURES / "problem-explanations.json").read_text(encoding="utf-8")
+        )["labels"]
+        problem = self.problem_values(human, labels)
+
+        self.assertEqual(0, code)
+        self.assertEqual("1.1", output["gtp"])
+        self.assertEqual("halt", output["state"])
+        self.assertEqual("stale_evidence", output["halt_reason"])
+        self.assertEqual(
+            ["stale_evidence", "invalid_transition"],
+            [diagnostic["token"] for diagnostic in output["diagnostics"]],
+        )
+        self.assertEqual(
+            [
+                "https://github.com/o/r/issues/1#issuecomment-103",
+                "https://github.com/o/r/pull/7",
+            ],
+            output["diagnostics"][0]["urls"],
+        )
+        self.assertEqual(
+            "not_presented",
+            output["task_context"]["conditions"]["extra"]["evidence_status"],
+        )
+        self.assertEqual(
+            {
+                "acquisition",
+                "acquisition_errors",
+                "amendment",
+                "authority",
+                "bound_pr",
+                "branch",
+                "command",
+                "contract",
+                "details",
+                "diagnostics",
+                "done",
+                "gtp",
+                "halt_reason",
+                "issue_url",
+                "next_action",
+                "pr_candidate",
+                "primary_url",
+                "start",
+                "state",
+                "stop",
+                "task_context",
+            },
+            set(output),
+        )
+
+        repair = problem[3]
+        resolution = problem[7]
+        self.assertIn("完了条件を追加した後", human[3])
+        self.assertIn("PRの内容が変わり", human[3])
+        self.assertIn("完了条件を追加した後", problem[0])
+        self.assertIn("PRの内容が変わり", problem[0])
+        self.assertIn("前回のDone", problem[1])
+        self.assertIn("追加後の完了条件", problem[1])
+        self.assertIn("現在のPR", problem[1])
+        self.assertIn("条件ごとの確認資料", problem[1])
+        self.assertIn("変更前のPR", problem[2])
+        self.assertIn("完了条件が追加", problem[2])
+        self.assertNotIn("EvidenceがDoneのsource head SHAと一致しません", problem[0])
+        self.assertNotIn("Evidenceが示すcommitとDoneが示すsource headが異なります", problem[2])
+        for expected in (
+            "現在の完了条件",
+            "現在のPRの内容",
+            "すべての完了条件",
+            "確認資料",
+        ):
+            self.assertIn(expected, repair)
+            self.assertIn(expected, resolution)
+        self.assertIn("Doneを出し直す", repair)
+        self.assertIn("merge済みなら同じIssueではDoneを出し直せない", resolution)
+        self.assertNotIn("current effective revision", repair)
+        self.assertNotIn("current PR head", repair)
+        self.assertNotIn("effective Done Condition", repair)
 
     def test_status_done_http_fixture_uses_all_production_logic(self) -> None:
         code, human, output = self.call_http_fixture("done-success.json")
