@@ -993,9 +993,51 @@ class ReleaseSurfaceTests(unittest.TestCase):
             {("halt", "invalid_record")},
             {(item["state"], item["halt_reason"]) for item in malformed.values()},
         )
+        redone = live["cases"]["revision_bound_re_done_and_no_fallback"]
+        self.assertEqual("success", redone["status"])
+        self.assertFalse(redone["fixture"]["source_candidate"])
         self.assertEqual(
-            "pending", live["cases"]["revision_bound_re_done_and_no_fallback"]["status"]
+            {"issue_state": "closed", "pr_state": "closed", "native_merge": False},
+            redone["fixture"]["cleanup"],
         )
+        self.assertEqual(
+            {("in_progress", None)},
+            {
+                (item["state"], item["halt_reason"])
+                for item in redone["stages"]["after_first_done"].values()
+            },
+        )
+        self.assertEqual(
+            {("halt", "stale_evidence")},
+            {
+                (item["state"], item["halt_reason"])
+                for item in redone["stages"]["after_head_change_before_re_done"].values()
+            },
+        )
+        after_redone = redone["stages"]["after_re_done"]
+        self.assertEqual(
+            ("1.1", "in_progress", None, redone["fixture"]["redone_1_1"]),
+            (
+                after_redone["source_cli_1_0_4"]["gtp"],
+                after_redone["source_cli_1_0_4"]["state"],
+                after_redone["source_cli_1_0_4"]["halt_reason"],
+                after_redone["source_cli_1_0_4"]["current_done"],
+            ),
+        )
+        self.assertEqual(
+            ("1.0", "halt", "invalid_record", False),
+            (
+                after_redone["public_cli_1_0_3"]["gtp"],
+                after_redone["public_cli_1_0_3"]["state"],
+                after_redone["public_cli_1_0_3"]["halt_reason"],
+                after_redone["public_cli_1_0_3"]["fallback_to_done_1_0"],
+            ),
+        )
+        for stage in redone["stages"].values():
+            for observation in stage.values():
+                self.assertGreater(observation["http_get_count"], 0)
+                self.assertEqual(0, observation["http_non_get_count"])
+                self.assertTrue(observation["before_after_snapshot_equal"])
         self.assertEqual("pending", live["cases"]["native_merge_cutoff"]["status"])
 
         candidate = json.loads(

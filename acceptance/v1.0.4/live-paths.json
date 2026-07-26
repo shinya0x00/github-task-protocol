@@ -121,17 +121,61 @@
       }
     },
     "revision_bound_re_done_and_no_fallback": {
-      "status": "pending",
+      "status": "success",
       "fixture": {
-        "issue": "https://github.com/shinya0x00/github-task-protocol/issues/130",
-        "contract": "https://github.com/shinya0x00/github-task-protocol/issues/130#issuecomment-5083077859",
-        "start": "https://github.com/shinya0x00/github-task-protocol/issues/130#issuecomment-5083079785",
-        "branch": "codex/issue-130-v1.0.4",
-        "pr": "https://github.com/shinya0x00/github-task-protocol/pull/136",
-        "done_1_0": null,
-        "redone_1_1": null
+        "issue": "https://github.com/shinya0x00/github-task-protocol/issues/139",
+        "contract": "https://github.com/shinya0x00/github-task-protocol/issues/139#issuecomment-5083376860",
+        "start": "https://github.com/shinya0x00/github-task-protocol/issues/139#issuecomment-5083378458",
+        "branch": "codex/acceptance-v104-redone-live",
+        "pr": "https://github.com/shinya0x00/github-task-protocol/pull/140",
+        "done_1_0": "https://github.com/shinya0x00/github-task-protocol/issues/139#issuecomment-5083387723",
+        "head_1": "23a23652d9f29b99eebf6835b2cf3f373ef04c6d",
+        "redone_1_1": "https://github.com/shinya0x00/github-task-protocol/issues/139#issuecomment-5083394803",
+        "head_2": "3d3e7d1d5add29b2c99a927159bcd78e582639f0",
+        "stop": "https://github.com/shinya0x00/github-task-protocol/issues/139#issuecomment-5083399547",
+        "cleanup": {"issue_state": "closed", "pr_state": "closed", "native_merge": false},
+        "source_candidate": false,
+        "purpose": "Acceptance-only Draft PR; never merged and not a second v1.0.4 source candidate."
       },
-      "reason": "The final source head and its Check Run Evidence must be fixed before the first Done and revision-bound re-Done can be posted."
+      "stages": {
+        "after_first_done": {
+          "source_cli_1_0_4": {"gtp": "1.0", "state": "in_progress", "halt_reason": null, "exit_code": 0, "http_get_count": 19, "http_non_get_count": 0, "before_after_snapshot_equal": true},
+          "public_cli_1_0_3": {"gtp": "1.0", "state": "in_progress", "halt_reason": null, "exit_code": 0, "http_get_count": 19, "http_non_get_count": 0, "before_after_snapshot_equal": true}
+        },
+        "after_head_change_before_re_done": {
+          "source_cli_1_0_4": {"gtp": "1.0", "state": "halt", "halt_reason": "stale_evidence", "primary_url": "https://github.com/shinya0x00/github-task-protocol/issues/139#issuecomment-5083387723", "exit_code": 0, "http_get_count": 11, "http_non_get_count": 0, "before_after_snapshot_equal": true},
+          "public_cli_1_0_3": {"gtp": "1.0", "state": "halt", "halt_reason": "stale_evidence", "primary_url": "https://github.com/shinya0x00/github-task-protocol/issues/139#issuecomment-5083387723", "exit_code": 0, "http_get_count": 11, "http_non_get_count": 0, "before_after_snapshot_equal": true}
+        },
+        "after_re_done": {
+          "source_cli_1_0_4": {
+            "gtp": "1.1",
+            "state": "in_progress",
+            "halt_reason": null,
+            "current_done": "https://github.com/shinya0x00/github-task-protocol/issues/139#issuecomment-5083394803",
+            "revision_ref": "https://github.com/shinya0x00/github-task-protocol/issues/139#issuecomment-5083376860",
+            "previous_done_ref": "https://github.com/shinya0x00/github-task-protocol/issues/139#issuecomment-5083387723",
+            "bound_head": "3d3e7d1d5add29b2c99a927159bcd78e582639f0",
+            "exit_code": 0,
+            "http_get_count": 19,
+            "http_non_get_count": 0,
+            "before_after_snapshot_equal": true
+          },
+          "public_cli_1_0_3": {
+            "gtp": "1.0",
+            "state": "halt",
+            "halt_reason": "invalid_record",
+            "primary_url": "https://github.com/shinya0x00/github-task-protocol/issues/139#issuecomment-5083394803",
+            "fallback_to_done_1_0": false,
+            "exit_code": 0,
+            "http_get_count": 11,
+            "http_non_get_count": 0,
+            "before_after_snapshot_equal": true
+          }
+        },
+        "after_stop": {
+          "source_cli_1_0_4": {"gtp": "1.1", "state": "stopped", "halt_reason": null, "exit_code": 0, "http_get_count": 19, "http_non_get_count": 0, "before_after_snapshot_equal": true}
+        }
+      }
     },
     "native_merge_cutoff": {
       "status": "pending",

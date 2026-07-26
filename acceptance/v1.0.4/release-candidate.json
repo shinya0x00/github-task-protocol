@@ -20,8 +20,8 @@
     "line_budgets": {"status": "success", "GTP.md": 302, "README.md": 108, "production_python": 2464},
     "hosted_ci": {
       "status": "success",
-      "observed_head": "76426bbb8e973e2a55a96cf5e9100995d11e459d",
-      "run": "https://github.com/shinya0x00/github-task-protocol/actions/runs/30200700823",
+      "observed_head": "1fb604cfed0e97ca53120e6e5cc6215da23ce92e",
+      "run": "https://github.com/shinya0x00/github-task-protocol/actions/runs/30200960598",
       "checks": ["build", "integration", "release-ready", "test (3.11)", "test (3.12)", "test (3.13)"],
       "final_head_policy": "GitHub Check Runs own the result for each later exact PR head."
     },
