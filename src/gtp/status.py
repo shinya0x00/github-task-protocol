@@ -213,7 +213,7 @@ def _pr_precedes_terminal(pr: dict[str, Any], terminal: datetime) -> bool:
     resource = pr.get("html_url", "pull request")
     created = _github_time(pr.get("created_at"), resource, "pull request created_at")
     if created == terminal:
-        raise AcquisitionError(resource, "pull request creation and native merge ordering is ambiguous")
+        raise AcquisitionError(resource, "pull request creation and terminal ordering is ambiguous")
     return created < terminal
 def _successor_context(
     client: GitHubClient,
@@ -364,7 +364,10 @@ def _evaluate_done(
         listed_key[-1] is not None and listed_key[-1] != detail_key[-1]
     ):
         raise AcquisitionError(pulls_resource, "bound pull request collection entry disagrees with detail")
-    terminal_time = _github_time(result.merged_at, done.record["pr_ref"], "merged_at") if result.merged_at else None
+    if result.merged_at and not (scope_diagnostics or evidence_diagnostics or result.pending_evidence_urls):
+        result.terminal_at = max(done.comment.created_at, result.merged_at, *check_times) if legacy_terminal else result.merged_at
+    terminal_at = result.terminal_at if legacy_terminal else result.merged_at
+    terminal_time = _github_time(terminal_at, done.record["pr_ref"], "terminal_at") if terminal_at else None
     competitors = [item["html_url"] for item in candidates_after if item.get("number") != pr_after.get("number")
                    and (terminal_time is None or _pr_precedes_terminal(item, terminal_time))]
     if competitors:
@@ -379,10 +382,6 @@ def _evaluate_done(
         return result
     if result.pending_evidence_urls:
         return result
-    merged_at = pr_after.get("merged_at")
-    if isinstance(merged_at, str):
-        result.merged_at = merged_at
-        result.terminal_at = max(done.comment.created_at, merged_at, *check_times) if legacy_terminal else merged_at
     return result
 def _terminal_violations(
     diagnostics: list[Diagnostic],

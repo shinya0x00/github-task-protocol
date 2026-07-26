@@ -1098,6 +1098,21 @@ class ReleaseSurfaceTests(unittest.TestCase):
             },
             candidate["baseline"],
         )
+        loader = unittest.TestLoader()
+        discovered = loader.discover(str(ROOT / "tests"))
+        self.assertEqual([], loader.errors)
+        self.assertEqual(
+            discovered.countTestCases(),
+            candidate["candidate"]["unit_tests"]["count"],
+        )
+        production = sum(
+            len(path.read_text(encoding="utf-8").splitlines())
+            for path in (ROOT / "src" / "gtp").glob("*.py")
+        )
+        self.assertEqual(
+            production,
+            candidate["candidate"]["line_budgets"]["production_python"],
+        )
         self.assertEqual(
             "https://github.com/shinya0x00/github-task-protocol/pull/136",
             candidate["source_pr"],

@@ -530,9 +530,14 @@ class StatusTests(unittest.TestCase):
         )
         done_record["evidence"]["artifact"] = "https://github.com/o/r/runs/8"
         comments = [comment(1, contract_record), comment(2, start_record), comment(3, done_record)]
+        bound = pr(merged=True)
+        reused = dict(pr(merged=True), number=8,
+                      html_url="https://github.com/o/r/pull/8",
+                      created_at="2026-07-19T01:00:01Z",
+                      merged_at="2026-07-19T01:30:00Z")
         pending = {"head_sha": SHA, "status": "in_progress", "conclusion": None}
         waiting = evaluate_issue(
-            FakeGitHub(comments, branch=False, pr=pr(merged=True), check=pending), ISSUE
+            FakeGitHub(comments, branch=False, candidates=[bound, reused], pr=bound, check=pending), ISSUE
         )
         self.assertEqual("in_progress", waiting.state)
         self.assertEqual(("https://github.com/o/r/runs/8",), waiting._pending_evidence_urls)
@@ -544,10 +549,53 @@ class StatusTests(unittest.TestCase):
             "completed_at": "2026-07-19T02:00:00Z",
         }
         completed = evaluate_issue(
-            FakeGitHub(comments, branch=False, pr=pr(merged=True), check=success), ISSUE
+            FakeGitHub(comments, branch=False, candidates=[bound, reused], pr=bound, check=success), ISSUE
         )
         self.assertEqual("done", completed.state)
         self.assertEqual(3, len(comments))
+
+    def test_protocol_10_check_terminal_controls_same_branch_reuse(self) -> None:
+        check_contract = contract(IDS[0])
+        check_contract["done_conditions"]["artifact"]["evidence_kind"] = "check"
+        check_done = done(IDS[2])
+        check_done["evidence"]["artifact"] = "https://github.com/o/r/runs/8"
+        comments = [comment(1, check_contract), comment(2, start(IDS[1])), comment(3, check_done)]
+        bound = pr(merged=True)
+        second = dict(pr(merged=True), number=8,
+                      html_url="https://github.com/o/r/pull/8",
+                      created_at="2026-07-19T01:30:00Z",
+                      merged_at="2026-07-19T01:45:00Z")
+        pending = {"head_sha": SHA, "status": "in_progress", "conclusion": None}
+        waiting = evaluate_issue(FakeGitHub(
+            comments, branch=False, candidates=[bound, second], pr=bound, check=pending,
+        ), ISSUE)
+        self.assertEqual("halt", waiting.state)
+        self.assertEqual(["invalid_binding"], [item.token for item in waiting.diagnostics])
+        self.assertIn(second["html_url"], waiting.diagnostics[0].urls)
+
+        success = {"head_sha": SHA, "status": "completed", "conclusion": "success",
+                   "completed_at": "2026-07-19T02:00:00Z"}
+        completed = evaluate_issue(FakeGitHub(
+            comments, branch=False, candidates=[bound, second], pr=bound, check=success,
+        ), ISSUE)
+        self.assertEqual("halt", completed.state)
+        self.assertEqual(["invalid_binding"], [item.token for item in completed.diagnostics])
+        self.assertIn(second["html_url"], completed.diagnostics[0].urls)
+
+        reused = dict(second, created_at="2026-07-19T02:00:01Z",
+                      merged_at="2026-07-19T02:30:00Z")
+        done_result = evaluate_issue(FakeGitHub(
+            comments, branch=False, candidates=[bound, reused], pr=bound, check=success,
+        ), ISSUE)
+        self.assertEqual("done", done_result.state)
+        self.assertEqual([], done_result.diagnostics)
+
+        collision = dict(second, created_at=success["completed_at"])
+        ambiguous = evaluate_issue(FakeGitHub(
+            comments, branch=False, candidates=[bound, collision], pr=bound, check=success,
+        ), ISSUE)
+        self.assertIsNone(ambiguous.state)
+        self.assertEqual("acquisition_incomplete", ambiguous.acquisition_errors[0]["code"])
 
     def test_protocol_11_merge_and_done_same_timestamp_is_acquisition_error(self) -> None:
         contract_record = dict(contract(IDS[0]), gtp="1.1")

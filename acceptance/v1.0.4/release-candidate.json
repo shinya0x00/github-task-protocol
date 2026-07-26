@@ -6,7 +6,7 @@
   "versions": {"package": "1.0.4", "protocol": "1.1"},
   "baseline": {"unit_tests": 162, "GTP.md_lines": 368, "README.md_lines": 131, "production_python_lines": 2500},
   "candidate": {
-    "unit_tests": {"status": "success", "count": 209},
+    "unit_tests": {"status": "success", "count": 213},
     "build": {
       "status": "success",
       "reproducible_sdist": true,
@@ -17,7 +17,7 @@
     },
     "installed_cli": {"status": "success", "version": "1.0.4", "protocol_10_check": "passed", "protocol_11_check": "passed"},
     "scope": {"status": "success", "explicit_manifest": "exact"},
-    "line_budgets": {"status": "success", "GTP.md": 302, "README.md": 108, "production_python": 2496},
+    "line_budgets": {"status": "success", "GTP.md": 302, "README.md": 108, "production_python": 2497},
     "hosted_ci": {
       "status": "success",
       "observed_head": "1fb604cfed0e97ca53120e6e5cc6215da23ce92e",
