@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -72,7 +71,7 @@ class FoldResult:
     recognized_count: int = 0
     recognized_comments: list[Comment] = field(default_factory=list)
     active: dict[str, list[RecordObservation]] = field(
-        default_factory=lambda: {kind: [] for kind in ("contract", "start", "done", "stop")}
+        default_factory=lambda: {kind: [] for kind in ("contract", "start", "amendment", "done", "stop")}
     )
     observations_by_url: dict[str, RecordObservation] = field(default_factory=dict)
     ids: dict[str, list[RecordObservation]] = field(default_factory=dict)
@@ -81,6 +80,7 @@ class FoldResult:
     bound_contract: RecordObservation | None = None
     bound_start: RecordObservation | None = None
     terminal_stop: RecordObservation | None = None
+    protocol_11_seen: bool = False
 
 
 class IncompleteSnapshotError(ValueError):

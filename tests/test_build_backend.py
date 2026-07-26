@@ -6,6 +6,7 @@ from hashlib import sha256
 from io import StringIO
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -19,6 +20,9 @@ from zipfile import ZipFile
 
 import build_backend
 import gtp
+
+
+SOURCE_PACKAGE_VERSION = build_backend._project()["version"]
 
 
 EXPECTED_WHEEL_SOURCE_MANIFEST = (
@@ -73,10 +77,19 @@ EXPECTED_SDIST_SOURCE_MANIFEST = (
     "acceptance/release-notes-v1.0.1.md",
     "acceptance/release-notes-v1.0.2.md",
     "acceptance/release-notes-v1.0.3.md",
+    "acceptance/release-notes-v1.0.4.md",
     "acceptance/release.json",
     "acceptance/stop-time-boundary-run.json",
+    "acceptance/v1.0.4/live-paths.json",
+    "acceptance/v1.0.4/public-record-disclosure.json",
+    "acceptance/v1.0.4/release-candidate.json",
+    "acceptance/v1.0.4/walking-skeleton.json",
     "adr/0035-human-actionable-problem-explanations.md",
     "adr/0036-reproducible-release-artifacts.md",
+    "adr/0037-separate-private-instructions-from-public-records.md",
+    "adr/0038-protocol-1-1-revisions-and-package-versioning.md",
+    "adr/0039-existing-instructions-and-issue-lifecycle-boundary.md",
+    "adr/0040-production-source-budget-and-formatting.md",
     "build_backend.py",
     "pyproject.toml",
     "src/gtp/__init__.py",
@@ -105,6 +118,7 @@ EXPECTED_SDIST_SOURCE_MANIFEST = (
     "tests/fixtures/http/purpose-safety-walking-skeleton.json",
     "tests/fixtures/http/walking-skeleton.json",
     "tests/fixtures/prune-report.txt",
+    "tests/fixtures/protocol-1.1/walking-skeleton.json",
     "tests/fixtures/reducer-truth-table.json",
     "tests/fixtures/release/prune-report.txt",
     "tests/fixtures/release/surface.json",
@@ -124,9 +138,10 @@ EXPECTED_SDIST_SOURCE_MANIFEST = (
 
 
 class BuildBackendTests(unittest.TestCase):
-    def test_runtime_and_package_versions_match_v1_release(self) -> None:
+    def test_runtime_and_package_versions_match_v104_source(self) -> None:
         project_version = build_backend._project()["version"]
         self.assertRegex(project_version, r"^[0-9]+\.[0-9]+\.[0-9]+$")
+        self.assertEqual("1.0.4", project_version)
         self.assertEqual(project_version, gtp.__version__)
 
     def test_source_manifests_are_explicit_complete_and_ordered(self) -> None:
@@ -139,7 +154,7 @@ class BuildBackendTests(unittest.TestCase):
             build_backend.SDIST_SOURCE_MANIFEST,
         )
         self.assertEqual(11, len(build_backend.WHEEL_SOURCE_MANIFEST))
-        self.assertEqual(79, len(build_backend.SDIST_SOURCE_MANIFEST))
+        self.assertEqual(89, len(build_backend.SDIST_SOURCE_MANIFEST))
         backend_source = Path(build_backend.__file__).read_text(encoding="utf-8")
         self.assertNotIn(".glob(", backend_source)
         self.assertNotIn(".rglob(", backend_source)
@@ -461,7 +476,7 @@ class BuildBackendTests(unittest.TestCase):
             ] + [f"{sdist_root}/PKG-INFO"]
             with tarfile.open(first_sdist, "r:gz") as archive:
                 self.assertEqual(expected_sdist_names, archive.getnames())
-                self.assertEqual(80, len(archive.getmembers()))
+                self.assertEqual(90, len(archive.getmembers()))
                 for info in archive.getmembers():
                     self.assertTrue(info.isreg())
                     self.assertEqual(0o644, info.mode)
@@ -497,7 +512,10 @@ class BuildBackendTests(unittest.TestCase):
                 sdist_name = build_backend.build_sdist(str(sdist_directory))
             with tarfile.open(sdist_directory / sdist_name, "r:gz") as archive:
                 archive.extractall(extracted_directory, filter="data")
-            source_root = extracted_directory / "github-task-protocol-1.0.3"
+            source_root = (
+                extracted_directory
+                / f"github-task-protocol-{SOURCE_PACKAGE_VERSION}"
+            )
             environment = os.environ.copy()
             environment["SOURCE_DATE_EPOCH"] = epoch
             subprocess.run(
@@ -546,13 +564,14 @@ class BuildBackendTests(unittest.TestCase):
 
             marker = sha256(str(root).encode("utf-8")).hexdigest().encode("ascii")
             local_path = str(root / "private" / "credentials.json").encode("utf-8")
+            token_assignment = b"GITHUB_TOKEN=gh" + b"p_" + marker
             undeclared = {
                 "src/gtp/undeclared.py": b"# " + marker + b"\n",
                 "acceptance/undeclared.json": (
                     b'{"marker":"' + marker + b'","path":"' + local_path + b'"}\n'
                 ),
                 "adr/undeclared.md": b"# " + marker + b"\n",
-                ".env": b"GITHUB_TOKEN=ghp_" + marker + b"\n",
+                ".env": token_assignment + b"\n",
                 ".DS_Store": b"Finder metadata " + marker,
                 "src/gtp/__pycache__/x.pyc": b"\x00\x00" + marker,
             }
@@ -616,7 +635,7 @@ class BuildBackendTests(unittest.TestCase):
                     ),
                     relative_name,
                 )
-            for forbidden_content in (marker, local_path, b"GITHUB_TOKEN=ghp_" + marker):
+            for forbidden_content in (marker, local_path, token_assignment):
                 self.assertNotIn(forbidden_content, wheel_payload)
                 self.assertNotIn(forbidden_content, sdist_payload)
 
@@ -717,23 +736,27 @@ class BuildBackendTests(unittest.TestCase):
             f"{root}/adr/0036-reproducible-release-artifacts.md",
             names,
         )
-        self.assertIn(
-            f"{root}/acceptance/release-notes-v1.0.3.md",
-            names,
-        )
+        for required in (
+            "adr/0037-separate-private-instructions-from-public-records.md",
+            "adr/0038-protocol-1-1-revisions-and-package-versioning.md",
+            "adr/0039-existing-instructions-and-issue-lifecycle-boundary.md",
+            "acceptance/release-notes-v1.0.4.md",
+            "acceptance/v1.0.4/walking-skeleton.json",
+            "acceptance/v1.0.4/live-paths.json",
+            "acceptance/v1.0.4/public-record-disclosure.json",
+            "acceptance/v1.0.4/release-candidate.json",
+        ):
+            self.assertIn(f"{root}/{required}", names)
+        self.assertIn(f"{root}/acceptance/release-notes-v1.0.3.md", names)
         self.assertIn(f"{root}/PKG-INFO", names)
         self.assertIn("Metadata-Version: 2.4", pkg_info)
         self.assertIn(f"Name: {project['name']}", pkg_info)
         self.assertIn(f"Version: {project['version']}", pkg_info)
-        public_commands = (
-            "uvx --from github-task-protocol==1.0.3 gtp status <issue-url>",
-            "uvx --from github-task-protocol==1.0.3 gtp check <comment.md>",
-        )
         package_identity_boundaries = (
-            "`pyproject.toml`は、このsourceからbuildするpackage versionとして"
-            "`1.0.3`を宣言しています。",
+            "このsource treeのPython distribution versionは`1.0.4`",
             "この値はpublicationのEvidenceでも、"
             "exact source commitのidentityでもありません。",
+            "source metadataのpackage versionは配布候補の識別子",
         )
         surfaces = {
             "README": readme,
@@ -742,19 +765,33 @@ class BuildBackendTests(unittest.TestCase):
         }
         for surface_name, surface in surfaces.items():
             with self.subTest(surface=surface_name):
-                self.assertEqual(
-                    public_commands,
-                    tuple(
-                        line
-                        for line in surface.splitlines()
-                        if line.startswith(
-                            "uvx --from github-task-protocol=="
-                        )
-                    ),
+                commands = tuple(
+                    line
+                    for line in surface.splitlines()
+                    if line.startswith((
+                        "uvx --from github-task-protocol==",
+                        'uvx --from "github-task-protocol==',
+                    ))
                 )
+                self.assertEqual(2, len(commands))
+                parsed = [
+                    re.fullmatch(
+                        r'uvx --from "?github-task-protocol==([^" ]+)"? '
+                        r"gtp (status|check) (.+)",
+                        command,
+                    )
+                    for command in commands
+                ]
+                self.assertTrue(all(parsed))
+                version_tokens = {match.group(1) for match in parsed if match}
+                self.assertEqual(1, len(version_tokens))
+                version_token = next(iter(version_tokens))
+                self.assertIsNone(re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version_token))
                 for boundary in package_identity_boundaries:
                     self.assertIn(boundary, surface)
                 for forbidden in (
+                    "github-task-protocol==1.0.4",
+                    "github-task-protocol==1.0.3",
                     "github-task-protocol==1.0.2",
                     "source内容のidentity",
                     "現在のsource candidate",

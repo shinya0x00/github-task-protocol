@@ -45,8 +45,9 @@ class CliTests(unittest.TestCase):
             values.append(line[len(prefix):])
         return values
 
-    def call_http_fixture(self, name: str) -> tuple[int, list[str], dict]:
-        fixture = json.loads((HTTP_FIXTURES / name).read_text(encoding="utf-8"))
+    def call_http_fixture(self, name: str | Path) -> tuple[int, list[str], dict]:
+        fixture_path = name if isinstance(name, Path) else HTTP_FIXTURES / name
+        fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
         pending = list(fixture["requests"])
 
         def materialize(value):
@@ -229,10 +230,11 @@ class CliTests(unittest.TestCase):
                     raise HTTPError(url, 404, "not found", {}, None)
             elif parsed.path == "/repos/o/r/pulls":
                 pull_reads += 1
+                default_count = 1 if "done" in case["records"] else 0
                 count = (
                     1
                     if case.get("candidate_moves") and pull_reads > 1
-                    else case.get("candidate_count", 0)
+                    else case.get("candidate_count", default_count)
                 )
                 body = [self._matrix_pr(case, sha, number) for number in range(7, 7 + count)]
             elif parsed.path == "/repos/o/r/pulls/7":
@@ -318,6 +320,32 @@ class CliTests(unittest.TestCase):
             },
             set(output),
         )
+
+    def test_check_projects_protocol_11_for_valid_and_invalid_records(self) -> None:
+        record = {
+            "gtp": "1.1",
+            "type": "amendment",
+            "id": "41234567-89ab-4def-8123-456789abcdef",
+            "predecessor_ref": "https://github.com/o/r/issues/1#issuecomment-1",
+            "done_conditions": {
+                "extra": {"text": "extra proof", "evidence_kind": "artifact"}
+            },
+        }
+        carrier = (
+            "<!-- gtp-record:v1 -->\nprotocol 1.1\n\n"
+            "<details><summary>記録(JSON)</summary>\n\n```json\n"
+            + json.dumps(record)
+            + "\n```\n\n</details>\n"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "v11.md"
+            path.write_text(carrier, encoding="utf-8")
+            valid_code, _, valid = self.call(["check", str(path)])
+            record["unexpected"] = True
+            path.write_text(carrier.replace(json.dumps({k: v for k, v in record.items() if k != "unexpected"}), json.dumps(record)), encoding="utf-8")
+            invalid_code, _, invalid = self.call(["check", str(path)])
+        self.assertEqual((0, "1.1", True), (valid_code, valid["gtp"], valid["schema_valid"]))
+        self.assertEqual((1, "1.1", False), (invalid_code, invalid["gtp"], invalid["schema_valid"]))
 
     def test_check_normal_comment_exits_one(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -703,6 +731,111 @@ class CliTests(unittest.TestCase):
         self.assertEqual("unmanaged", output["state"])
         self.assertEqual("complete", output["acquisition"])
         self.assertNotIn("タスクの目的", "\n".join(human))
+
+    def test_protocol_11_walking_skeleton_fires_public_status_path(self) -> None:
+        code, _, output = self.call_http_fixture(
+            Path(__file__).parent / "fixtures/protocol-1.1/walking-skeleton.json"
+        )
+        self.assertEqual(0, code)
+        self.assertEqual("in_progress", output["state"])
+        self.assertEqual("1.1", output["gtp"])
+        self.assertIsNone(output["amendment"])
+        self.assertEqual("Protocol 1.1 walking skeleton", output["task_context"]["goal"])
+
+    def test_protocol_11_compound_stale_repair_names_every_re_done_binding(self) -> None:
+        issue_url = "https://github.com/o/r/issues/1"
+        done_url = f"{issue_url}#issuecomment-3"
+        amendment_url = f"{issue_url}#issuecomment-4"
+        pr_url = "https://github.com/o/r/pull/7"
+        old_head = "0" * 40
+        current_head = "f" * 40
+        observed = StatusResult(
+            issue_url,
+            "halt",
+            [Diagnostic("stale_evidence", (done_url, pr_url))],
+            {
+                "contract": {
+                    "id": "01234567-89ab-4def-8123-456789abcdef",
+                    "type": "contract",
+                    "url": f"{issue_url}#issuecomment-1",
+                    "content": {
+                        "goal": "compound stale repair",
+                        "scope": ["src/"],
+                        "done_conditions": {
+                            "proof": {
+                                "text": "proof exists",
+                                "evidence_kind": "artifact",
+                            }
+                        },
+                    },
+                },
+                "start": {
+                    "id": "12345678-9abc-4def-8123-456789abcdef",
+                    "type": "start",
+                    "url": f"{issue_url}#issuecomment-2",
+                    "content": {
+                        "contract_ref": f"{issue_url}#issuecomment-1",
+                        "branch": "agent/test",
+                    },
+                },
+                "done": {
+                    "id": "22345678-9abc-4def-8123-456789abcdef",
+                    "type": "done",
+                    "url": done_url,
+                    "content": {
+                        "pr_ref": pr_url,
+                        "head_sha": old_head,
+                        "evidence": {
+                            "proof": f"https://github.com/o/r/blob/{old_head}/proof.txt"
+                        },
+                    },
+                },
+                "amendment": {
+                    "id": "32345678-9abc-4def-8123-456789abcdef",
+                    "type": "amendment",
+                    "url": amendment_url,
+                    "content": {
+                        "predecessor_ref": f"{issue_url}#issuecomment-1",
+                        "done_conditions": {
+                            "extra": {
+                                "text": "extra proof exists",
+                                "evidence_kind": "artifact",
+                            }
+                        },
+                    },
+                },
+                "stop": None,
+                "branch": {"name": "agent/test"},
+                "bound_pr": pr_url,
+                "bound_pr_head_sha": current_head,
+            },
+            _effective_done_conditions={
+                "proof": {"text": "proof exists", "evidence_kind": "artifact"},
+                "extra": {
+                    "text": "extra proof exists",
+                    "evidence_kind": "artifact",
+                },
+            },
+            protocol_version="1.1",
+        )
+        with patch("gtp.cli.evaluate_issue", return_value=observed):
+            code, human, output = self.call(["status", issue_url])
+
+        labels = json.loads(
+            (CLI_FIXTURES / "problem-explanations.json").read_text(encoding="utf-8")
+        )["labels"]
+        problem = self.problem_values(human, labels)
+        self.assertEqual(0, code)
+        self.assertEqual("stale_evidence", output["halt_reason"])
+        self.assertEqual(
+            "not_presented",
+            output["task_context"]["conditions"]["extra"]["evidence_status"],
+        )
+        for value in (problem[3], problem[7]):
+            self.assertIn("current effective revision", value)
+            self.assertIn("current PR head", value)
+            self.assertIn("全effective Done ConditionのEvidence", value)
+        self.assertIn("merge済みなら同じIssueでは修復しない", problem[7])
 
     def test_status_done_http_fixture_uses_all_production_logic(self) -> None:
         code, human, output = self.call_http_fixture("done-success.json")

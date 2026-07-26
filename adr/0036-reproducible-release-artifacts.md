@@ -24,12 +24,14 @@ Python配布の既存形式であるsdistとwheel、再現可能buildで広く�
 ### buildと再現性検査
 
 - producerはPython 3.11でのみ実行する。`SOURCE_SHA`から2つのclean source exportを作り、同じ`SOURCE_DATE_EPOCH`でsdistとwheelをそれぞれbuildし、filenameとbytesの一致を検査する。
+- package versionはworkflow内で`pyproject.toml`から1回だけ導出し、artifact名、sdist／wheel filename、展開先へ共通利用する。releaseごとのversion literalを複数のshell pathへ複製しない。
 - archive memberの順序、timestamp、owner、mode、ZIP metadataをbuild backendで正規化する。fresh virtual environmentでsdistから`pip wheel --no-index --no-deps`を実行し、直接buildしたwheelと同じbytesになることを検査する。
+- CI step `Run bundled tests from the built sdist`は、直接buildしたsdistを展開し、収録されたtest suiteをその配布treeから実行する。全testの成功とtracked candidateのtest件数一致を要求し、repository-only assertion 2件および`.git`がないためrelease lockを照合できないassertion 2件だけをskipとして許可する。skip総数、分類、理由が変わればproducerを失敗させる。
 - `twine check`とSHA-256検査を行う。配布fileと同じartifactに`SHA256SUMS`と`BUILD-INFO`を入れ、`SOURCE_SHA`、`SOURCE_DATE_EPOCH`、`GITHUB_RUN_ID`、`GITHUB_RUN_ATTEMPT`、Python 3.11、zlib、filename、size、SHA-256を記録する。
 
 ### producerとconsumerの境界
 
-- PR artifactは検証専用とし、`v1.0.3-pr-verification-<SOURCE_SHA>`と命名する。main artifactだけを公開候補とし、`v1.0.3-main-candidate-<SOURCE_SHA>`と命名する。どちらも保持期間は90日とする。
+- PR artifactは検証専用とし、`v<PKG_VERSION>-pr-verification-<SOURCE_SHA>`と命名する。main artifactだけを公開候補とし、`v<PKG_VERSION>-main-candidate-<SOURCE_SHA>`と命名する。`PKG_VERSION`は前節のとおり`pyproject.toml`から導出し、どちらも保持期間は90日とする。
 - consumerのPython 3.11、Python 3.12、Python 3.13はproducerが1回uploadした同じartifactをdownloadし、`SHA256SUMS`、clean install、installed CLI、unit testを検査する。matrixごとに新しい配布物をbuildしない。
 - pull requestではsource-head build jobが`SOURCE_SHA`のtree、integration jobがsynthetic mergeの`HEAD`（merge tree）を同じmanifest oracleへ渡す。integration jobはmerge treeのmanifest parityとfull unit test／budgetを検査するが、clean export、公開候補sdist／wheel、Twine、sidecar、Actions artifact uploadから成るproducer処理は実行しない。unit testがtemporary directoryでbackendを検査するために作るarchiveは公開候補ではない。merge refは現在のmainとの統合結果だけを所有し、artifact identityまたはDone Evidenceには使用しない。`release-ready` Checkはbuild、3-version consumer matrix、PR時のintegrationの成功を集約する。
 - workflowの権限は`contents: read`だけとする。tag作成、GitHub Release、PyPI uploadは行わない。main artifactが生成された後のartifact ID、run URL、expiry、checksum、再検査手順は公開operationのownerに引き継ぐ。

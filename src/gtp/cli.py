@@ -1,12 +1,9 @@
 """GTP command-line interface."""
-
 from __future__ import annotations
-
 import argparse
 import json
 from pathlib import Path
 import sys
-
 from . import __version__
 from .carrier import classify_carrier
 from .github import GitHubClient

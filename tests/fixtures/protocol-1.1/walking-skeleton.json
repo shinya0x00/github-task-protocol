@@ -1,0 +1,59 @@
+{
+  "issue_url": "https://github.com/o/r/issues/1",
+  "requests": [
+    {
+      "url": "https://api.github.com/repos/o/r",
+      "body": {"id": 99, "full_name": "o/r", "url": "https://api.github.com/repos/o/r", "default_branch": "main"}
+    },
+    {
+      "url": "https://api.github.com/repos/o/r/issues/1",
+      "body": {"id": 1, "url": "https://api.github.com/repos/o/r/issues/1", "created_at": "2026-07-18T00:00:00Z", "updated_at": "2026-07-19T00:00:00Z"}
+    },
+    {
+      "url": "https://api.github.com/repos/o/r/issues/1/comments?sort=created&direction=asc&per_page=100",
+      "body": {
+        "_records": [
+          {
+            "gtp": "1.1",
+            "type": "contract",
+            "id": "01234567-89ab-4def-8123-456789abcdef",
+            "goal": "Protocol 1.1 walking skeleton",
+            "scope": ["src/"],
+            "done_conditions": {"proof": {"text": "proof exists", "evidence_kind": "artifact"}}
+          },
+          {
+            "gtp": "1.1",
+            "type": "start",
+            "id": "11234567-89ab-4def-8123-456789abcdef",
+            "contract_ref": "https://github.com/o/r/issues/1#issuecomment-101",
+            "branch": "agent/test"
+          }
+        ]
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/o/r/branches/agent%2Ftest",
+      "body": {"name": "agent/test", "commit": {"sha": "0123456789abcdef0123456789abcdef01234567"}}
+    },
+    {
+      "url": "https://api.github.com/repos/o/r/pulls?state=all&head=o%3Aagent%2Ftest&per_page=100",
+      "body": []
+    },
+    {
+      "url": "https://api.github.com/repos/o/r/branches/agent%2Ftest",
+      "body": {"name": "agent/test", "commit": {"sha": "0123456789abcdef0123456789abcdef01234567"}}
+    },
+    {
+      "url": "https://api.github.com/repos/o/r/pulls?state=all&head=o%3Aagent%2Ftest&per_page=100",
+      "body": []
+    },
+    {
+      "url": "https://api.github.com/repos/o/r",
+      "body": {"id": 99, "full_name": "o/r", "url": "https://api.github.com/repos/o/r", "default_branch": "main"}
+    },
+    {
+      "url": "https://api.github.com/repos/o/r/issues/1",
+      "body": {"id": 1, "url": "https://api.github.com/repos/o/r/issues/1", "created_at": "2026-07-18T00:00:00Z", "updated_at": "2026-07-19T00:00:00Z"}
+    }
+  ]
+}
