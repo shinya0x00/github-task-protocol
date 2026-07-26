@@ -96,6 +96,8 @@ GitHub情報を完全に取得できない場合はstateを推測しません。
 
 CLI `1.0.3`は[PyPI](https://pypi.org/project/github-task-protocol/1.0.3/)と[GitHub Release](https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.3)へ公開済みです。再downloadとhash・clean install・live statusの検証結果は[`acceptance/public-release-v1.0.3.json`](acceptance/public-release-v1.0.3.json)にあります。GTPを使うだけならCLIのinstallは不要です。
 
+> 現在の公開済みCLIは`1.0.3`です。公開済みartifactはcommit `70fab3a`に固定され、現在の`main`は公開後Evidenceを含むため同一bytesではありません。PyPI 1.0.3の説明にはupload時点の1.0.2案内が残っていますが、利用時は下記の1.0.3 commandを使用してください。次のrelease laneはIssue #130で`1.0.4`として進めます。
+
 `pyproject.toml`は、このsourceからbuildするpackage versionとして`1.0.3`を宣言しています。この値はpublicationのEvidenceでも、exact source commitのidentityでもありません。別の`X.Y.Z`を使うのは、[PyPIのversion page](https://pypi.org/project/github-task-protocol/X.Y.Z/)と[GitHub Release](https://github.com/shinya0x00/github-task-protocol/releases/tag/vX.Y.Z)の両方が解決できることを確認した後だけです。そのとき、下の2つのcommandの`1.0.3`だけを確認したexact versionに置き換えます。
 
 ```console
