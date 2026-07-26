@@ -66,6 +66,7 @@ EXPECTED_SDIST_SOURCE_MANIFEST = (
     "acceptance/problem-explanations/run.json",
     "acceptance/public-release-v1.0.1.json",
     "acceptance/public-release-v1.0.2.json",
+    "acceptance/public-release-v1.0.3.json",
     "acceptance/purpose-alignment/run.json",
     "acceptance/purpose-alignment/walking-skeleton.json",
     "acceptance/purpose-safety-run.json",
@@ -138,7 +139,7 @@ class BuildBackendTests(unittest.TestCase):
             build_backend.SDIST_SOURCE_MANIFEST,
         )
         self.assertEqual(11, len(build_backend.WHEEL_SOURCE_MANIFEST))
-        self.assertEqual(78, len(build_backend.SDIST_SOURCE_MANIFEST))
+        self.assertEqual(79, len(build_backend.SDIST_SOURCE_MANIFEST))
         backend_source = Path(build_backend.__file__).read_text(encoding="utf-8")
         self.assertNotIn(".glob(", backend_source)
         self.assertNotIn(".rglob(", backend_source)
@@ -460,7 +461,7 @@ class BuildBackendTests(unittest.TestCase):
             ] + [f"{sdist_root}/PKG-INFO"]
             with tarfile.open(first_sdist, "r:gz") as archive:
                 self.assertEqual(expected_sdist_names, archive.getnames())
-                self.assertEqual(79, len(archive.getmembers()))
+                self.assertEqual(80, len(archive.getmembers()))
                 for info in archive.getmembers():
                     self.assertTrue(info.isreg())
                     self.assertEqual(0o644, info.mode)
@@ -725,8 +726,8 @@ class BuildBackendTests(unittest.TestCase):
         self.assertIn(f"Name: {project['name']}", pkg_info)
         self.assertIn(f"Version: {project['version']}", pkg_info)
         public_commands = (
-            "uvx --from github-task-protocol==1.0.2 gtp status <issue-url>",
-            "uvx --from github-task-protocol==1.0.2 gtp check <comment.md>",
+            "uvx --from github-task-protocol==1.0.3 gtp status <issue-url>",
+            "uvx --from github-task-protocol==1.0.3 gtp check <comment.md>",
         )
         package_identity_boundaries = (
             "`pyproject.toml`は、このsourceからbuildするpackage versionとして"
@@ -754,7 +755,7 @@ class BuildBackendTests(unittest.TestCase):
                 for boundary in package_identity_boundaries:
                     self.assertIn(boundary, surface)
                 for forbidden in (
-                    "github-task-protocol==1.0.3",
+                    "github-task-protocol==1.0.2",
                     "source内容のidentity",
                     "現在のsource candidate",
                     "（公開前）",
