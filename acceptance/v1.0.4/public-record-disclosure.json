@@ -10,11 +10,12 @@
     {"target": "final candidate sdist", "credential_match_count": 0, "private_data_match_count": 0},
     {"target": "final candidate wheel", "credential_match_count": 0, "private_data_match_count": 0},
     {"target": "Contract, amendment, acceptance Issue comments, and pull request text", "credential_match_count": 0, "private_data_match_count": 0},
-    {"target": "public validation logs", "credential_match_count": 0, "private_data_match_count": 0, "public_runner_path_count": 248}
+    {"target": "public validation logs for Actions run 30200700823", "credential_match_count": 0, "private_data_match_count": 0, "public_runner_path_count": 572}
   ],
   "detector_notes": [
     "Public GitHub-hosted runner paths are observable CI environment metadata and are counted separately from private local-path disclosures.",
-    "Credential detectors cover high-confidence GitHub token forms and PEM private-key blocks; detector literals are not stored contiguously in distributed source."
+    "Credential detectors cover high-confidence GitHub token forms and PEM private-key blocks; detector literals are not stored contiguously in distributed source.",
+    "The hosted-log scan covered all 72 non-directory members of the downloaded run archive without retrieval or parse errors."
   ],
   "clean_agent_probe": {
     "status": "success",

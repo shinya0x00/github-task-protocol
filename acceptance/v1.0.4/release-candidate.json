@@ -18,8 +18,19 @@
     "installed_cli": {"status": "success", "version": "1.0.4", "protocol_10_check": "passed", "protocol_11_check": "passed"},
     "scope": {"status": "success", "explicit_manifest": "exact"},
     "line_budgets": {"status": "success", "GTP.md": 302, "README.md": 108, "production_python": 2464},
-    "hosted_ci": {"status": "pending", "reason": "final pushed head has not completed all hosted checks"},
-    "review": {"status": "pending", "blocking_findings": null}
+    "hosted_ci": {
+      "status": "success",
+      "observed_head": "76426bbb8e973e2a55a96cf5e9100995d11e459d",
+      "run": "https://github.com/shinya0x00/github-task-protocol/actions/runs/30200700823",
+      "checks": ["build", "integration", "release-ready", "test (3.11)", "test (3.12)", "test (3.13)"],
+      "final_head_policy": "GitHub Check Runs own the result for each later exact PR head."
+    },
+    "review": {
+      "status": "success",
+      "observed_head": "76426bbb8e973e2a55a96cf5e9100995d11e459d",
+      "blocking_findings": 0,
+      "final_head_policy": "Any later head requires another exact-head review."
+    }
   },
   "source_done_conditions": [
     "protocol_semantics",

@@ -1022,8 +1022,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
             candidate["source_pr"],
         )
         statuses = {section["status"] for section in candidate["candidate"].values()}
-        self.assertLessEqual(statuses, {"pending", "success"})
-        self.assertIn("pending", statuses)
+        self.assertEqual({"success"}, statuses)
         self.assertEqual(
             {"native_merge": False, "tag": False, "github_release": False, "pypi": False},
             candidate["publication"],
