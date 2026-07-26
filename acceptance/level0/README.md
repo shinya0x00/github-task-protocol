@@ -45,4 +45,4 @@ GitHub URLとcommit SHAはresourceと履歴の存在を示す。各Agentが内�
 
 Agent Bのsystem環境には`GTP.md`掲載の共通adapter文が設定されていた。この試験が示すのは「GTP.mdと詳細なadapterを導入した環境」で引き継げたことまでであり、Issue URLだけからGTP.mdを自力で発見できることまでは示さない。
 
-<!-- acceptance-only v1.0.4 re-Done fixture head: 1; never merge -->
+<!-- acceptance-only v1.0.4 re-Done fixture head: 2; never merge -->
