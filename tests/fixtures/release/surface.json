@@ -20,6 +20,24 @@
     "GTP.md": 400,
     "production_python": 2500
   },
+  "baselines": {
+    "README.md": 131,
+    "GTP.md": 368,
+    "production_python": 2500
+  },
+  "versions": {
+    "package": {
+      "value": "1.0.4",
+      "scheme": "Python packaging version identifier",
+      "semver_compatibility_claim": false,
+      "publication_claim": false
+    },
+    "protocol": {
+      "value": "1.1",
+      "prior": "1.0",
+      "prior_meaning_changed": false
+    }
+  },
   "distribution": "github-task-protocol",
   "console_script": "gtp",
   "python": ">=3.11",
@@ -27,8 +45,35 @@
   "license": "MIT",
   "release_documents": {
     "current_design": "DESIGN.md",
-    "decision": "adr/0036-reproducible-release-artifacts.md",
-    "notes": "acceptance/release-notes-v1.0.3.md"
+    "decisions": [
+      "adr/0036-reproducible-release-artifacts.md",
+      "adr/0037-separate-private-instructions-from-public-records.md",
+      "adr/0038-protocol-1-1-revisions-and-package-versioning.md",
+      "adr/0039-existing-instructions-and-issue-lifecycle-boundary.md"
+    ],
+    "candidate_notes": "acceptance/release-notes-v1.0.4.md",
+    "published_history": {
+      "package_version": "1.0.3",
+      "notes": "acceptance/release-notes-v1.0.3.md",
+      "evidence": "acceptance/public-release-v1.0.3.json"
+    }
+  },
+  "acceptance_v1_0_4": [
+    "acceptance/v1.0.4/walking-skeleton.json",
+    "acceptance/v1.0.4/live-paths.json",
+    "acceptance/v1.0.4/public-record-disclosure.json",
+    "acceptance/v1.0.4/release-candidate.json"
+  ],
+  "public_metadata_boundary": {
+    "source_package_version": "1.0.4",
+    "verified_install_sources": [
+      "GitHub latest stable Release",
+      "PyPI"
+    ],
+    "requires_version_agreement": true,
+    "safe_before_publication": true,
+    "safe_after_publication": true,
+    "publication_claim": false
   },
   "ci_release": {
     "source_sha": {
@@ -44,8 +89,8 @@
       "download-artifact": "3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c"
     },
     "artifacts": {
-      "pull_request": "v1.0.3-pr-verification-<SOURCE_SHA>",
-      "main_push": "v1.0.3-main-candidate-<SOURCE_SHA>",
+      "pull_request": "v1.0.4-pr-verification-<SOURCE_SHA>",
+      "main_push": "v1.0.4-main-candidate-<SOURCE_SHA>",
       "sidecars": ["BUILD-INFO", "SHA256SUMS"],
       "retention_days": 90
     }

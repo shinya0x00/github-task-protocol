@@ -45,8 +45,9 @@ class CliTests(unittest.TestCase):
             values.append(line[len(prefix):])
         return values
 
-    def call_http_fixture(self, name: str) -> tuple[int, list[str], dict]:
-        fixture = json.loads((HTTP_FIXTURES / name).read_text(encoding="utf-8"))
+    def call_http_fixture(self, name: str | Path) -> tuple[int, list[str], dict]:
+        fixture_path = name if isinstance(name, Path) else HTTP_FIXTURES / name
+        fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
         pending = list(fixture["requests"])
 
         def materialize(value):
@@ -318,6 +319,32 @@ class CliTests(unittest.TestCase):
             },
             set(output),
         )
+
+    def test_check_projects_protocol_11_for_valid_and_invalid_records(self) -> None:
+        record = {
+            "gtp": "1.1",
+            "type": "amendment",
+            "id": "41234567-89ab-4def-8123-456789abcdef",
+            "predecessor_ref": "https://github.com/o/r/issues/1#issuecomment-1",
+            "done_conditions": {
+                "extra": {"text": "extra proof", "evidence_kind": "artifact"}
+            },
+        }
+        carrier = (
+            "<!-- gtp-record:v1 -->\nprotocol 1.1\n\n"
+            "<details><summary>記録(JSON)</summary>\n\n```json\n"
+            + json.dumps(record)
+            + "\n```\n\n</details>\n"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "v11.md"
+            path.write_text(carrier, encoding="utf-8")
+            valid_code, _, valid = self.call(["check", str(path)])
+            record["unexpected"] = True
+            path.write_text(carrier.replace(json.dumps({k: v for k, v in record.items() if k != "unexpected"}), json.dumps(record)), encoding="utf-8")
+            invalid_code, _, invalid = self.call(["check", str(path)])
+        self.assertEqual((0, "1.1", True), (valid_code, valid["gtp"], valid["schema_valid"]))
+        self.assertEqual((1, "1.1", False), (invalid_code, invalid["gtp"], invalid["schema_valid"]))
 
     def test_check_normal_comment_exits_one(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -703,6 +730,16 @@ class CliTests(unittest.TestCase):
         self.assertEqual("unmanaged", output["state"])
         self.assertEqual("complete", output["acquisition"])
         self.assertNotIn("タスクの目的", "\n".join(human))
+
+    def test_protocol_11_walking_skeleton_fires_public_status_path(self) -> None:
+        code, _, output = self.call_http_fixture(
+            Path(__file__).parent / "fixtures/protocol-1.1/walking-skeleton.json"
+        )
+        self.assertEqual(0, code)
+        self.assertEqual("in_progress", output["state"])
+        self.assertEqual("1.1", output["gtp"])
+        self.assertIsNone(output["amendment"])
+        self.assertEqual("Protocol 1.1 walking skeleton", output["task_context"]["goal"])
 
     def test_status_done_http_fixture_uses_all_production_logic(self) -> None:
         code, human, output = self.call_http_fixture("done-success.json")

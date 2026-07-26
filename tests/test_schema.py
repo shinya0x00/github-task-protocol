@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import unittest
 
-from gtp.schema import RECORD_FIELDS, strict_json_loads, validate_record
+from gtp.schema import RECORD_FIELDS, RECORD_FIELDS_11, strict_json_loads, validate_record
 from gtp.urls import parse_github_url
 
 
@@ -57,9 +57,87 @@ class SchemaTests(unittest.TestCase):
         path = Path(__file__).parent / "fixtures" / "schema-conformance.json"
         expected = json.loads(path.read_text())
         self.assertEqual(
-            {kind: set(fields) for kind, fields in expected.items()},
-            {kind: set(fields) for kind, fields in RECORD_FIELDS.items()},
+            {
+                version: {kind: set(fields) for kind, fields in records.items()}
+                for version, records in expected.items()
+            },
+            {
+                "1.0": {kind: set(fields) for kind, fields in RECORD_FIELDS.items()},
+                "1.1": {kind: set(fields) for kind, fields in RECORD_FIELDS_11.items()},
+            },
         )
+
+    def test_protocol_11_record_fields_are_closed(self) -> None:
+        self.assertEqual(
+            {
+                "contract": {"gtp", "type", "id", "goal", "scope", "done_conditions"},
+                "start": {"gtp", "type", "id", "contract_ref", "branch"},
+                "amendment": {"gtp", "type", "id", "predecessor_ref", "done_conditions"},
+                "done": {
+                    "gtp", "type", "id", "revision_ref", "previous_done_ref",
+                    "pr_ref", "head_sha", "evidence",
+                },
+                "stop": {"gtp", "type", "id", "reason", "successor_ref"},
+            },
+            RECORD_FIELDS_11,
+        )
+        amendment = {
+            "gtp": "1.1",
+            "type": "amendment",
+            "id": "41234567-89ab-4def-8123-456789abcdef",
+            "predecessor_ref": "https://github.com/owner/repo/issues/1#issuecomment-2",
+            "done_conditions": {
+                "new_check": {"text": "new check passes", "evidence_kind": "check"}
+            },
+        }
+        self.assertFalse(validate_record(amendment))
+        for field in ("goal", "scope", "branch", "pr_ref", "authority"):
+            with self.subTest(field=field):
+                record = dict(amendment, **{field: "not allowed"})
+                self.assertIn(
+                    {"code": "unknown_field", "path": f"$.{field}"},
+                    validate_record(record),
+                )
+
+    def test_protocol_11_done_requires_revision_and_previous_done_fields(self) -> None:
+        done = {
+            "gtp": "1.1",
+            "type": "done",
+            "id": "51234567-89ab-4def-8123-456789abcdef",
+            "revision_ref": "https://github.com/owner/repo/issues/1#issuecomment-2",
+            "previous_done_ref": None,
+            "pr_ref": "https://github.com/owner/repo/pull/7",
+            "head_sha": "0123456789abcdef0123456789abcdef01234567",
+            "evidence": {
+                "check": "https://github.com/owner/repo/runs/4",
+                "artifact": "https://github.com/owner/repo/blob/0123456789abcdef0123456789abcdef01234567/a.json",
+            },
+        }
+        self.assertFalse(validate_record(done))
+        for field in ("revision_ref", "previous_done_ref"):
+            with self.subTest(field=field):
+                record = dict(done)
+                del record[field]
+                self.assertIn(
+                    {"code": "missing_field", "path": f"$.{field}"},
+                    validate_record(record),
+                )
+        wrong_previous = dict(done, previous_done_ref="https://github.com/owner/repo/pull/7")
+        self.assertIn("$.previous_done_ref", {error["path"] for error in validate_record(wrong_previous)})
+
+    def test_amendment_is_not_a_protocol_10_record(self) -> None:
+        amendment = {
+            "gtp": "1.0",
+            "type": "amendment",
+            "id": "61234567-89ab-4def-8123-456789abcdef",
+            "predecessor_ref": "https://github.com/owner/repo/issues/1#issuecomment-2",
+            "done_conditions": {
+                "new_check": {"text": "new check passes", "evidence_kind": "check"}
+            },
+        }
+        errors = validate_record(amendment)
+        self.assertIn({"code": "invalid_value", "path": "$.type"}, errors)
+        self.assertIn({"code": "unknown_field", "path": "$.predecessor_ref"}, errors)
 
     def test_removed_and_unknown_fields_are_rejected(self) -> None:
         start = {

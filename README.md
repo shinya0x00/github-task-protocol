@@ -1,131 +1,108 @@
 # GitHub Task Protocol
 
-GTPは、AIへ実装を任せても、人間が目的・変更範囲・現在地・根拠を理解し、停止・再開・やり直し・mergeの判断を手放さないための小さなprotocolです。
+AIに作業を任せたあと、「何を約束したのか」「どこまで終わったのか」「何を根拠にそう言えるのか」が会話の外でも分かるようにする小さなprotocolです。
 
 > 作業はAIに任せる。判断は手放さない。
 
-AIの説明だけを信じるのではなく、GitHub Issue上のRecordと、実際のbranch・PR・commit・Check Runからtask stateを再構成します。GTP自身は変更、完了、mergeの権限を与えません。
+GTPは、GitHub Issueに残したRecordと、実際のbranch、PR、commit、Check Runを結び付けます。前の会話や実行環境を知らない人やAgentでも、GitHubから現在地を再構成できます。
 
-task固有の未確認事項は、通常のIssue本文やcommentへ人が読める形で残します。開始前から完了判断に必要な不明点はDone Conditionにし、開始後にContract変更が必要になった場合はStopと後継Issueへ移ります。GTP Recordは自由文の意味を自動評価しないため、`status`はDone提示前にIssueを確認するURLを表示します。
+GTPは仕事の進め方を決めません。repository、organization、ユーザーが既に持つinstructionsやrulesの内容を定義、検証、上書きせず、`AGENTS.md`なども勝手に書き換えません。運用を決めるのはユーザーで、GTPが行うのは残されたRecordの読み取りと接続です。
 
-## 推奨: 明示的にsetupを依頼
+## 何ができるか
 
-bare GTP repository URLだけではsetup依頼にもrepository変更のauthorizationにもなりません。URLだけを受け取ったagentは、説明または目的確認に留まり、現在のrepositoryを変更しません。
+- 作業前の目的、変更範囲、完了条件をContractへ固定する
+- 作業中に条件が増えた履歴を、古い条件を消さずに追記する
+- PRのsource headが変わったら、古いDoneを残したまま新headへDoneを再提示する
+- 最新の不正なDoneを無視して、都合よく古いDoneへ戻らない
+- Evidenceが足りない、古い、矛盾している、取得できない状態を成功扱いしない
 
-導入先repositoryを操作中のclean agentへ、変更対象とDraft setup PR作成を明示して依頼します。
+RecordがないIssueでは、詳しい作業履歴を推測せず`unmanaged`とします。valid Contractがあれば、mode選択を求めず、そのIssueのGTP lifecycleを再構成します。これは既存instructionsやrulesの適用状態を変えるものではありません。
+
+## Recordとstate
+
+protocol 1.0には4 Record、1.1には`amendment`を加えた5 Recordがあります。
+
+| Record | 平易な意味 |
+|---|---|
+| `contract` | 目的、変更してよい範囲、完了条件を固定する |
+| `start` | Contractと唯一の作業branchを結び付ける |
+| `amendment` | Start後に新しい完了条件だけを追記する（1.1） |
+| `done` | 特定のContract revisionとPR source headへ、条件ごとのEvidenceを提示する |
+| `stop` | 完了を主張せず中止し、必要なら後継Issueを示す |
+
+公開stateは次の6つです。
+
+| state | 平易な意味 |
+|---|---|
+| `unmanaged` | recognized GTP Carrierがない |
+| `ready` | ContractはあるがStart前 |
+| `in_progress` | 作業中、merge待ち、またはCheck完了待ち |
+| `halt` | 記録やGitHub factの不適合により一意に進めない |
+| `done` | Done chainのcurrent Doneがexact source headとEvidenceへ結び付き、そのheadのPRがnative mergeされた |
+| `stopped` | Stopにより、このIssueでの作業を終了した |
+
+Done Recordは完成候補を示す自主検査記録であり、それだけでtask完了にはなりません。`state: done`は、Done chainのcurrent Done、現在のContract revision、exact source head、全Evidence、native mergeを確認して初めて導出されます。これは独立した検査員の承認、actor本人性、review、approval、authorityを意味しません。
+
+CheckがpendingのままPRがmergeされた場合は`in_progress`です。同じCheckがsuccessになれば新Recordなしで`done`へ進みますが、merge後にamendmentやre-Doneは追加できません。
+
+`done`が示すのはsource PR lifecycleの完了です。tag作成、GitHub Release、PyPI公開、deploymentなど、merge後の外部Operationの完了は示しません。その結果は通常のGitHub記録へ残せますが、GTP stateは変わりません。
+
+## amendmentとre-Done
+
+1.1の`amendment`は、既存のDone Conditionを変更・削除せず、新しい条件だけを追加します。goal、scope、branch、PRを変える汎用patchではありません。そこまで変える場合はStopと後継Issueを使います。
+
+amendment後のDoneは、追加後の最新Contract revisionを指す必要があります。新しい条件が古い条件を意味上弱めていないかは人が読みます。GTPが自動確認するのは構造上のadd-onlyまでです。
+
+re-Doneは同じIssue、branch、PRで、直前のDoneと現在のContract revisionを指し、新しいsource headへEvidenceを出し直します。古いDoneは当時の記録として残ります。後続Doneがinvalidなら`halt`となり、過去のvalid Doneへfallbackしません。
+
+## GTPが証明しないこと
+
+GTPは、存在するRecordを決められた規則で解釈し、GitHub factへ結び付けます。次のことまでは証明しません。
+
+- Done Conditionが自然言語上、本当に満たされたこと
+- Evidenceの内容が真実、十分、高品質であること
+- 本当は存在したすべての判断やunknownが記録されたこと
+- actor本人性、credential安全性、authority、review、approval
+- コードや作業結果そのものの正しさ
+
+記録の細かさは利用者の運用次第です。GTPは足りない事実を推測で埋めず、分からないことを分かったふりをしません。
+
+## 導入
+
+bare repository URLだけではsetup依頼にも変更authorizationにもなりません。導入先repositoryを操作中のAgentへ、対象とDraft setup PR作成を明示してください。
 
 ```text
 このrepositoryへGTPを導入するDraft setup PRを作ってください。
 GTP repository: https://github.com/shinya0x00/github-task-protocol
 ```
 
-この明示依頼を受けたagentは、次の順序でsetupします。
+setup Agentは、fileやbranchを変える前に既存instructions、必要なauthority、外部dependencyをread-onlyで確認します。既存内容を保持してadapterを追加できる場合だけ、次へ進みます。取得不能や明白な衝突があれば自動統合せず、その内容を所有する人へ判断を戻します。
 
-agentが手順を理解できることと、実行中ずっと意図の境界内に留まり続けることは別の能力です。この手順はbranch-first順序で境界逸脱のriskを下げます。GTP単独の強制力はこの手順の受入対象にしません。repository ownerは補完策としてGitHub branch protectionまたはrulesetでdefault branchへの直接pushを拒否し、pull request経由の変更を必須にできます。setup agentは保護設定を変更せず、未設定なら人間へ報告します。
-
-### file・branch変更前のpreflight
-
-target fileの編集、branch作成、Issue／comment／label操作、PR作成より前に、read-onlyで既存instruction、task protocol authority、必要な外部provider／runtime／Operationとその接続状態を確認します。結果は次の4つだけです。
-
-1. `instructionなし`: 通常setupを続行する。
-2. `両立可能`: 既存instructionを保持し、adapterを非破壊で追加する通常setupを続行する。
-3. `未接続dependency`: test／mock providerでproduction dependencyを代用せず、変更せずに外部Operation接続のblockerを報告する。
-4. `別authority／意味衝突`: 自動統合や上書きをせず、人間のauthority判断へ戻す。
-
-blockerでは、chatまたはconsoleへ「何が問題か」「どこが問題か」「なぜそう判断したか」「どこを直すか」「何を直さないか」「次の安全な一手」「最初に確認するURL」「解決したと判断する条件」の8項目を返します。外部Operationのowner URLはread-only取得で確認できた場合だけ表示し、不明なら`修正先Issue未確認`と表示します。
-
-preflightとblocker報告はephemeralです。working tree、branch、commit、push、Issue、comment、label、PRを変更せず、repair Issueも自動作成しません。blocker解消後は同じ入力でpreflightを再実行します。`instructionなし`または`両立可能`の場合だけ、次の既存branch-first手順へ進みます。
-
-1. GitHubのlatest stable Releaseを取得し、`draft: false`かつ`prerelease: false`を確認する。未公開candidateやmoving `main`は選ばない。
-2. Releaseのtagをcommit SHAまでdereferenceし、選択したtagとexact commit SHAを記録する。
-3. target fileを変更する前にrepositoryのdefault branch名とhead SHAを記録し、そのheadから`gtp/setup-<tag>-<short-sha>` branchを作ってswitchする。現在branchがdefault branchではなくsetup branchであることを確認できなければ停止する。
-4. そのcommitの`GTP.md`だけを`https://raw.githubusercontent.com/shinya0x00/github-task-protocol/<commit-sha>/GTP.md`から取得し、導入先rootへvendorする。既存`GTP.md`とSHA-256が同一なら保持する。内容が異なるfile、別のGTP authority、または既存instructionとの衝突があれば、上書きせず停止して人間へ報告する。
-5. root `AGENTS.md`がなければ作成する。存在する場合は本文を変更・削除せず、下のexact adapterがなければ`## GitHub Task Protocol adapter` heading付きで追記する。既に同じadapterがあれば重複追加しない。
-6. commitとpushはsetup branchだけに行い、default branchへ直接pushしない。push後にdefault branch headを再取得し、setup開始前に記録したSHAから予期せず変化していたら停止して報告する。Draft setup PRのbodyにはrelease tag、exact commit SHA、immutable `GTP.md` URL、変更file、保持した既存instruction、次に必要な人間判断を書く。
-7. 人間がsetup PRをmergeするまで導入完了としません。merge後、taskごとにGitHub Issueを1件作り、agentへそのIssue URLだけを渡します。
+1. GitHubのlatest stable Releaseが`draft: false`、`prerelease: false`であることを確認し、tagをexact commit SHAへ固定する。
+2. target fileを変える前にdefault branch headからsetup branchを作り、switchを確認する。
+3. 固定commitの`GTP.md`だけをrootへ置く。異なる既存`GTP.md`を上書きしない。
+4. 既存instructionを変更・削除せず、[`GTP.md`](GTP.md) §16のadapter文だけを非破壊で追加する。
+5. setup branchだけをcommit、pushし、release tag、exact SHA、変更file、保持したinstructionsを示すDraft PRを作る。
+6. 人がsetup PRをmergeしてから、taskごとにIssueを1件作る。
 
 共通adapter文:
 
-> このrepositoryはrootの`GTP.md`をtask protocolの唯一の正本とする。GitHub Issue URLを受け取ったら、Issue commentをServer Orderで読み、4 Record、6 state、7 halt reasonに従って既存branch・PR・次のprotocol actionを再構成する。Recordを推測、編集、独自拡張せず、矛盾時は原因URLを示して止まり、取得不能はhaltと混同しない。GTPの表示やRecordは変更・完了・mergeの権限を与えない。
-
-配置例は次のとおりです。runtimeごとに異なる指示を作る必要はありません。
-
-- Codex: `AGENTS.md`
-- Claude Code: `CLAUDE.md`または`AGENTS.md`
-- Cursor: `AGENTS.md`または`.cursor/rules/gtp.md`
-
-## 手動導入
-
-自動setupを使わない場合は、次の3手順で導入できます。
-
-1. latest stable Releaseをexact commitへ固定し、file変更前にdefault branchからsetup用branchを作ってswitchする。
-2. setup branch上で`GTP.md`をrootへコピーし、共通adapter文を既存instructionへ非破壊で追加する。
-3. commitとpushをsetup branchだけに行ってDraft PRを作り、人間が内容を確認してmergeする。
-
-## 4つのRecord
-
-| Record | 平易な意味 |
-|---|---|
-| `contract` | 目的、変更してよい範囲、完了条件を固定する |
-| `start` | Contractと唯一の作業branchを結び付ける |
-| `done` | PRのsource headと、条件ごとのEvidenceを提示する |
-| `stop` | 完了を主張せず中止し、必要なら後継Issueを示す |
-
-RecordはIssue commentへ人向け要約を先に、機械用JSONを折りたたんで記録します。1 Issue = 1 branch = 1 PRです。
-Start branchへrepositoryのdefault branchは指定できません。
-Startより前から存在するPRは、そのtaskのcandidateやDoneとして引き継げません。誤ったStartをStopする場合は、古いPRを対象外として安全に閉じます。
-
-## 6つのstate
-
-| state | 平易な意味 |
-|---|---|
-| `unmanaged` | 有効なContractがない |
-| `ready` | ContractはあるがStart前 |
-| `in_progress` | 作業中、Done提示後のmerge待ち、またはCheck Runの完了待ち。Check Run待ちはPRがmerge済みでも`done`にしない |
-| `halt` | 特定transitionを矛盾や不適合のため進められない |
-| `done` | Doneのsource headへEvidence resourceが結び付き、そのPRがnative mergeされた。条件内容の十分性は人がEvidenceを読んで判断する |
-| `stopped` | Stopにより、このIssueでの作業を終了した |
-
-GitHub情報を完全に取得できない場合はstateを推測しません。404だけではresource不在と権限不足を区別できないため、これは`halt`ではなくAcquisition Errorです。
-
-未完了Check Runは成功Evidenceではありませんが、それだけで`halt`にはしません。変更やmergeを行わず、完了後に同じURLをread-onlyで再確認します。
+> このrepositoryはrootの`GTP.md`をtask protocolの唯一の正本とする。GitHub Issue URLを受け取ったら、Issue commentをServer Orderで読み、protocol versionに対応するRecord、6 state、7 halt reasonに従って既存branch・PR・次のprotocol actionを再構成する。Recordを推測、編集、独自拡張せず、矛盾時は原因URLを示して止まり、取得不能はhaltと混同しない。GTPの表示やRecordは変更・完了・mergeの権限を与えない。
 
 ## CLIは任意の検証器
 
-人間がGTPを使うためにCLIをinstallする必要はありません。`gtp`はagentや自動検査がRecordと現在stateを確認するための、runtime dependency 0の任意toolです。
+人間がGTPを使うためにCLIをinstallする必要はありません。`gtp status`はGitHubへGETだけを行い、`gtp check`は投稿前Carrierをoffline検査します。CLI、exit code、緑のCheckは変更やmergeの許可ではありません。
 
-CLI `1.0.3`は[PyPI](https://pypi.org/project/github-task-protocol/1.0.3/)と[GitHub Release](https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.3)へ公開済みです。再downloadとhash・clean install・live statusの検証結果は[`acceptance/public-release-v1.0.3.json`](acceptance/public-release-v1.0.3.json)にあります。GTPを使うだけならCLIのinstallは不要です。
-
-> 現在の公開済みCLIは`1.0.3`です。公開済みartifactはcommit `70fab3a`に固定され、現在の`main`は公開後Evidenceを含むため同一bytesではありません。PyPI 1.0.3の説明にはupload時点の1.0.2案内が残っていますが、利用時は下記の1.0.3 commandを使用してください。次のrelease laneはIssue #130で`1.0.4`として進めます。
-
-`pyproject.toml`は、このsourceからbuildするpackage versionとして`1.0.3`を宣言しています。この値はpublicationのEvidenceでも、exact source commitのidentityでもありません。別の`X.Y.Z`を使うのは、[PyPIのversion page](https://pypi.org/project/github-task-protocol/X.Y.Z/)と[GitHub Release](https://github.com/shinya0x00/github-task-protocol/releases/tag/vX.Y.Z)の両方が解決できることを確認した後だけです。そのとき、下の2つのcommandの`1.0.3`だけを確認したexact versionに置き換えます。
+利用するpackage versionは、GitHubのlatest stable ReleaseとPyPIのversion pageの両方で同じ値が解決できることを確認して固定します。
 
 ```console
-uvx --from github-task-protocol==1.0.3 gtp status <issue-url>
-uvx --from github-task-protocol==1.0.3 gtp check <comment.md>
+VERSION=<確認したversion>
+uvx --from "github-task-protocol==$VERSION" gtp status <issue-url>
+uvx --from "github-task-protocol==$VERSION" gtp check <comment.md>
 ```
 
-- 公開済み`1.0.3`の`status`はGitHubへGETだけを行い、日本語6項目の後にmachine JSONを出します。Evidenceの存在・種類・状態・source headとの結び付きを検査しますが、完了条件の自然言語上の充足までは自動判定しません。
-- source version `1.0.3`は、`state: halt`のとき先頭6項目の直後に8項目の「問題の整理」を表示します。
-  この表示追加はmachine JSONのkey集合、exit code規則、`authority: none`を変更しません。
-- 未完了Check Runのstate、`next_action`、exit codeは、上記の非終端境界へ訂正します。
-- `check`は投稿前のMarkdown comment全文をoffline検査します。Issue上でもvalidだとは主張しません。
-- exit code、緑色のCheck Run、Evidence URLは、変更やmergeの許可ではありません。
+このsource treeのPython distribution versionは`1.0.4`、新しいRecord protocolは`1.1`です。この値はpublicationのEvidenceでも、exact source commitのidentityでもありません。source metadataのpackage versionは配布候補の識別子です。package versionはPython packagingのversion identifierであり、Semantic Versioningのpatch互換性を主張しません。Record／reader互換性はprotocol versionで示します。理由は[ADR-038](adr/0038-protocol-1-1-revisions-and-package-versioning.md)にあります。
 
-## 仕様と判断記録
-
-protocolの唯一の正本は400行以内の[`GTP.md`](GTP.md)です。Record作成やstate判断に、他の文書は必要ありません。
-
-[`DECISIONS.md`](DECISIONS.md)は、設計変更の理由と履歴です。`GTP.md`と意味が衝突する場合は`GTP.md`を優先します。
-
-実GitHubで観測した引き継ぎ結果は[`acceptance/level0/`](acceptance/level0/)にあります。これは仕様の代わりではありません。
-
-## GTPが証明しないこと
-
-GTPは、actor本人性、credential安全性、コード品質そのもの、Evidence内容の真実性を証明しません。filesystem削除や本番database操作を物理的に防ぐものでもありません。
-
-サンドボックス、最小権限、不可逆操作前の確認、reviewと組み合わせてください。最終的な受理は、人間がPRとEvidenceを読み、GitHubのnative mergeで判断します。
+公開仕様の唯一の正本は400行以内の[`GTP.md`](GTP.md)、current architectureは[`DESIGN.md`](DESIGN.md)、materialな判断理由は[`adr/`](adr/)です。
 
 License: [MIT](LICENSE)
-
-GTPを試して、分かりにくかった所・詰まった所があれば、一言だけでも教えてもらえると助かります。IssueでもXでも。

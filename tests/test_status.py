@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import copy
 import unittest
 
 from gtp.github import AcquisitionError
+from gtp.presentation import status_projection
 from gtp.status import evaluate_issue
 
-from test_reducer import IDS, ISSUE, comment, contract, start
+from test_reducer import IDS, ISSUE, body, comment, contract, start
 
 
 SHA = "0123456789abcdef0123456789abcdef01234567"
@@ -30,6 +32,35 @@ def stop(record_id: str) -> dict:
         "reason": "abandoned",
         "successor_ref": None,
     }
+
+
+def amendment(record_id: str, predecessor_ref: str) -> dict:
+    return {
+        "gtp": "1.1",
+        "type": "amendment",
+        "id": record_id,
+        "predecessor_ref": predecessor_ref,
+        "done_conditions": {
+            "extra": {"text": "extra proof exists", "evidence_kind": "artifact"}
+        },
+    }
+
+
+def done_11(record_id: str, revision_ref: str, previous_done_ref: str | None,
+            *, head_sha: str = SHA, extra: bool = True) -> dict:
+    record = {
+        "gtp": "1.1",
+        "type": "done",
+        "id": record_id,
+        "revision_ref": revision_ref,
+        "previous_done_ref": previous_done_ref,
+        "pr_ref": "https://github.com/o/r/pull/7",
+        "head_sha": head_sha,
+        "evidence": {"artifact": f"https://github.com/o/r/blob/{head_sha}/acceptance/run.json"},
+    }
+    if extra:
+        record["evidence"]["extra"] = f"https://github.com/o/r/blob/{head_sha}/acceptance/run.json"
+    return record
 
 
 class FakeGitHub:
@@ -155,6 +186,130 @@ class StatusTests(unittest.TestCase):
         result = evaluate_issue(FakeGitHub(comments, branch=False, pr=pr(merged=True)), ISSUE)
         self.assertEqual("done", result.state)
 
+    def test_amendment_requires_re_done_and_repair_uses_new_tip(self) -> None:
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, start(IDS[1])),
+            comment(3, done(IDS[2])),
+            comment(4, amendment(IDS[3], f"{ISSUE}#issuecomment-1")),
+        ]
+        obsolete = evaluate_issue(FakeGitHub(comments, pr=pr(merged=False)), ISSUE)
+        self.assertEqual("halt", obsolete.state)
+        self.assertEqual("invalid_transition", obsolete.diagnostics[0].token)
+
+        comments.append(comment(5, done_11(
+            IDS[4], f"{ISSUE}#issuecomment-4", f"{ISSUE}#issuecomment-3"
+        )))
+        repaired = evaluate_issue(FakeGitHub(comments, pr=pr(merged=False)), ISSUE)
+        self.assertEqual("in_progress", repaired.state)
+        self.assertEqual(f"{ISSUE}#issuecomment-4", repaired.current["done"]["content"]["revision_ref"])
+        self.assertEqual(f"{ISSUE}#issuecomment-4", repaired.current["amendment"]["url"])
+        machine = status_projection(repaired)
+        self.assertEqual("1.1", machine["gtp"])
+        self.assertEqual(IDS[3], machine["amendment"]["id"])
+        self.assertEqual({"artifact", "extra"}, set(machine["task_context"]["conditions"]))
+        self.assertIn(
+            "Done Conditionが自然言語上・意味上満たされたこと",
+            machine["task_context"]["evidence_limits"],
+        )
+        self.assertIn("review・approval・authorization", machine["task_context"]["evidence_limits"])
+
+    def test_native_merge_is_cutoff_even_when_revision_is_obsolete(self) -> None:
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, start(IDS[1])),
+            comment(3, done(IDS[2])),
+            comment(4, amendment(IDS[3], f"{ISSUE}#issuecomment-1")),
+        ]
+        merged = pr(merged=True)
+        merged["merged_at"] = "2026-07-19T00:00:03.500000Z"
+        result = evaluate_issue(FakeGitHub(comments, branch=False, pr=merged), ISSUE)
+        self.assertEqual("halt", result.state)
+        self.assertEqual("terminal_violation", result.diagnostics[0].token)
+        self.assertEqual(comments[3].url, result.diagnostics[0].urls[0])
+
+    def test_invalid_new_11_done_never_falls_back_to_old_done(self) -> None:
+        invalid = {
+            "gtp": "1.1",
+            "type": "done",
+            "id": IDS[3],
+            "revision_ref": f"{ISSUE}#issuecomment-1",
+        }
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, start(IDS[1])),
+            comment(3, done(IDS[2])),
+            comment(4, None, source=body(invalid)),
+        ]
+        before_merge = evaluate_issue(FakeGitHub(comments, pr=pr(merged=False)), ISSUE)
+        self.assertEqual("halt", before_merge.state)
+        self.assertEqual("invalid_record", before_merge.diagnostics[0].token)
+        merged = pr(merged=True)
+        merged["merged_at"] = "2026-07-19T00:00:03.500000Z"
+        after_merge = evaluate_issue(FakeGitHub(comments, branch=False, pr=merged), ISSUE)
+        self.assertEqual("terminal_violation", after_merge.diagnostics[0].token)
+        self.assertEqual(comments[3].url, after_merge.diagnostics[0].urls[0])
+
+    def test_post_merge_identity_collision_has_terminal_priority(self) -> None:
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, start(IDS[1])),
+            comment(3, done(IDS[2])),
+            comment(4, done_11(
+                IDS[2], f"{ISSUE}#issuecomment-1", f"{ISSUE}#issuecomment-3",
+                extra=False,
+            )),
+        ]
+        merged = pr(merged=True)
+        merged["merged_at"] = "2026-07-19T00:00:03.500000Z"
+        result = evaluate_issue(FakeGitHub(comments, branch=False, pr=merged), ISSUE)
+        self.assertEqual("halt", result.state)
+        self.assertEqual("terminal_violation", result.diagnostics[0].token)
+        self.assertEqual(comments[3].url, result.diagnostics[0].urls[0])
+
+    def test_post_merge_safe_retry_alias_does_not_move_done_tip(self) -> None:
+        redone = done_11(
+            IDS[3], f"{ISSUE}#issuecomment-1", f"{ISSUE}#issuecomment-3",
+            extra=False,
+        )
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, start(IDS[1])),
+            comment(3, done(IDS[2])),
+            comment(4, redone),
+            comment(5, copy.deepcopy(redone)),
+        ]
+        merged = pr(merged=True)
+        merged["merged_at"] = "2026-07-19T00:00:04.500000Z"
+        result = evaluate_issue(FakeGitHub(comments, branch=False, pr=merged), ISSUE)
+        self.assertEqual("done", result.state)
+        self.assertEqual([], result.diagnostics)
+        self.assertEqual(comments[3].url, result.current["done"]["url"])
+
+    def test_re_done_repairs_pre_merge_head_change_on_same_pr(self) -> None:
+        head_2 = "f" * 40
+        candidate = pr(merged=False)
+        candidate["head"] = dict(candidate["head"], sha=head_2)
+
+        class Head2GitHub(FakeGitHub):
+            def branch(self, owner, repo, branch):
+                return {"name": branch, "commit": {"sha": head_2}}
+
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, start(IDS[1])),
+            comment(3, done(IDS[2])),
+        ]
+        stale = evaluate_issue(Head2GitHub(comments, pr=candidate), ISSUE)
+        self.assertEqual("stale_evidence", stale.diagnostics[0].token)
+        comments.append(comment(4, done_11(
+            IDS[3], f"{ISSUE}#issuecomment-1", f"{ISSUE}#issuecomment-3",
+            head_sha=head_2, extra=False,
+        )))
+        repaired = evaluate_issue(Head2GitHub(comments, pr=candidate), ISSUE)
+        self.assertEqual("in_progress", repaired.state)
+        self.assertEqual(head_2, repaired.current["bound_pr_head_sha"])
+
     def test_identical_contract_and_start_retries_after_terminal_are_safe(self) -> None:
         contract_record = contract(IDS[0])
         start_record = start(IDS[1])
@@ -213,6 +368,47 @@ class StatusTests(unittest.TestCase):
                     self.assertIs(merged, result._native_merge_observed)
                     self.assertNotIn("_pending_evidence_urls", result.projection())
                     self.assertNotIn("_native_merge_observed", result.projection())
+
+    def test_protocol_11_pending_check_after_merge_needs_no_new_record(self) -> None:
+        contract_record = contract(IDS[0])
+        contract_record["gtp"] = "1.1"
+        contract_record["done_conditions"]["artifact"]["evidence_kind"] = "check"
+        start_record = start(IDS[1])
+        start_record["gtp"] = "1.1"
+        done_record = done_11(
+            IDS[2], f"{ISSUE}#issuecomment-1", None, extra=False
+        )
+        done_record["evidence"]["artifact"] = "https://github.com/o/r/runs/8"
+        comments = [comment(1, contract_record), comment(2, start_record), comment(3, done_record)]
+        pending = {"head_sha": SHA, "status": "in_progress", "conclusion": None}
+        waiting = evaluate_issue(
+            FakeGitHub(comments, branch=False, pr=pr(merged=True), check=pending), ISSUE
+        )
+        self.assertEqual("in_progress", waiting.state)
+        self.assertEqual(("https://github.com/o/r/runs/8",), waiting._pending_evidence_urls)
+
+        success = {
+            "head_sha": SHA,
+            "status": "completed",
+            "conclusion": "success",
+            "completed_at": "2026-07-19T02:00:00Z",
+        }
+        completed = evaluate_issue(
+            FakeGitHub(comments, branch=False, pr=pr(merged=True), check=success), ISSUE
+        )
+        self.assertEqual("done", completed.state)
+        self.assertEqual(3, len(comments))
+
+    def test_protocol_11_merge_and_done_same_timestamp_is_acquisition_error(self) -> None:
+        contract_record = dict(contract(IDS[0]), gtp="1.1")
+        start_record = dict(start(IDS[1]), gtp="1.1")
+        done_record = done_11(IDS[2], f"{ISSUE}#issuecomment-1", None, extra=False)
+        comments = [comment(1, contract_record), comment(2, start_record), comment(3, done_record)]
+        merged = pr(merged=True)
+        merged["merged_at"] = comments[2].created_at
+        result = evaluate_issue(FakeGitHub(comments, branch=False, pr=merged), ISSUE)
+        self.assertIsNone(result.state)
+        self.assertEqual("acquisition_incomplete", result.acquisition_errors[0]["code"])
 
     def test_invalid_check_status_combinations_halt(self) -> None:
         check_contract = contract(IDS[0])

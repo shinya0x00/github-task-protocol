@@ -1,0 +1,28 @@
+{
+  "schema": "gtp-public-record-disclosure-v1",
+  "observed_at": "2026-07-26T10:58:45Z",
+  "canary": {
+    "sha256": "7636dc20eef73d37a90104b59d20d139b7fdafa3aad2bbf7b1a39bc5ea138f4c",
+    "plaintext_stored": false,
+    "match_count": 0
+  },
+  "inspected_targets": [
+    {"target": "tracked source tree", "credential_match_count": 0, "private_data_match_count": 0},
+    {"target": "candidate sdist", "credential_match_count": 0, "private_data_match_count": 0},
+    {"target": "candidate wheel", "credential_match_count": 0, "private_data_match_count": 0},
+    {"target": "pull request text and public acceptance records", "credential_match_count": null, "private_data_match_count": null}
+  ],
+  "excluded_from_public_records": [
+    "original instruction text",
+    "authorization text",
+    "credential value or location",
+    "private prompt or command",
+    "private diagnostic or raw exception",
+    "synthetic canary plaintext"
+  ],
+  "publication_authority_inferred": false,
+  "limits": [
+    "A zero match count applies only to the named targets at the observed time.",
+    "The scan does not prove that every private-data form is absent or that a credential is valid or owned."
+  ]
+}

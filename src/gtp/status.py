@@ -1,12 +1,10 @@
 """Status application service joining prefix history with live GitHub observations."""
-
 from __future__ import annotations
-
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import unquote
-
+from .carrier import classify_carrier
 from .github import AcquisitionError, GitHubClient
 from .model import (
     Diagnostic,
@@ -15,10 +13,8 @@ from .model import (
     RecordObservation,
     SuccessorFact,
 )
-from .reducer import fold_comments, historical_state
+from .reducer import conditions_at_revision, current_done, effective_conditions, effective_revision, fold_comments, historical_state, revision_for_done
 from .urls import parse_github_url
-
-
 @dataclass
 class StatusResult:
     issue_url: str
@@ -28,7 +24,8 @@ class StatusResult:
     acquisition_errors: list[dict[str, Any]] = field(default_factory=list)
     _pending_evidence_urls: tuple[str, ...] = field(default=(), kw_only=True, repr=False)
     _native_merge_observed: bool | None = field(default=None, kw_only=True, repr=False)
-
+    _effective_done_conditions: dict[str, Any] = field(default_factory=dict, kw_only=True, repr=False)
+    protocol_version: str = field(default="1.0", kw_only=True)
     def projection(self) -> dict[str, Any]:
         return {
             "issue_url": self.issue_url,
@@ -40,24 +37,22 @@ class StatusResult:
                 "errors": self.acquisition_errors,
             },
         }
-
-
 @dataclass
 class _DoneLive:
     observation: RecordObservation
     pr: dict[str, Any] | None = None
     diagnostics: list[Diagnostic] = field(default_factory=list)
     terminal_at: str | None = None
+    merged_at: str | None = None
     pending_evidence_urls: list[str] = field(default_factory=list)
-
-
 def _record_projection(observation: RecordObservation | None) -> dict[str, Any] | None:
     if observation is None:
         return None
     content_fields = {
         "contract": ("goal", "scope", "done_conditions"),
         "start": ("contract_ref", "branch"),
-        "done": ("pr_ref", "head_sha", "evidence"),
+        "amendment": ("predecessor_ref", "done_conditions"),
+        "done": (("revision_ref", "previous_done_ref") if observation.record["gtp"] == "1.1" else ()) + ("pr_ref", "head_sha", "evidence"),
         "stop": ("reason", "successor_ref"),
     }
     return {
@@ -71,12 +66,8 @@ def _record_projection(observation: RecordObservation | None) -> dict[str, Any] 
             for key in content_fields[observation.type]
         },
     }
-
-
 def _diagnostic(token: str, *urls: str, **detail: Any) -> Diagnostic:
     return Diagnostic(token, tuple(dict.fromkeys(urls)), detail)
-
-
 def _acquisition(issue_url: str, error: AcquisitionError) -> StatusResult:
     item: dict[str, Any] = {
         "code": "acquisition_incomplete",
@@ -86,20 +77,14 @@ def _acquisition(issue_url: str, error: AcquisitionError) -> StatusResult:
     if error.status is not None:
         item["status"] = error.status
     return StatusResult(issue_url, None, acquisition_errors=[item])
-
-
 def _repo_matches(resource: dict[str, Any], expected_id: int) -> bool:
     return isinstance(resource, dict) and resource.get("id") == expected_id
-
-
 def _pr_matches(pr: dict[str, Any], repo_id: int, branch: str) -> bool:
     return (
         pr.get("base", {}).get("repo", {}).get("id") == repo_id
         and pr.get("head", {}).get("repo", {}).get("id") == repo_id
         and pr.get("head", {}).get("ref") == branch
     )
-
-
 def _branch_snapshot_key(
     branch: dict[str, Any] | None,
     resource: str,
@@ -111,8 +96,6 @@ def _branch_snapshot_key(
     if not isinstance(name, str) or not isinstance(sha, str):
         raise AcquisitionError(resource, "branch snapshot fields missing")
     return name, sha
-
-
 def _pr_snapshot_key(pr: dict[str, Any], resource: str) -> tuple[Any, ...]:
     number = pr.get("number")
     url = pr.get("html_url")
@@ -157,22 +140,16 @@ def _pr_snapshot_key(pr: dict[str, Any], resource: str) -> tuple[Any, ...]:
         merged_at,
         changed_files,
     )
-
-
 def _pr_collection_snapshot(
     prs: list[dict[str, Any]],
     resource: str,
 ) -> tuple[tuple[Any, ...], ...]:
     return tuple(sorted(_pr_snapshot_key(pr, resource) for pr in prs))
-
-
 def _path_in_scope(path: str, scope: list[str]) -> bool:
     for entry in scope:
         if entry == "." or path == entry or (entry.endswith("/") and path.startswith(entry)):
             return True
     return False
-
-
 def _scope_diagnostics(
     client: GitHubClient,
     owner: str,
@@ -217,8 +194,6 @@ def _scope_diagnostics(
     if outside:
         return [_diagnostic("invalid_binding", anchor_url, pr_url, paths=outside)]
     return []
-
-
 def _github_time(value: object, resource: str, field: str) -> datetime:
     if not isinstance(value, str):
         raise AcquisitionError(resource, f"{field} missing")
@@ -229,8 +204,6 @@ def _github_time(value: object, resource: str, field: str) -> datetime:
     if observed.tzinfo is None:
         raise AcquisitionError(resource, f"{field} timezone missing")
     return observed.astimezone(timezone.utc)
-
-
 def _pr_not_after_start(
     pr: dict[str, Any],
     start: RecordObservation,
@@ -243,8 +216,6 @@ def _pr_not_after_start(
         start.comment.created_at, start.comment.url, "Start created_at"
     )
     return created_time <= start_time
-
-
 def _successor_context(
     client: GitHubClient,
     refs: list[str],
@@ -263,20 +234,18 @@ def _successor_context(
             created_at=issue.get("created_at"),
         )
     return facts
-
-
 def _live_evidence(
     client: GitHubClient,
     issue_repo_id: int,
-    contract: RecordObservation,
+    conditions: dict[str, dict[str, str]],
     done: RecordObservation,
 ) -> tuple[list[Diagnostic], list[str], list[str]]:
     diagnostics: list[Diagnostic] = []
     completed_at: list[str] = []
     pending: list[str] = []
     head_sha = done.record["head_sha"]
-    for condition_id in sorted(contract.record["done_conditions"]):
-        condition = contract.record["done_conditions"][condition_id]
+    for condition_id in sorted(conditions):
+        condition = conditions[condition_id]
         kind = condition["evidence_kind"]
         url = done.record["evidence"][condition_id]
         parsed = parse_github_url(url, kind)
@@ -317,8 +286,6 @@ def _live_evidence(
             else:
                 completed_at.append(resource["completed_at"])
     return diagnostics, completed_at, pending
-
-
 def _evaluate_done(
     client: GitHubClient,
     repo_id: int,
@@ -326,6 +293,8 @@ def _evaluate_done(
     start: RecordObservation,
     contract: RecordObservation,
     done: RecordObservation,
+    conditions: dict[str, dict[str, str]],
+    legacy_terminal: bool,
 ) -> _DoneLive:
     result = _DoneLive(done)
     pr_url = parse_github_url(done.record["pr_ref"], "pr")
@@ -342,15 +311,24 @@ def _evaluate_done(
             _diagnostic("invalid_binding", done.comment.url, done.record["pr_ref"])
         )
         return result
+    merged_at = pr.get("merged_at")
+    result.merged_at = merged_at if isinstance(merged_at, str) else None
+    if isinstance(merged_at, str):
+        merge_before_done = merged_at < done.comment.created_at
+        if not legacy_terminal:
+            merge_time = _github_time(merged_at, done.record["pr_ref"], "pull request merged_at")
+            done_time = _github_time(done.comment.created_at, done.comment.url, "Done created_at")
+            if merge_time == done_time:
+                raise AcquisitionError(done.record["pr_ref"], "merge and Done ordering is ambiguous")
+            merge_before_done = merge_time < done_time
+        if merge_before_done:
+            result.diagnostics.append(
+                _diagnostic("terminal_violation", done.comment.url, done.record["pr_ref"])
+            )
+            return result
     if pr.get("head", {}).get("sha") != done.record["head_sha"]:
         result.diagnostics.append(
             _diagnostic("stale_evidence", done.comment.url, done.record["pr_ref"])
-        )
-        return result
-    merged_at = pr.get("merged_at")
-    if isinstance(merged_at, str) and merged_at < done.comment.created_at:
-        result.diagnostics.append(
-            _diagnostic("terminal_violation", done.comment.url, done.record["pr_ref"])
         )
         return result
     scope_diagnostics = _scope_diagnostics(
@@ -365,7 +343,7 @@ def _evaluate_done(
     check_times: list[str] = []
     if not scope_diagnostics:
         evidence_diagnostics, check_times, result.pending_evidence_urls = _live_evidence(
-            client, repo_id, contract, done
+            client, repo_id, conditions, done
         )
     pr_after = client.pull_request(pr_url.owner, pr_url.repo, pr_url.number or 0)
     if _pr_snapshot_key(pr_after, done.record["pr_ref"]) != _pr_snapshot_key(
@@ -383,21 +361,29 @@ def _evaluate_done(
         return result
     merged_at = pr_after.get("merged_at")
     if isinstance(merged_at, str):
-        result.terminal_at = max(done.comment.created_at, merged_at, *check_times)
+        result.merged_at = merged_at
+        result.terminal_at = max(done.comment.created_at, merged_at, *check_times) if legacy_terminal else merged_at
     return result
-
-
 def _terminal_violations(
     diagnostics: list[Diagnostic],
     recognized_comments: list[Any],
     terminal_at: str,
     safe_retry_urls: set[str],
+    strict_order: bool = False,
 ) -> list[Diagnostic]:
-    violating_urls = {
-        comment.url
-        for comment in recognized_comments
-        if comment.created_at > terminal_at and comment.url not in safe_retry_urls
-    }
+    violating_urls: set[str] = set()
+    terminal_time = _github_time(terminal_at, "native merge", "merged_at") if strict_order else None
+    for comment in recognized_comments:
+        if comment.url in safe_retry_urls:
+            continue
+        if strict_order:
+            created = _github_time(comment.created_at, comment.url, "comment created_at")
+            if created == terminal_time:
+                raise AcquisitionError(comment.url, "merge and Record ordering is ambiguous")
+            if created > terminal_time:
+                violating_urls.add(comment.url)
+        elif comment.created_at > terminal_at:
+            violating_urls.add(comment.url)
     result = [
         diagnostic
         for diagnostic in diagnostics
@@ -409,8 +395,6 @@ def _terminal_violations(
             if item not in result:
                 result.append(item)
     return result
-
-
 def _stop_diagnostics(
     client: GitHubClient,
     owner: str,
@@ -476,27 +460,20 @@ def _stop_diagnostics(
                 _diagnostic("terminal_violation", stop.comment.url, pr_url)
             )
     return diagnostics
-
-
 def _has_terminal_violation(diagnostics: list[Diagnostic]) -> bool:
     return any(item.token == "terminal_violation" for item in diagnostics)
-
-
 def _done_can_be_evaluated(
-    contract: RecordObservation,
+    conditions: dict[str, dict[str, str]],
     done: RecordObservation,
 ) -> bool:
-    expected = contract.record["done_conditions"]
     actual = done.record["evidence"]
-    if set(expected) != set(actual):
+    if set(conditions) != set(actual):
         return False
     return all(
         parse_github_url(actual[condition_id], condition["evidence_kind"])
         is not None
-        for condition_id, condition in expected.items()
+        for condition_id, condition in conditions.items()
     )
-
-
 def _evaluate_acquired(
     client: GitHubClient,
     issue_url: str,
@@ -522,7 +499,6 @@ def _evaluate_acquired(
                 "message": "repository id missing",
             }],
         )
-
     try:
         context = FoldContext(
             issue_url=issue_url,
@@ -543,18 +519,23 @@ def _evaluate_acquired(
         return _acquisition(issue_url, AcquisitionError(issue_url, str(error)))
     except AcquisitionError as error:
         return _acquisition(issue_url, error)
-
     active_contract = fold.bound_contract or (
         fold.active["contract"][0] if len(fold.active["contract"]) == 1 else None
     )
-    active_done = fold.active["done"][0] if len(fold.active["done"]) == 1 else None
-    terminal_done = fold.active["done"][0] if fold.active["done"] else None
+    active_done = current_done(fold)
+    terminal_done = active_done if fold.protocol_11_seen else fold.active["done"][0] if fold.active["done"] else None
+    done_revision = revision_for_done(fold, terminal_done) if terminal_done else None
+    done_conditions = conditions_at_revision(fold, done_revision)
+    revision_mismatch = terminal_done is not None and done_revision is not effective_revision(fold)
     current: dict[str, Any] = {
         "contract": _record_projection(active_contract),
         "start": _record_projection(fold.bound_start),
         "done": _record_projection(active_done),
         "stop": _record_projection(fold.terminal_stop),
     }
+    if fold.protocol_11_seen:
+        current["amendment"] = _record_projection(effective_revision(fold) if fold.active["amendment"] else None)
+        current["_effective_done_conditions"] = effective_conditions(fold)
     base_state = historical_state(fold)
     if base_state in {"unmanaged", "ready"}:
         return StatusResult(issue_url, base_state, list(fold.diagnostics), current)
@@ -580,16 +561,13 @@ def _evaluate_acquired(
                 issue_url, "stopped", [*fold.diagnostics, *stop_diagnostics], current
             )
         return StatusResult(issue_url, "halt", list(fold.diagnostics), current)
-
     branch_name = fold.bound_start.record["branch"]
     current["branch"] = {"name": branch_name}
     if fold.terminal_stop is not None:
         if _has_terminal_violation(fold.diagnostics):
             return StatusResult(issue_url, "halt", list(fold.diagnostics), current)
         try:
-            if terminal_done is not None and _done_can_be_evaluated(
-                fold.bound_contract, terminal_done
-            ):
+            if terminal_done is not None and _done_can_be_evaluated(done_conditions, terminal_done):
                 live_done = _evaluate_done(
                     client,
                     repo_id,
@@ -597,15 +575,18 @@ def _evaluate_acquired(
                     fold.bound_start,
                     fold.bound_contract,
                     terminal_done,
+                    done_conditions,
+                    not fold.protocol_11_seen,
                 )
-                if live_done.terminal_at == fold.terminal_stop.comment.created_at:
+                done_terminal = live_done.merged_at if fold.protocol_11_seen else live_done.terminal_at
+                if done_terminal == fold.terminal_stop.comment.created_at:
                     raise AcquisitionError(
                         terminal_done.record["pr_ref"],
                         "Done terminal and Stop ordering is ambiguous",
                     )
                 if (
-                    live_done.terminal_at is not None
-                    and live_done.terminal_at < fold.terminal_stop.comment.created_at
+                    done_terminal is not None
+                    and done_terminal < fold.terminal_stop.comment.created_at
                 ):
                     return StatusResult(
                         issue_url,
@@ -627,7 +608,6 @@ def _evaluate_acquired(
         if stop_diagnostics:
             return StatusResult(issue_url, "halt", [*fold.diagnostics, *stop_diagnostics], current)
         return StatusResult(issue_url, "stopped", list(fold.diagnostics), current)
-
     default_branch = repository.get("default_branch")
     if not isinstance(default_branch, str):
         return _acquisition(
@@ -641,11 +621,8 @@ def _evaluate_acquired(
             [_diagnostic("invalid_binding", fold.bound_start.comment.url)],
             current,
         )
-
     try:
-        if terminal_done is not None and _done_can_be_evaluated(
-            fold.bound_contract, terminal_done
-        ):
+        if terminal_done is not None and _done_can_be_evaluated(done_conditions, terminal_done):
             live = _evaluate_done(
                 client,
                 repo_id,
@@ -653,16 +630,33 @@ def _evaluate_acquired(
                 fold.bound_start,
                 fold.bound_contract,
                 terminal_done,
+                done_conditions,
+                not fold.protocol_11_seen,
             )
             if live.pr is not None:
                 current["bound_pr"] = live.pr.get("html_url")
                 current["bound_pr_head_sha"] = live.pr.get("head", {}).get("sha")
-            if live.diagnostics:
+            if fold.protocol_11_seen and live.merged_at is not None:
+                safe_retry_urls = {
+                    alias.url
+                    for observations in fold.ids.values()
+                    for observation in observations
+                    for alias in observation.aliases
+                }
+                diagnostics = _terminal_violations(
+                    [*fold.diagnostics, *live.diagnostics], fold.recognized_comments,
+                    live.merged_at, safe_retry_urls, True,
+                )
+                diagnostics.sort(key=lambda item: item.token != "terminal_violation")
+                if diagnostics:
+                    return StatusResult(issue_url, "halt", diagnostics, current)
+            elif live.diagnostics:
+                return StatusResult(issue_url, "halt", [*fold.diagnostics, *live.diagnostics], current)
+            if fold.protocol_11_seen and revision_mismatch:
                 return StatusResult(
-                    issue_url,
-                    "halt",
-                    [*fold.diagnostics, *live.diagnostics],
-                    current,
+                    issue_url, "halt",
+                    [_diagnostic("invalid_transition", terminal_done.comment.url,
+                                 effective_revision(fold).comment.url)], current,
                 )
             if live.terminal_at is not None:
                 safe_retry_urls = {
@@ -672,11 +666,8 @@ def _evaluate_acquired(
                     if len(observation.alias_urls) > 1
                     for url in observation.alias_urls
                 }
-                diagnostics = _terminal_violations(
-                    fold.diagnostics,
-                    fold.recognized_comments,
-                    live.terminal_at,
-                    safe_retry_urls,
+                diagnostics = [] if fold.protocol_11_seen else _terminal_violations(
+                    fold.diagnostics, fold.recognized_comments, live.terminal_at, safe_retry_urls,
                 )
                 return StatusResult(
                     issue_url,
@@ -727,10 +718,8 @@ def _evaluate_acquired(
                 _pending_evidence_urls=tuple(live.pending_evidence_urls),
                 _native_merge_observed=False if live.pending_evidence_urls else None,
             )
-
         if fold.diagnostics:
             return StatusResult(issue_url, "halt", list(fold.diagnostics), current)
-
         branch = client.branch(parsed.owner, parsed.repo, branch_name)
         observed_candidates = client.pull_requests(parsed.owner, parsed.repo, branch_name)
         invalid_candidates = [
@@ -800,8 +789,6 @@ def _evaluate_acquired(
         return StatusResult(issue_url, "in_progress", [], current)
     except AcquisitionError as error:
         return _acquisition(issue_url, error)
-
-
 def _issue_snapshot_key(issue: dict[str, Any]) -> tuple[int, str, str]:
     issue_id = issue.get("id")
     created_at = issue.get("created_at")
@@ -809,8 +796,6 @@ def _issue_snapshot_key(issue: dict[str, Any]) -> tuple[int, str, str]:
     if not isinstance(issue_id, int) or not isinstance(created_at, str) or not isinstance(updated_at, str):
         raise AcquisitionError(str(issue.get("url", "issue")), "issue snapshot fields missing")
     return issue_id, created_at, updated_at
-
-
 def _repository_snapshot_key(
     repository: dict[str, Any], resource: str
 ) -> tuple[int, str, str]:
@@ -824,8 +809,6 @@ def _repository_snapshot_key(
     ):
         raise AcquisitionError(resource, "repository snapshot fields missing")
     return repo_id, full_name, default_branch
-
-
 def evaluate_issue(client: GitHubClient, issue_url: str) -> StatusResult:
     parsed = parse_github_url(issue_url, "issue")
     if parsed is None:
@@ -847,8 +830,12 @@ def evaluate_issue(client: GitHubClient, issue_url: str) -> StatusResult:
         comments = client.comments(parsed.owner, parsed.repo, parsed.number or 0)
     except AcquisitionError as error:
         return _acquisition(issue_url, error)
-
+    protocol_version = "1.1" if any(
+        classify_carrier(comment.body).observed_gtp == "1.1" for comment in comments
+    ) else "1.0"
     result = _evaluate_acquired(client, issue_url, parsed, repository, issue, comments)
+    result._effective_done_conditions = result.current.pop("_effective_done_conditions", {})
+    result.protocol_version = protocol_version
     if result.state is None:
         return result
     try:
@@ -863,5 +850,7 @@ def evaluate_issue(client: GitHubClient, issue_url: str) -> StatusResult:
         if _issue_snapshot_key(issue_after) != initial_key:
             raise AcquisitionError(issue_url, "issue snapshot changed during acquisition")
     except AcquisitionError as error:
-        return _acquisition(issue_url, error)
+        result = _acquisition(issue_url, error)
+        result.protocol_version = protocol_version
+        return result
     return result

@@ -1,29 +1,20 @@
-"""Strict JSON parsing and closed GTP v1 Record validation."""
-
+"""Strict JSON parsing and closed GTP Record validation."""
 from __future__ import annotations
-
 import json
 import re
 import unicodedata
 from typing import Any
 from urllib.parse import urlsplit
-
 from .urls import parse_github_url
-
-
 UUID_V4 = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
 )
 FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
 CONDITION_ID = re.compile(r"^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$")
-
-
 class DuplicateKeyError(ValueError):
     def __init__(self, key: str):
         super().__init__(f"duplicate key: {key}")
         self.key = key
-
-
 def _pairs_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
@@ -31,8 +22,6 @@ def _pairs_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
             raise DuplicateKeyError(key)
         result[key] = value
     return result
-
-
 def strict_json_loads(source: str) -> tuple[Any | None, list[dict[str, str]]]:
     try:
         value = json.loads(
@@ -45,15 +34,11 @@ def strict_json_loads(source: str) -> tuple[Any | None, list[dict[str, str]]]:
     except (json.JSONDecodeError, ValueError) as error:
         return None, [{"code": "invalid_json", "path": "$", "message": str(error)}]
     return value, []
-
-
 def _error(errors: list[dict[str, str]], code: str, path: str, message: str | None = None) -> None:
     item = {"code": code, "path": path}
     if message:
         item["message"] = message
     errors.append(item)
-
-
 def _closed_object(
     value: object,
     path: str,
@@ -69,8 +54,6 @@ def _closed_object(
     for field in sorted(required - set(value)):
         _error(errors, "missing_field", f"{path}.{field}")
     return value
-
-
 def _clean_text(value: object) -> bool:
     return (
         isinstance(value, str)
@@ -78,8 +61,6 @@ def _clean_text(value: object) -> bool:
         and value == value.strip()
         and not any(unicodedata.category(char) == "Cc" for char in value)
     )
-
-
 def _scope_path_valid(value: object) -> bool:
     if (
         not isinstance(value, str)
@@ -94,17 +75,31 @@ def _scope_path_valid(value: object) -> bool:
     core = value[:-1] if directory else value
     segments = core.split("/")
     return bool(core) and all(segment and segment not in {".", ".."} for segment in segments)
-
-
 def _validate_envelope(record: dict[str, Any], errors: list[dict[str, str]]) -> None:
-    if record.get("gtp") != "1.0":
+    versions = {"1.0": {"contract", "start", "done", "stop"}, "1.1": {"contract", "start", "amendment", "done", "stop"}}
+    version = record.get("gtp")
+    if version not in {"1.0", "1.1"}:
         _error(errors, "invalid_value", "$.gtp")
-    if record.get("type") not in {"contract", "start", "done", "stop"}:
+    if record.get("type") not in versions.get(version, set()):
         _error(errors, "invalid_value", "$.type")
     if not isinstance(record.get("id"), str) or not UUID_V4.fullmatch(record["id"]):
         _error(errors, "invalid_value", "$.id")
-
-
+def _validate_conditions(record: dict[str, Any], errors: list[dict[str, str]]) -> None:
+    conditions = record.get("done_conditions")
+    if not isinstance(conditions, dict) or not conditions:
+        _error(errors, "invalid_type", "$.done_conditions", "expected non-empty object")
+        return
+    for condition_id, condition in conditions.items():
+        base = f"$.done_conditions.{condition_id}"
+        if not CONDITION_ID.fullmatch(condition_id):
+            _error(errors, "invalid_condition_id", base)
+        item = _closed_object(condition, base, {"text", "evidence_kind"}, {"text", "evidence_kind"}, errors)
+        if item is None:
+            continue
+        if not _clean_text(item.get("text")):
+            _error(errors, "invalid_value", f"{base}.text")
+        if item.get("evidence_kind") not in {"check", "artifact"}:
+            _error(errors, "invalid_value", f"{base}.evidence_kind")
 def _validate_contract(record: dict[str, Any], errors: list[dict[str, str]]) -> None:
     if not _clean_text(record.get("goal")):
         _error(errors, "invalid_value", "$.goal")
@@ -121,23 +116,7 @@ def _validate_contract(record: dict[str, Any], errors: list[dict[str, str]]) -> 
                 _error(errors, "duplicate_value", path)
             else:
                 seen.add(item)
-    conditions = record.get("done_conditions")
-    if not isinstance(conditions, dict) or not conditions:
-        _error(errors, "invalid_type", "$.done_conditions", "expected non-empty object")
-        return
-    for condition_id, condition in conditions.items():
-        base = f"$.done_conditions.{condition_id}"
-        if not CONDITION_ID.fullmatch(condition_id):
-            _error(errors, "invalid_condition_id", base)
-        item = _closed_object(condition, base, {"text", "evidence_kind"}, {"text", "evidence_kind"}, errors)
-        if item is None:
-            continue
-        if not _clean_text(item.get("text")):
-            _error(errors, "invalid_value", f"{base}.text")
-        if item.get("evidence_kind") not in {"check", "artifact"}:
-            _error(errors, "invalid_value", f"{base}.evidence_kind")
-
-
+    _validate_conditions(record, errors)
 def _validate_start(record: dict[str, Any], errors: list[dict[str, str]]) -> None:
     if parse_github_url(record.get("contract_ref"), "comment") is None:
         _error(errors, "invalid_url", "$.contract_ref")
@@ -149,9 +128,13 @@ def _validate_start(record: dict[str, Any], errors: list[dict[str, str]]) -> Non
         or (parsed is not None and (parsed.scheme or parsed.netloc))
     ):
         _error(errors, "invalid_value", "$.branch")
-
-
 def _validate_done(record: dict[str, Any], errors: list[dict[str, str]]) -> None:
+    if record.get("gtp") == "1.1":
+        if parse_github_url(record.get("revision_ref"), "comment") is None:
+            _error(errors, "invalid_url", "$.revision_ref")
+        previous = record.get("previous_done_ref")
+        if previous is not None and parse_github_url(previous, "comment") is None:
+            _error(errors, "invalid_url", "$.previous_done_ref")
     if parse_github_url(record.get("pr_ref"), "pr") is None:
         _error(errors, "invalid_url", "$.pr_ref")
     head_sha = record.get("head_sha")
@@ -167,8 +150,10 @@ def _validate_done(record: dict[str, Any], errors: list[dict[str, str]]) -> None
             _error(errors, "invalid_condition_id", path)
         if parse_github_url(url, "check") is None and parse_github_url(url, "artifact") is None:
             _error(errors, "invalid_url", path)
-
-
+def _validate_amendment(record: dict[str, Any], errors: list[dict[str, str]]) -> None:
+    if parse_github_url(record.get("predecessor_ref"), "comment") is None:
+        _error(errors, "invalid_url", "$.predecessor_ref")
+    _validate_conditions(record, errors)
 def _validate_stop(record: dict[str, Any], errors: list[dict[str, str]]) -> None:
     reason = record.get("reason")
     successor = record.get("successor_ref")
@@ -180,28 +165,31 @@ def _validate_stop(record: dict[str, Any], errors: list[dict[str, str]]) -> None
             _error(errors, "invalid_url", "$.successor_ref")
     else:
         _error(errors, "invalid_value", "$.reason")
-
-
 RECORD_FIELDS = {
     "contract": {"gtp", "type", "id", "goal", "scope", "done_conditions"},
     "start": {"gtp", "type", "id", "contract_ref", "branch"},
     "done": {"gtp", "type", "id", "pr_ref", "head_sha", "evidence"},
     "stop": {"gtp", "type", "id", "reason", "successor_ref"},
 }
-
-
+RECORD_FIELDS_11 = {
+    **{kind: fields for kind, fields in RECORD_FIELDS.items() if kind != "done"},
+    "amendment": {"gtp", "type", "id", "predecessor_ref", "done_conditions"},
+    "done": {"gtp", "type", "id", "revision_ref", "previous_done_ref", "pr_ref", "head_sha", "evidence"},
+}
 def validate_record(value: object) -> list[dict[str, str]]:
     errors: list[dict[str, str]] = []
     if not isinstance(value, dict):
         return [{"code": "invalid_type", "path": "$", "message": "expected object"}]
     record_type = value.get("type")
-    allowed = RECORD_FIELDS.get(record_type, {"gtp", "type", "id"})
+    allowed = (RECORD_FIELDS_11 if value.get("gtp") == "1.1" else RECORD_FIELDS).get(record_type, {"gtp", "type", "id"})
     record = _closed_object(value, "$", allowed, allowed, errors)
     if record is None:
         return errors
     _validate_envelope(record, errors)
     if record_type == "contract":
         _validate_contract(record, errors)
+    elif record_type == "amendment":
+        _validate_amendment(record, errors)
     elif record_type == "start":
         _validate_start(record, errors)
     elif record_type == "done":

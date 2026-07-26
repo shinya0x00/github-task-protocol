@@ -22,6 +22,8 @@ MATRIX = json.loads(
     )
 )
 PROJECT = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+SOURCE_PACKAGE_VERSION = "1.0.4"
+SOURCE_PROTOCOL_VERSION = "1.1"
 PUBLISHED_CLI_VERSION = "1.0.3"
 PUBLISHED_CANDIDATE = "70fab3aacf8637bc1255459afb5efec7a5cf48ee"
 PUBLIC_RELEASE_EVIDENCE = "acceptance/public-release-v1.0.3.json"
@@ -134,6 +136,16 @@ def _workflow_job(workflow: str, name: str) -> str:
     return match.group("body")
 
 
+def _install_commands(text: str) -> list[tuple[str, str, str]]:
+    matches = re.findall(
+        r'^uvx --from "?github-task-protocol==([^" ]+)"? '
+        r"gtp (status|check) (.+)$",
+        text,
+        flags=re.MULTILINE,
+    )
+    return [(version, command, argument) for version, command, argument in matches]
+
+
 class ReleaseSurfaceTests(unittest.TestCase):
     def test_private_planning_metadata_is_absent(self) -> None:
         marker = "doc" + "trine"
@@ -156,10 +168,9 @@ class ReleaseSurfaceTests(unittest.TestCase):
     def test_readme_requires_explicit_setup_request_before_mutation(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertLessEqual(len(readme.splitlines()), MATRIX["budgets"]["README.md"])
-        introduction = readme.split("## 4つのRecord", 1)[0]
-        self.assertIn("## 推奨: 明示的にsetupを依頼", introduction)
+        introduction = readme.split("## CLIは任意の検証器", 1)[0]
         self.assertIn(
-            "bare GTP repository URLだけではsetup依頼にもrepository変更のauthorizationにもなりません",
+            "bare repository URLだけではsetup依頼にも変更authorizationにもなりません",
             introduction,
         )
         self.assertIn(
@@ -170,40 +181,26 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn("latest stable Release", introduction)
         self.assertIn("`draft: false`", introduction)
         self.assertIn("`prerelease: false`", introduction)
-        self.assertIn("tagをcommit SHAまでdereference", introduction)
-        self.assertIn("そのcommitの`GTP.md`だけ", introduction)
-        self.assertIn(
-            "https://raw.githubusercontent.com/shinya0x00/"
-            "github-task-protocol/<commit-sha>/GTP.md",
-            introduction,
-        )
-        self.assertIn("上書きせず停止", introduction)
-        self.assertIn("`gtp/setup-<tag>-<short-sha>`", introduction)
-        branch_guard = introduction.index("target fileを変更する前に")
-        vendor = introduction.index("そのcommitの`GTP.md`だけ")
-        adapter = introduction.index("root `AGENTS.md`がなければ作成")
+        self.assertIn("tagをexact commit SHAへ固定", introduction)
+        self.assertIn("固定commitの`GTP.md`だけ", introduction)
+        self.assertIn("異なる既存`GTP.md`を上書きしない", introduction)
+        branch_guard = introduction.index("target fileを変える前に")
+        vendor = introduction.index("固定commitの`GTP.md`だけ")
+        adapter = introduction.index("既存instructionを変更・削除せず")
         self.assertLess(branch_guard, vendor)
         self.assertLess(branch_guard, adapter)
-        self.assertIn("現在branchがdefault branchではなくsetup branch", introduction)
-        self.assertIn("commitとpushはsetup branchだけ", introduction)
-        self.assertIn("setup開始前に記録したSHA", introduction)
-        self.assertIn("GitHub branch protectionまたはruleset", introduction)
-        self.assertIn(
-            "agentが手順を理解できることと、実行中ずっと意図の境界内に留まり続けることは別の能力",
-            introduction,
-        )
-        self.assertIn("GTP単独の強制力はこの手順の受入対象にしません", introduction)
-        self.assertIn("setup agentは保護設定を変更せず", introduction)
+        self.assertIn("setup branchだけをcommit、push", introduction)
         self.assertIn("Draft setup PR", introduction)
-        self.assertIn("人間がsetup PRをmergeするまで導入完了としません", introduction)
-        manual = introduction.split("## 手動導入", 1)[1]
-        steps = re.findall(r"^[1-3]\. ", manual, flags=re.MULTILINE)
-        self.assertEqual(3, len(steps))
+        self.assertIn("人がsetup PRをmergeしてから", introduction)
         self.assertIn("[`GTP.md`](GTP.md)", readme)
         self.assertIn("人間がGTPを使うためにCLIをinstallする必要はありません", readme)
-        self.assertIn(
-            "uvx --from github-task-protocol==1.0.3 gtp status",
-            readme,
+        commands = _install_commands(readme)
+        self.assertEqual(2, len(commands))
+        self.assertEqual({"status", "check"}, {command for _, command, _ in commands})
+        version_tokens = {version for version, _, _ in commands}
+        self.assertEqual(1, len(version_tokens))
+        self.assertIsNone(
+            re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", next(iter(version_tokens)))
         )
         self.assertNotIn("package registryへ一般公開していません", readme)
         self.assertNotIn("![", readme)
@@ -262,7 +259,6 @@ class ReleaseSurfaceTests(unittest.TestCase):
             )
             self.assertEqual(0, case["mutation_callbacks"]["commits"])
             self.assertEqual(0, case["mutation_callbacks"]["pushes"])
-            self.assertIn(f"`{case['result']}`", readme)
             if case["continue_setup"]:
                 self.assertIsInstance(case["expected_display"], str)
             else:
@@ -281,21 +277,12 @@ class ReleaseSurfaceTests(unittest.TestCase):
             "test／mock providerによるproduction代用",
             external["expected_display"]["何を直さないか"],
         )
-        preflight = readme.index("### file・branch変更前のpreflight")
-        branch_creation = readme.index("target fileを変更する前にrepositoryのdefault branch")
-        self.assertLess(preflight, branch_creation)
-        for label in blocker_labels:
-            self.assertIn(f"「{label}」", readme)
-        self.assertIn(
-            "test／mock providerでproduction dependencyを代用せず", readme
-        )
-        self.assertIn(
-            "working tree、branch、commit、push、Issue、comment、label、PRを変更せず",
-            readme,
-        )
-        self.assertIn("repair Issueも自動作成しません", readme)
-        self.assertIn("owner URLはread-only取得で確認できた場合だけ", readme)
-        self.assertIn("`修正先Issue未確認`", readme)
+        self.assertIn("fileやbranchを変える前に", readme)
+        self.assertIn("read-onlyで確認", readme)
+        self.assertIn("自動統合せず", readme)
+        design = (ROOT / "DESIGN.md").read_text(encoding="utf-8")
+        self.assertIn("setup preflight", design)
+        self.assertIn("read-onlyで取得", design)
 
     def test_verification_mode_requires_explicit_policy(self) -> None:
         # (blob_readable, required) -> mode
@@ -675,7 +662,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
 
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         branch_first_requires_no_direct_push = (
-            "default branchへ直接pushしない" in readme
+            "setup branchだけをcommit、push" in readme
         )
         observed_branch_first_compliance = not attempt[
             "default_branch_direct_push_observed"
@@ -717,7 +704,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertFalse(run["claim_boundary"]["version_1_0_2_published"])
         self.assertFalse(run["claim_boundary"]["merge_authority"])
 
-    def test_readme_copies_the_canonical_adapter_exactly(self) -> None:
+    def test_readme_points_to_the_canonical_adapter(self) -> None:
         spec = (ROOT / "GTP.md").read_text(encoding="utf-8")
         adapter = next(
             line
@@ -725,7 +712,8 @@ class ReleaseSurfaceTests(unittest.TestCase):
             if line.startswith("> このrepositoryはrootの`GTP.md`")
         )
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertIn(adapter, readme)
+        self.assertIn("[`GTP.md`](GTP.md) §16のadapter文", readme)
+        self.assertIn("protocol versionに対応するRecord", adapter)
 
     def test_root_surface_and_line_budgets(self) -> None:
         for required in MATRIX["required_root"]:
@@ -741,6 +729,204 @@ class ReleaseSurfaceTests(unittest.TestCase):
             for path in (ROOT / "src" / "gtp").glob("*.py")
         )
         self.assertLessEqual(production, MATRIX["budgets"]["production_python"])
+
+    def test_baseline_and_budgets_are_explicit(self) -> None:
+        self.assertEqual(
+            {"README.md": 131, "GTP.md": 368, "production_python": 2500},
+            MATRIX["baselines"],
+        )
+        self.assertEqual(
+            {"README.md": 150, "GTP.md": 400, "production_python": 2500},
+            MATRIX["budgets"],
+        )
+        for surface, baseline in MATRIX["baselines"].items():
+            self.assertLessEqual(baseline, MATRIX["budgets"][surface])
+
+    def test_package_and_protocol_versions_are_separate(self) -> None:
+        self.assertEqual(
+            {
+                "package": {
+                    "value": SOURCE_PACKAGE_VERSION,
+                    "scheme": "Python packaging version identifier",
+                    "semver_compatibility_claim": False,
+                    "publication_claim": False,
+                },
+                "protocol": {
+                    "value": SOURCE_PROTOCOL_VERSION,
+                    "prior": "1.0",
+                    "prior_meaning_changed": False,
+                },
+            },
+            MATRIX["versions"],
+        )
+        self.assertEqual(SOURCE_PACKAGE_VERSION, PROJECT["version"])
+        self.assertEqual(SOURCE_PACKAGE_VERSION, gtp.__version__)
+        self.assertNotEqual(SOURCE_PACKAGE_VERSION, SOURCE_PROTOCOL_VERSION)
+        spec = (ROOT / "GTP.md").read_text(encoding="utf-8")
+        self.assertIn("protocol 1.0のRecord typeは4種類", spec)
+        self.assertIn("protocol 1.1は`amendment`を加えた5種類", spec)
+        self.assertIn('`gtp`は文字列`"1.0"`または`"1.1"`だけを許す', spec)
+        notes = (ROOT / "acceptance" / "release-notes-v1.0.4.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("Python packagingのversion identifier", notes)
+        self.assertIn("Semantic Versioningのpatch互換性をClaimしない", notes)
+        adr = (
+            ROOT / "adr" / "0038-protocol-1-1-revisions-and-package-versioning.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("https://packaging.python.org/en/latest/specifications/version-specifiers/", adr)
+        self.assertIn("https://semver.org/", adr)
+
+    def test_existing_instruction_vocabulary_is_not_protocol_owned(self) -> None:
+        current_public_paths = [
+            "GTP.md",
+            "README.md",
+            "DESIGN.md",
+            "adr/0037-separate-private-instructions-from-public-records.md",
+            "adr/0038-protocol-1-1-revisions-and-package-versioning.md",
+            "adr/0039-existing-instructions-and-issue-lifecycle-boundary.md",
+            "acceptance/release-notes-v1.0.4.md",
+        ]
+        forbidden = (
+            "Repository " + "policy",
+            "Issue lifecycle " + "profile",
+            "decision " + "log",
+        )
+        for relative_path in current_public_paths:
+            text = (ROOT / relative_path).read_text(encoding="utf-8")
+            for term in forbidden:
+                self.assertNotIn(term.lower(), text.lower(), relative_path)
+        spec = (ROOT / "GTP.md").read_text(encoding="utf-8")
+        self.assertIn("既に所有するinstructionsやrulesを定義、検証、上書きしない", spec)
+        self.assertIn("valid Contractが通常のGTP lifecycleを開始する", spec)
+
+    def test_public_record_disclosure_boundary(self) -> None:
+        evidence_path = ROOT / "acceptance" / "v1.0.4" / "public-record-disclosure.json"
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        serialized = json.dumps(evidence, ensure_ascii=False, sort_keys=True)
+        self.assertIsInstance(evidence, dict)
+        self.assertEqual("gtp-public-record-disclosure-v1", evidence["schema"])
+        self.assertFalse(evidence["canary"]["plaintext_stored"])
+        self.assertEqual(0, evidence["canary"]["match_count"])
+        self.assertFalse(evidence["publication_authority_inferred"])
+        for target in evidence["inspected_targets"]:
+            self.assertIn(target["credential_match_count"], {None, 0})
+            self.assertIn(target["private_data_match_count"], {None, 0})
+        self.assertIn("credential", serialized.lower())
+        self.assertIn("private", serialized.lower())
+        for forbidden in (
+            "/Users/",
+            "ghp_",
+            "github_pat_",
+            "-----BEGIN PRIVATE KEY-----",
+        ):
+            self.assertNotIn(forbidden, serialized)
+        notes = (ROOT / "acceptance" / "release-notes-v1.0.4.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("credential、private prompt", notes)
+        self.assertIn("内部診断の原文は転記しない", notes)
+
+    def test_candidate_metadata_is_safe_before_and_after_publication(self) -> None:
+        self.assertEqual(
+            {
+                "source_package_version": SOURCE_PACKAGE_VERSION,
+                "verified_install_sources": [
+                    "GitHub latest stable Release",
+                    "PyPI",
+                ],
+                "requires_version_agreement": True,
+                "safe_before_publication": True,
+                "safe_after_publication": True,
+                "publication_claim": False,
+            },
+            MATRIX["public_metadata_boundary"],
+        )
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        commands = _install_commands(readme)
+        self.assertEqual(2, len(commands))
+        self.assertEqual({"$VERSION"}, {version for version, _, _ in commands})
+        self.assertIn("latest stable Release", readme)
+        self.assertIn("PyPIのversion page", readme)
+        self.assertIn("両方で同じ値", readme)
+        self.assertIn(
+            f"Python distribution versionは`{SOURCE_PACKAGE_VERSION}`", readme
+        )
+        self.assertIn(
+            "この値はpublicationのEvidenceでも、"
+            "exact source commitのidentityでもありません",
+            readme,
+        )
+        self.assertIn("source metadataのpackage versionは配布候補の識別子", readme)
+        self.assertNotIn(
+            "pypi.org/project/github-task-protocol/1.0.4", readme.lower()
+        )
+        self.assertNotIn("releases/tag/v1.0.4", readme.lower())
+        notes = (ROOT / "acceptance" / "release-notes-v1.0.4.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("公開前後のどちらでもこの意味は変わらない", notes)
+        self.assertIn("CIにpublish jobは置かない", notes)
+
+    def test_v104_candidate_manifest_is_complete(self) -> None:
+        expected_acceptance = [
+            "acceptance/v1.0.4/walking-skeleton.json",
+            "acceptance/v1.0.4/live-paths.json",
+            "acceptance/v1.0.4/public-record-disclosure.json",
+            "acceptance/v1.0.4/release-candidate.json",
+        ]
+        self.assertEqual(expected_acceptance, MATRIX["acceptance_v1_0_4"])
+        manifest = set(build_backend.SDIST_SOURCE_MANIFEST)
+        for relative_path in (
+            *expected_acceptance,
+            "acceptance/release-notes-v1.0.4.md",
+            *MATRIX["release_documents"]["decisions"],
+        ):
+            self.assertTrue((ROOT / relative_path).is_file(), relative_path)
+            self.assertIn(relative_path, manifest)
+
+    def test_v104_acceptance_keeps_unobserved_facts_pending(self) -> None:
+        live = json.loads(
+            (ROOT / "acceptance" / "v1.0.4" / "live-paths.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual("gtp-live-paths-v1", live["schema"])
+        self.assertEqual(
+            {"pending"},
+            {observation["status"] for observation in live["observations"].values()},
+        )
+        self.assertIsNone(live["mixed_history_fixture"]["pr"])
+        self.assertIsNone(live["mixed_history_fixture"]["done_10"])
+        self.assertIsNone(live["mixed_history_fixture"]["redone_11"])
+
+        candidate = json.loads(
+            (ROOT / "acceptance" / "v1.0.4" / "release-candidate.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual("gtp-release-candidate-v1", candidate["schema"])
+        self.assertEqual(
+            {"package": SOURCE_PACKAGE_VERSION, "protocol": SOURCE_PROTOCOL_VERSION},
+            candidate["versions"],
+        )
+        self.assertEqual(
+            {
+                "unit_tests": 162,
+                "GTP.md_lines": 368,
+                "README.md_lines": 131,
+                "production_python_lines": 2500,
+            },
+            candidate["baseline"],
+        )
+        self.assertIsNone(candidate["source_pr"])
+        statuses = {section["status"] for section in candidate["candidate"].values()}
+        self.assertLessEqual(statuses, {"pending", "success"})
+        self.assertIn("pending", statuses)
+        self.assertEqual(
+            {"native_merge": False, "tag": False, "github_release": False, "pypi": False},
+            candidate["publication"],
+        )
 
     def test_package_metadata_and_runtime_version_are_consistent(self) -> None:
         project = PROJECT
@@ -792,7 +978,10 @@ class ReleaseSurfaceTests(unittest.TestCase):
             "2026-07-26T03:47:49Z",
             current_evidence["public_validation"]["observed_at"],
         )
-        self.assertEqual("1.0.3", PROJECT["version"])
+        self.assertEqual(SOURCE_PACKAGE_VERSION, PROJECT["version"])
+        self.assertNotEqual(
+            PROJECT["version"], current_evidence["pypi"]["package_version"]
+        )
         self.assertEqual(
             PUBLISHED_CLI_VERSION, current_evidence["pypi"]["package_version"]
         )
@@ -1050,22 +1239,12 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertFalse(evidence_pr["published_sdist_contains_this_evidence"])
         if _blob_at(PUBLISHED_CANDIDATE, "GTP.md") is not None:
             self.assertIsNone(_blob_at(PUBLISHED_CANDIDATE, PUBLIC_RELEASE_EVIDENCE))
-        readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertIn("CLI `1.0.3`は[PyPI]", readme)
-        self.assertIn(f"]({PYPI_RELEASE_URL})", readme)
-        self.assertIn(f"]({GITHUB_RELEASE_URL})", readme)
-        self.assertIn(PUBLIC_RELEASE_EVIDENCE, readme)
-        self.assertIn(
-            "`pyproject.toml`は、このsourceからbuildするpackage versionとして"
-            "`1.0.3`を宣言しています",
-            readme,
+        published_history = MATRIX["release_documents"]["published_history"]
+        self.assertEqual(PUBLISHED_CLI_VERSION, published_history["package_version"])
+        self.assertEqual(PUBLIC_RELEASE_EVIDENCE, published_history["evidence"])
+        self.assertEqual(
+            "acceptance/release-notes-v1.0.3.md", published_history["notes"]
         )
-        self.assertIn(
-            "この値はpublicationのEvidenceでも、exact source commitのidentityでもありません",
-            readme,
-        )
-        self.assertNotIn("source内容のidentity", readme)
-        self.assertNotIn("現在のsource candidate", readme)
         self.assertTrue((ROOT / "acceptance" / "release-notes-v1.0.2.md").exists())
         decisions = (ROOT / "DECISIONS.md").read_text(encoding="utf-8")
         self.assertIn(
@@ -1073,77 +1252,64 @@ class ReleaseSurfaceTests(unittest.TestCase):
             decisions,
         )
 
-    def test_v103_release_documents_are_time_stable(self) -> None:
+    def test_release_documents_keep_published_history_distinct(self) -> None:
         self.assertEqual(
             {
                 "current_design": "DESIGN.md",
-                "decision": "adr/0036-reproducible-release-artifacts.md",
-                "notes": "acceptance/release-notes-v1.0.3.md",
+                "decisions": [
+                    "adr/0036-reproducible-release-artifacts.md",
+                    "adr/0037-separate-private-instructions-from-public-records.md",
+                    "adr/0038-protocol-1-1-revisions-and-package-versioning.md",
+                    "adr/0039-existing-instructions-and-issue-lifecycle-boundary.md",
+                ],
+                "candidate_notes": "acceptance/release-notes-v1.0.4.md",
+                "published_history": {
+                    "package_version": PUBLISHED_CLI_VERSION,
+                    "notes": "acceptance/release-notes-v1.0.3.md",
+                    "evidence": PUBLIC_RELEASE_EVIDENCE,
+                },
             },
             MATRIX["release_documents"],
         )
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn(
-            "`pyproject.toml`は、このsourceからbuildするpackage versionとして"
-            "`1.0.3`を宣言しています",
+            f"このsource treeのPython distribution versionは`{SOURCE_PACKAGE_VERSION}`",
             readme,
         )
         self.assertIn(
-            "この値はpublicationのEvidenceでも、exact source commitのidentityでもありません",
+            "この値はpublicationのEvidenceでも、"
+            "exact source commitのidentityでもありません",
             readme,
         )
+        self.assertIn("source metadataのpackage versionは配布候補の識別子", readme)
         self.assertNotIn("source内容のidentity", readme)
-        public_commands = re.findall(
-            r"^uvx --from github-task-protocol==[^ ]+ gtp (?:status|check) .+$",
-            readme,
-            flags=re.MULTILINE,
+        commands = _install_commands(readme)
+        self.assertEqual(2, len(commands))
+        self.assertEqual({"status", "check"}, {command for _, command, _ in commands})
+        version_tokens = {version for version, _, _ in commands}
+        self.assertEqual(1, len(version_tokens))
+        self.assertIsNone(
+            re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", next(iter(version_tokens)))
         )
-        self.assertEqual(
-            [
-                "uvx --from github-task-protocol==1.0.3 gtp status <issue-url>",
-                "uvx --from github-task-protocol==1.0.3 gtp check <comment.md>",
-            ],
-            public_commands,
-        )
-        self.assertEqual(2, readme.count("github-task-protocol==1.0.3"))
+        self.assertNotIn("github-task-protocol==1.0.4", readme)
+        self.assertNotIn("github-task-protocol==1.0.3", readme)
         self.assertNotIn("github-task-protocol==1.0.2", readme)
-        self.assertNotIn("github-task-protocol==X.Y.Z", readme)
-        self.assertIn(
-            "https://pypi.org/project/github-task-protocol/X.Y.Z/", readme
-        )
-        self.assertIn(
-            "https://github.com/shinya0x00/github-task-protocol/"
-            "releases/tag/vX.Y.Z",
-            readme,
-        )
-        self.assertIn("両方が解決できることを確認した後だけです", readme)
-        self.assertIn("下の2つのcommandの`1.0.3`だけを", readme)
-        self.assertIn(PUBLIC_RELEASE_EVIDENCE, readme)
-        cli_section = readme.split("## CLIは任意の検証器", 1)[1].split(
-            "## 仕様と判断記録", 1
-        )[0]
-        for line in cli_section.splitlines():
-            if "1.0.3" not in line:
-                continue
-            for unstable_label in (
-                "latest",
-                "recommended",
-                "current",
-                "最新",
-                "推奨",
-                "現行",
-            ):
-                self.assertNotIn(unstable_label, line.lower())
-        for unstable in (
-            "現在のsource candidate",
-            "`1.0.3`（公開前）",
-            "まだ公開していない",
-            "利用commandは検証済みの`1.0.3`に固定",
-        ):
-            self.assertNotIn(unstable, readme)
+        self.assertIn("latest stable Release", readme)
+        self.assertIn("PyPI", readme)
+        self.assertIn("両方で同じ値", readme)
+        self.assertNotIn("現在のsource candidate", readme)
+        self.assertNotIn("まだ公開していない", readme)
 
         notes_path = ROOT / "acceptance" / "release-notes-v1.0.3.md"
         self.assertTrue(notes_path.exists())
+        self.assertEqual(
+            "f644c1df00649eaefc1c05b0ea422eb06a6d6a48fa16160f417734b56c9164d3",
+            hashlib.sha256(notes_path.read_bytes()).hexdigest(),
+        )
+        self.assertEqual(
+            "2665913379f413024dadbf1a00f0f67026b82114534e79a1eaa4eeb8cff5eb07",
+            hashlib.sha256((ROOT / PUBLIC_RELEASE_EVIDENCE).read_bytes()).hexdigest(),
+        )
         notes = notes_path.read_text(encoding="utf-8")
         self.assertIn("# GitHub Task Protocol 1.0.3 release notes", notes)
         self.assertIn("publicationをClaimしない", notes)
@@ -1161,6 +1327,13 @@ class ReleaseSurfaceTests(unittest.TestCase):
             "publication operation",
         ):
             self.assertIn(excluded, notes)
+        candidate_notes = (
+            ROOT / MATRIX["release_documents"]["candidate_notes"]
+        ).read_text(encoding="utf-8")
+        self.assertIn("package version `1.0.4`", candidate_notes)
+        self.assertIn("protocol version `1.1`", candidate_notes)
+        self.assertIn("Semantic Versioningのpatch互換性をClaimしない", candidate_notes)
+        self.assertIn("publicationをClaimせず", candidate_notes)
 
     def test_sdist_release_surface_is_explicit(self) -> None:
         self.assertEqual(
@@ -1184,6 +1357,11 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertFalse(any(path.startswith(".github/") for path in manifest))
         self.assertIn("adr/0036-reproducible-release-artifacts.md", manifest)
         self.assertIn("acceptance/release-notes-v1.0.3.md", manifest)
+        self.assertIn("acceptance/release-notes-v1.0.4.md", manifest)
+        for path in MATRIX["release_documents"]["decisions"]:
+            self.assertIn(path, manifest)
+        for path in MATRIX["acceptance_v1_0_4"]:
+            self.assertIn(path, manifest)
         for required in MATRIX["required_sdist"]:
             self.assertTrue(
                 required in manifest
@@ -1209,16 +1387,16 @@ class ReleaseSurfaceTests(unittest.TestCase):
             "Python 3.13",
             "90日",
         ):
-            self.assertIn(value, design)
             self.assertIn(value, adr)
-        self.assertIn("PR artifactは検証専用", design)
-        self.assertIn("main artifactだけを公開候補", design)
-        self.assertIn("同じmanifest oracle", design)
-        self.assertIn("merge tree", design)
-        self.assertIn("公開候補sdist／wheel", design)
-        self.assertIn("producer処理は実行しない", design)
-        self.assertIn("temporary directory", design)
-        self.assertIn("full 40文字のlowercase commit SHAだけ", design)
+        for value in (
+            "SOURCE_SHA",
+            "Python 3.11",
+            "Python 3.11、3.12、3.13",
+            "v1.0.4-pr-verification-<SOURCE_SHA>",
+            "v1.0.4-main-candidate-<SOURCE_SHA>",
+            "tag、GitHub Release、PyPIを変更しない",
+        ):
+            self.assertIn(value, design)
         self.assertIn("2つのclean source export", adr)
         self.assertIn("tag作成、GitHub Release、PyPI uploadは行わない", adr)
         self.assertIn("GTP Record、state、halt reason", adr)
@@ -1289,8 +1467,8 @@ class ReleaseSurfaceTests(unittest.TestCase):
         )
         self.assertEqual(
             {
-                "pull_request": "v1.0.3-pr-verification-<SOURCE_SHA>",
-                "main_push": "v1.0.3-main-candidate-<SOURCE_SHA>",
+                "pull_request": "v1.0.4-pr-verification-<SOURCE_SHA>",
+                "main_push": "v1.0.4-main-candidate-<SOURCE_SHA>",
                 "sidecars": ["BUILD-INFO", "SHA256SUMS"],
                 "retention_days": 90,
             },
@@ -1382,8 +1560,8 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn(
             'test "${{ needs.integration.result }}" = "success"', workflow
         )
-        self.assertIn("v1.0.3-pr-verification-${SOURCE_SHA}", workflow)
-        self.assertIn("v1.0.3-main-candidate-${SOURCE_SHA}", workflow)
+        self.assertIn("v1.0.4-pr-verification-${SOURCE_SHA}", workflow)
+        self.assertIn("v1.0.4-main-candidate-${SOURCE_SHA}", workflow)
         self.assertIn("retention-days: 90", workflow)
         self.assertIn("BUILD-INFO", workflow)
         self.assertIn("SHA256SUMS", workflow)

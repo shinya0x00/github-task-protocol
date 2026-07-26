@@ -1,0 +1,13 @@
+{
+  "claim": "A protocol 1.1 Contract and Start fire through the public status command's Carrier, schema, reducer, GitHub binding, status, and presentation path.",
+  "command": "PYTHONPATH=src python3 -m unittest discover -s tests -p test_cli.py -k protocol_11_walking_skeleton",
+  "expected": {
+    "exit_code": 0,
+    "state": "in_progress",
+    "goal": "Protocol 1.1 walking skeleton"
+  },
+  "limits": [
+    "This milestone proves real-path attachment only.",
+    "Amendment and re-Done feature depth is verified by later acceptance artifacts."
+  ]
+}

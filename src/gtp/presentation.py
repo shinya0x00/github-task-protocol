@@ -1,13 +1,8 @@
 """Plain-first Japanese and machine-exact CLI projections."""
-
 from __future__ import annotations
-
 from typing import Any
-
 from .carrier import CarrierResult
 from .status import StatusResult
-
-
 AUTHORITY_NOTICE = "この出力は変更・完了・mergeの許可を与えません"
 HALT_MESSAGES = {
     "invalid_record": "GTP Recordの形式、内容、編集状態のいずれかが不正です",
@@ -35,6 +30,7 @@ EVIDENCE_LIMITS = [
     "credential安全性",
     "GitHub外情報を参照しなかったこと",
 ]
+EVIDENCE_LIMITS_11 = ["Done Conditionが自然言語上・意味上満たされたこと", *EVIDENCE_LIMITS, "review・approval・authorization"]
 PROBLEM_LABELS = ("何が問題か", "どこが問題か", "なぜそう判断したか", "どこを直すか", "何を直さないか", "次の安全な一手", "最初に確認するURL", "解決したと判断する条件")
 HALT_PROBLEMS = {
     "invalid_record": ("対象IssueのGTP記録があるcomment", "最初のURLのcomment内容を確認し、過去commentは直さず、人間が必要ならStopと後継Issueを選ぶ（修正候補。根本的な修正責任は未確定）", "過去のIssue commentを編集・削除しない。GTPの仕様を変更しない", "最初のURLのcommentと前後のGTP記録をread-onlyで確認する", "過去commentを変更せず、人間判断後のvalid Stopで元Issueをstoppedにし、必要なら後継Issueで再開する"),
@@ -52,15 +48,11 @@ CHECK_PROBLEMS = {
     "schema": ("投稿前GTP Recordがclosed schemaに適合しません", "投稿前CarrierのRecord JSON", "error pathが示すschema不適合箇所（修正候補。根本的な修正責任は未確定）", "未確認のIssue、branch、PR、公開protocol vocabulary", "error codeとpathのfieldだけを修正してgtp checkを再実行する", "recognizedとschema_validがともにtrueになる"),
 }
 SCHEMA_ERROR_CODES = {"duplicate_value", "invalid_condition_id", "invalid_type", "invalid_url", "invalid_value", "missing_field", "unknown_field"}
-
-
 def _problem_lines(values: tuple[str, ...]) -> list[str]:
     return ["問題の整理:"] + [
         f"  {index}. {label}: {value}"
         for index, (label, value) in enumerate(zip(PROBLEM_LABELS, values), start=1)
     ]
-
-
 def _halt_observation(machine: dict[str, Any], token: str) -> str:
     diagnostics = machine.get("diagnostics")
     diagnostic = (
@@ -88,8 +80,6 @@ def _halt_observation(machine: dict[str, Any], token: str) -> str:
             )
         return f"PRに変更範囲外のfile {', '.join(safe_paths)}が含まれています"
     return HALT_OBSERVATIONS.get(token, "protocol上の不適合を観測しました")
-
-
 def _acquisition_observation(error: dict[str, Any] | None) -> str:
     code = (
         error.get("code", "acquisition_incomplete")
@@ -101,8 +91,6 @@ def _acquisition_observation(error: dict[str, Any] | None) -> str:
     if isinstance(status, int) and not isinstance(status, bool):
         observation += f"; status: {status}"
     return observation
-
-
 def _status_problem(machine: dict[str, Any]) -> tuple[str, ...] | None:
     if machine["state"] == "halt":
         token = machine["halt_reason"] or "unknown"
@@ -116,6 +104,12 @@ def _status_problem(machine: dict[str, Any]) -> tuple[str, ...] | None:
                 "同じresourceを再取得し、期待するstateまたは別Issueの確認条件を確認する",
             ),
         )
+        if machine.get("gtp") == "1.1" and token == "invalid_transition":
+            repair = "amendment後の旧Doneなら同じIssue・PRへre-Doneし、それ以外は人間がStopと後継Issueを選ぶ"
+            resolution = "current Doneがeffective revisionを指すre-Doneでhaltが消える、または後継Issueへ移る"
+        if machine.get("gtp") == "1.1" and token == "stale_evidence":
+            repair = "native merge前なら同じIssue・PRのcurrent headへre-Doneする"
+            resolution = "valid re-Doneでhaltが消える。merge済みなら同じIssueでは修復しない"
         if token == "invalid_binding":
             diagnostics = machine.get("diagnostics")
             diagnostic = (
@@ -177,8 +171,6 @@ def _status_problem(machine: dict[str, Any]) -> tuple[str, ...] | None:
             "取得がcompleteとなりstateを再構成できる",
         )
     return None
-
-
 def _check_problem(result: CarrierResult) -> tuple[str, ...] | None:
     if result.recognized and result.schema_valid:
         return None
@@ -208,8 +200,6 @@ def _check_problem(result: CarrierResult) -> tuple[str, ...] | None:
         "URLなし（投稿前入力）",
         resolution,
     )
-
-
 def _input_error_problem() -> tuple[str, ...]:
     return (
         "入力fileをUTF-8のMarkdown commentとして取得できません",
@@ -221,8 +211,6 @@ def _input_error_problem() -> tuple[str, ...]:
         "URLなし（投稿前入力）",
         "input_errorがなくなりCarrier検査結果を取得できる",
     )
-
-
 def _record(value: dict[str, Any] | None) -> dict[str, Any] | None:
     if value is None:
         return None
@@ -239,13 +227,9 @@ def _record(value: dict[str, Any] | None) -> dict[str, Any] | None:
     if isinstance(value.get("content"), dict):
         result["content"] = value["content"]
     return result
-
-
 def _content(record: dict[str, Any] | None) -> dict[str, Any]:
     value = record.get("content") if isinstance(record, dict) else None
     return value if isinstance(value, dict) else {}
-
-
 def _task_context(
     *,
     issue_url: str,
@@ -258,11 +242,13 @@ def _task_context(
     pr: str | None,
     pending_evidence_urls: tuple[str, ...],
     native_merge_observed: bool | None,
+    effective_done_conditions: dict[str, Any] | None = None,
+    protocol_version: str = "1.0",
 ) -> dict[str, Any]:
     contract_content = _content(contract)
     start_content = _content(start)
     done_content = _content(done)
-    done_conditions = contract_content.get("done_conditions")
+    done_conditions = effective_done_conditions or contract_content.get("done_conditions")
     evidence = done_content.get("evidence")
     conditions: dict[str, dict[str, Any]] = {}
     if isinstance(done_conditions, dict):
@@ -280,7 +266,6 @@ def _task_context(
                     "presented" if isinstance(evidence_url, str) else "not_presented"
                 ),
             }
-
     not_proven: list[str] = []
     if not acquisition_complete:
         not_proven.append("GitHub情報の取得が不完全なためtask context未確認")
@@ -310,7 +295,6 @@ def _task_context(
                 not_proven.append("protocol不適合が未解決")
             elif state == "stopped":
                 not_proven.append("このIssueは完了を証明せず停止済み")
-
     branch_name = branch.get("name") if isinstance(branch, dict) else None
     if not isinstance(branch_name, str):
         candidate = start_content.get("branch")
@@ -325,17 +309,13 @@ def _task_context(
         "pr": pr,
         "conditions": conditions,
         "not_proven": not_proven,
-        "evidence_limits": list(EVIDENCE_LIMITS),
+        "evidence_limits": list(EVIDENCE_LIMITS_11 if protocol_version == "1.1" else EVIDENCE_LIMITS),
     }
-
-
 def _branch(value: dict[str, Any] | None) -> dict[str, Any] | None:
     if value is None:
         return None
     observation = {"exists": value["exists"]} if "exists" in value else {}
     return {"name": value.get("name"), "observation": observation}
-
-
 def _next_action(result: StatusResult) -> str:
     if result.state is None:
         return "retry_acquisition"
@@ -356,8 +336,6 @@ def _next_action(result: StatusResult) -> str:
     if result.current.get("bound_pr") or result.current.get("pr_candidates"):
         return "post_done"
     return "continue_work"
-
-
 def _primary_url(result: StatusResult) -> str:
     if result.acquisition_errors:
         resource = result.acquisition_errors[0].get("resource")
@@ -377,8 +355,6 @@ def _primary_url(result: StatusResult) -> str:
         if isinstance(value, dict) and isinstance(value.get("url"), str):
             return value["url"]
     return result.issue_url
-
-
 def status_projection(result: StatusResult) -> dict[str, Any]:
     diagnostics = [item.projection() for item in result.diagnostics]
     current = result.current
@@ -400,8 +376,8 @@ def status_projection(result: StatusResult) -> dict[str, Any]:
         if isinstance(done_pr, str)
         else None
     )
-    return {
-        "gtp": "1.0",
+    machine = {
+        "gtp": result.protocol_version,
         "command": "status",
         "issue_url": result.issue_url,
         "state": result.state,
@@ -431,10 +407,13 @@ def status_projection(result: StatusResult) -> dict[str, Any]:
             pr=pr,
             pending_evidence_urls=result._pending_evidence_urls,
             native_merge_observed=result._native_merge_observed,
+            effective_done_conditions=result._effective_done_conditions,
+            protocol_version=result.protocol_version,
         ),
     }
-
-
+    if result.protocol_version == "1.1":
+        machine["amendment"] = _record(current.get("amendment"))
+    return machine
 def _plain_summary(machine: dict[str, Any], context: dict[str, Any]) -> list[str]:
     state = machine["state"]
     pending = state == "in_progress" and machine["next_action"] == "retry_acquisition"
@@ -471,7 +450,6 @@ def _plain_summary(machine: dict[str, Any], context: dict[str, Any]) -> list[str
         return lines
     if state == "halt":
         lines.append(f"  次にすること: 原因の記録を開いてください: {machine['primary_url']}")
-
     goal = context.get("goal")
     if isinstance(goal, str):
         scope = context.get("scope")
@@ -487,7 +465,6 @@ def _plain_summary(machine: dict[str, Any], context: dict[str, Any]) -> list[str
                 "（Issue本文・通常commentの意味は自動判定していません）",
             ]
         )
-
     conditions = context.get("conditions")
     if not isinstance(conditions, dict) or not conditions:
         lines.append("  ここまでが人向けの説明です。続くJSONは機械処理用です。")
@@ -532,8 +509,6 @@ def _plain_summary(machine: dict[str, Any], context: dict[str, Any]) -> list[str
         )
     lines.append("  ここまでが人向けの説明です。続くJSONは機械処理用です。")
     return lines
-
-
 def _status_text(machine: dict[str, Any]) -> list[str]:
     state = machine["state"] if machine["state"] is not None else "不明"
     action = machine["next_action"]
@@ -601,8 +576,6 @@ def _status_text(machine: dict[str, Any]) -> list[str]:
     if not isinstance(goal, str):
         return lines
     return lines
-
-
 def present_status(result: StatusResult) -> tuple[list[str], dict[str, Any]]:
     machine = status_projection(result)
     lines = _status_text(machine)
@@ -610,14 +583,12 @@ def present_status(result: StatusResult) -> tuple[list[str], dict[str, Any]]:
     if problem is not None:
         lines[6:6] = _problem_lines(problem)
     return lines, machine
-
-
 def check_projection(result: CarrierResult) -> dict[str, Any]:
     record = None
     if result.record is not None:
         record = {"type": result.record["type"], "id": result.record["id"]}
     return {
-        "gtp": "1.0",
+        "gtp": result.observed_gtp if result.observed_gtp in {"1.0", "1.1"} else "1.0",
         "command": "check",
         "recognized": result.recognized,
         "schema_valid": result.schema_valid,
@@ -627,8 +598,6 @@ def check_projection(result: CarrierResult) -> dict[str, Any]:
         "errors": result.errors,
         "authority": "none",
     }
-
-
 def present_check(result: CarrierResult) -> tuple[list[str], dict[str, Any]]:
     machine = check_projection(result)
     if not result.recognized:
@@ -646,8 +615,6 @@ def present_check(result: CarrierResult) -> tuple[list[str], dict[str, Any]]:
     if problem is not None:
         lines.extend(_problem_lines(problem))
     return lines, machine
-
-
 def present_input_error(message: str) -> tuple[list[str], dict[str, Any]]:
     lines = [
         "検査結果: 入力ファイルをUTF-8のMarkdown commentとして読めません",

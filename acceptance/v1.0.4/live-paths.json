@@ -1,0 +1,31 @@
+{
+  "schema": "gtp-live-paths-v1",
+  "owner_issue": "https://github.com/shinya0x00/github-task-protocol/issues/130",
+  "mixed_history_fixture": {
+    "issue": "https://github.com/shinya0x00/github-task-protocol/issues/135",
+    "contract": "https://github.com/shinya0x00/github-task-protocol/issues/135#issuecomment-5083134649",
+    "start": "https://github.com/shinya0x00/github-task-protocol/issues/135#issuecomment-5083136641",
+    "branch": "codex/issue-130-v1.0.4",
+    "pr": null,
+    "done_10": null,
+    "redone_11": null
+  },
+  "observations": {
+    "source_cli_1_0_4": {"status": "pending", "reason": "source PR and mixed Done chain are not yet available"},
+    "public_cli_1_0_3": {"status": "pending", "reason": "mixed Done chain is not yet available"}
+  },
+  "required_result": {
+    "source_cli_1_0_4": "in_progress with protocol 1.1 current Done",
+    "public_cli_1_0_3": "halt / invalid_record without fallback to protocol 1.0 Done",
+    "old_cli_exit_code": "record the observed value; fail closed is not defined as nonzero"
+  },
+  "transport_boundary": {
+    "allowed_http_method": "GET",
+    "mutation_callbacks": 0,
+    "before_after_snapshot_required": true
+  },
+  "limits": [
+    "The fixture observes one real mixed re-Done history; unit and HTTP fixtures cover the wider negative matrix.",
+    "A successful observation does not prove actor identity, authority, Evidence truth, or natural-language fulfillment."
+  ]
+}
