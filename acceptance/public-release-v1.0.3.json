@@ -295,6 +295,12 @@
     "latest_stable_release": "v1.0.3",
     "tag_target_matches_published_candidate": true
   },
+  "credential_boundary": {
+    "credential_value_published": false,
+    "credential_deleted": false,
+    "credential_updated": false,
+    "credential_shape_proves_validity_or_ownership": false
+  },
   "evidence_pr": {
     "url": "https://github.com/shinya0x00/github-task-protocol/pull/132",
     "head_sha": null,

@@ -863,6 +863,15 @@ class ReleaseSurfaceTests(unittest.TestCase):
             self.assertEqual(0, observation["http_non_get_count"])
             self.assertEqual(0, observation["mutation_callbacks"])
             self.assertTrue(observation["before_after_snapshot_equal"])
+        self.assertEqual(
+            {
+                "credential_value_published": False,
+                "credential_deleted": False,
+                "credential_updated": False,
+                "credential_shape_proves_validity_or_ownership": False,
+            },
+            current_evidence["credential_boundary"],
+        )
         published_candidate = current_evidence["published_candidate"]
         self.assertEqual(
             PUBLISHED_CANDIDATE, published_candidate["main_ci"]["head_sha"]
