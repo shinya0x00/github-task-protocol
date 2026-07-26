@@ -94,16 +94,16 @@ GitHub情報を完全に取得できない場合はstateを推測しません。
 
 人間がGTPを使うためにCLIをinstallする必要はありません。`gtp`はagentや自動検査がRecordと現在stateを確認するための、runtime dependency 0の任意toolです。
 
-CLI `1.0.2`は[PyPI](https://pypi.org/project/github-task-protocol/1.0.2/)と[GitHub Release](https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.2)へ公開済みです。再downloadとhash・clean install・live statusの検証結果は[`acceptance/public-release-v1.0.2.json`](acceptance/public-release-v1.0.2.json)にあります。GTPを使うだけならCLIのinstallは不要です。
+CLI `1.0.3`は[PyPI](https://pypi.org/project/github-task-protocol/1.0.3/)と[GitHub Release](https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.3)へ公開済みです。再downloadとhash・clean install・live statusの検証結果は[`acceptance/public-release-v1.0.3.json`](acceptance/public-release-v1.0.3.json)にあります。GTPを使うだけならCLIのinstallは不要です。
 
-`pyproject.toml`は、このsourceからbuildするpackage versionとして`1.0.3`を宣言しています。この値はpublicationのEvidenceでも、exact source commitのidentityでもありません。別の`X.Y.Z`を使うのは、[PyPIのversion page](https://pypi.org/project/github-task-protocol/X.Y.Z/)と[GitHub Release](https://github.com/shinya0x00/github-task-protocol/releases/tag/vX.Y.Z)の両方が解決できることを確認した後だけです。そのとき、下の2つのcommandの`1.0.2`だけを確認したexact versionに置き換えます。
+`pyproject.toml`は、このsourceからbuildするpackage versionとして`1.0.3`を宣言しています。この値はpublicationのEvidenceでも、exact source commitのidentityでもありません。別の`X.Y.Z`を使うのは、[PyPIのversion page](https://pypi.org/project/github-task-protocol/X.Y.Z/)と[GitHub Release](https://github.com/shinya0x00/github-task-protocol/releases/tag/vX.Y.Z)の両方が解決できることを確認した後だけです。そのとき、下の2つのcommandの`1.0.3`だけを確認したexact versionに置き換えます。
 
 ```console
-uvx --from github-task-protocol==1.0.2 gtp status <issue-url>
-uvx --from github-task-protocol==1.0.2 gtp check <comment.md>
+uvx --from github-task-protocol==1.0.3 gtp status <issue-url>
+uvx --from github-task-protocol==1.0.3 gtp check <comment.md>
 ```
 
-- 公開済み`1.0.2`の`status`はGitHubへGETだけを行い、日本語6項目の後にmachine JSONを出します。Evidenceの存在・種類・状態・source headとの結び付きを検査しますが、完了条件の自然言語上の充足までは自動判定しません。
+- 公開済み`1.0.3`の`status`はGitHubへGETだけを行い、日本語6項目の後にmachine JSONを出します。Evidenceの存在・種類・状態・source headとの結び付きを検査しますが、完了条件の自然言語上の充足までは自動判定しません。
 - source version `1.0.3`は、`state: halt`のとき先頭6項目の直後に8項目の「問題の整理」を表示します。
   この表示追加はmachine JSONのkey集合、exit code規則、`authority: none`を変更しません。
 - 未完了Check Runのstate、`next_action`、exit codeは、上記の非終端境界へ訂正します。

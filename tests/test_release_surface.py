@@ -22,7 +22,19 @@ MATRIX = json.loads(
     )
 )
 PROJECT = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
-PUBLISHED_CLI_VERSION = "1.0.2"
+PUBLISHED_CLI_VERSION = "1.0.3"
+PUBLISHED_CANDIDATE = "70fab3aacf8637bc1255459afb5efec7a5cf48ee"
+PUBLIC_RELEASE_EVIDENCE = "acceptance/public-release-v1.0.3.json"
+GITHUB_RELEASE_URL = (
+    "https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.3"
+)
+PYPI_RELEASE_URL = "https://pypi.org/project/github-task-protocol/1.0.3/"
+PUBLISHED_SDIST_SHA256 = (
+    "8fd00f8b8f90fef2207a0a6063d27bcbac5e1a99941bcad1400c1735810b9f89"
+)
+PUBLISHED_WHEEL_SHA256 = (
+    "5a45df28bec73443b6de76e0457503579d1227ca5db933fce700bf53599f7ecc"
+)
 ACCEPTANCE_CANDIDATE = "46103e0fdd41364f98e098518f6b91211fb1f5ea"
 RELEASE_LOCK_REQUIRED_ENV = "GTP_RELEASE_LOCK_REQUIRED"
 GIT_TIMEOUT_SECONDS = 10
@@ -190,7 +202,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn("[`GTP.md`](GTP.md)", readme)
         self.assertIn("人間がGTPを使うためにCLIをinstallする必要はありません", readme)
         self.assertIn(
-            "uvx --from github-task-protocol==1.0.2 gtp status",
+            "uvx --from github-task-protocol==1.0.3 gtp status",
             readme,
         )
         self.assertNotIn("package registryへ一般公開していません", readme)
@@ -769,31 +781,129 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertTrue(public_evidence["pypi"]["files_redownloaded_and_hashed"])
         self.assertNotEqual(PROJECT["version"], public_evidence["pypi"]["package_version"])
         current_evidence = json.loads(
-            (ROOT / "acceptance" / "public-release-v1.0.2.json").read_text(
-                encoding="utf-8"
-            )
+            (ROOT / PUBLIC_RELEASE_EVIDENCE).read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            "github-task-protocol-public-release-evidence/v1",
+            current_evidence["schema"],
         )
         self.assertEqual("1.0.3", PROJECT["version"])
         self.assertEqual(
             PUBLISHED_CLI_VERSION, current_evidence["pypi"]["package_version"]
         )
+        self.assertEqual(
+            PUBLISHED_CANDIDATE,
+            current_evidence["published_candidate"]["commit_sha"],
+        )
+        self.assertEqual(
+            PUBLISHED_CANDIDATE, current_evidence["tag"]["target_commit_sha"]
+        )
+        self.assertEqual(
+            GITHUB_RELEASE_URL, current_evidence["github_release"]["url"]
+        )
+        self.assertEqual(PYPI_RELEASE_URL, current_evidence["pypi"]["release_url"])
         self.assertTrue(current_evidence["github_release"]["published_at"])
         self.assertTrue(current_evidence["github_release"]["latest_stable"])
         self.assertTrue(current_evidence["pypi"]["files_redownloaded_and_hashed"])
+        expected_package_hashes = {
+            "github_task_protocol-1.0.3.tar.gz": PUBLISHED_SDIST_SHA256,
+            "github_task_protocol-1.0.3-py3-none-any.whl": PUBLISHED_WHEEL_SHA256,
+        }
+        for files in (
+            current_evidence["published_candidate"]["artifact"]["files"],
+            current_evidence["github_release"]["assets"],
+            current_evidence["pypi"]["files"],
+        ):
+            self.assertEqual(
+                expected_package_hashes,
+                {
+                    file["filename"]: file["sha256"]
+                    for file in files
+                    if file["filename"].endswith((".tar.gz", ".whl"))
+                },
+            )
         self.assertTrue(
             current_evidence["public_validation"][
-                "github_release_and_pypi_bytes_equal_to_build"
+                "candidate_github_release_pypi_sdist_bytes_equal"
+            ]
+        )
+        self.assertTrue(
+            current_evidence["public_validation"][
+                "candidate_github_release_pypi_wheel_bytes_equal"
             ]
         )
         self.assertEqual(
             "done",
-            current_evidence["public_validation"]["authenticated_live_status"][
+            current_evidence["public_validation"]["live_status"]["issue_91"][
                 "state"
             ],
         )
+        offline_check = current_evidence["public_validation"]["offline_check"]
+        self.assertEqual(1, offline_check["github_release_wheel_exit_code"])
+        self.assertEqual(1, offline_check["pypi_wheel_exit_code"])
+        self.assertTrue(offline_check["recognized"])
+        self.assertFalse(offline_check["schema_valid"])
+        self.assertEqual("invalid_carrier", offline_check["error_code"])
+        self.assertEqual("$", offline_check["error_path"])
+        self.assertEqual("none", offline_check["authority"])
+        live_status = current_evidence["public_validation"]["live_status"]
+        self.assertEqual("stale_evidence", live_status["issue_127"]["reason"])
+        self.assertEqual(
+            "https://github.com/shinya0x00/github-task-protocol/issues/127#issuecomment-5079094301",
+            live_status["issue_127"]["primary_url"],
+        )
+        self.assertEqual(
+            "https://github.com/shinya0x00/github-task-protocol/pull/92",
+            live_status["issue_91"]["primary_url"],
+        )
+        for observation in live_status.values():
+            if not isinstance(observation, dict):
+                continue
+            self.assertGreater(observation["http_get_count"], 0)
+            self.assertEqual(0, observation["http_non_get_count"])
+            self.assertEqual(0, observation["mutation_callbacks"])
+            self.assertTrue(observation["before_after_snapshot_equal"])
+        published_candidate = current_evidence["published_candidate"]
+        self.assertEqual(
+            PUBLISHED_CANDIDATE, published_candidate["main_ci"]["head_sha"]
+        )
+        self.assertEqual("push", published_candidate["main_ci"]["event"])
+        self.assertEqual("main", published_candidate["main_ci"]["head_branch"])
+        self.assertEqual(
+            f"v1.0.3-main-candidate-{PUBLISHED_CANDIDATE}",
+            published_candidate["artifact"]["name"],
+        )
+        self.assertEqual(
+            PUBLISHED_CANDIDATE,
+            published_candidate["artifact"]["build_conditions"]["source_sha"],
+        )
+        evidence_pr = current_evidence["evidence_pr"]
+        self.assertEqual(
+            "inspection_only_not_publication", evidence_pr["artifact_role"]
+        )
+        self.assertIsNone(evidence_pr["head_sha"])
+        self.assertEqual(
+            "Issue #102 Done Record and GitHub pull request metadata",
+            evidence_pr["final_head_owner"],
+        )
+        self.assertEqual(
+            [
+                "README.md",
+                PUBLIC_RELEASE_EVIDENCE,
+                "build_backend.py",
+                "tests/test_build_backend.py",
+                "tests/test_release_surface.py",
+            ],
+            evidence_pr["scope"],
+        )
+        self.assertFalse(evidence_pr["published_sdist_contains_this_evidence"])
+        if _blob_at(PUBLISHED_CANDIDATE, "GTP.md") is not None:
+            self.assertIsNone(_blob_at(PUBLISHED_CANDIDATE, PUBLIC_RELEASE_EVIDENCE))
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertIn("CLI `1.0.2`は[PyPI]", readme)
-        self.assertIn("public-release-v1.0.2.json", readme)
+        self.assertIn("CLI `1.0.3`は[PyPI]", readme)
+        self.assertIn(f"]({PYPI_RELEASE_URL})", readme)
+        self.assertIn(f"]({GITHUB_RELEASE_URL})", readme)
+        self.assertIn(PUBLIC_RELEASE_EVIDENCE, readme)
         self.assertIn(
             "`pyproject.toml`は、このsourceからbuildするpackage versionとして"
             "`1.0.3`を宣言しています",
@@ -839,13 +949,13 @@ class ReleaseSurfaceTests(unittest.TestCase):
         )
         self.assertEqual(
             [
-                "uvx --from github-task-protocol==1.0.2 gtp status <issue-url>",
-                "uvx --from github-task-protocol==1.0.2 gtp check <comment.md>",
+                "uvx --from github-task-protocol==1.0.3 gtp status <issue-url>",
+                "uvx --from github-task-protocol==1.0.3 gtp check <comment.md>",
             ],
             public_commands,
         )
-        self.assertEqual(2, readme.count("github-task-protocol==1.0.2"))
-        self.assertNotIn("github-task-protocol==1.0.3", readme)
+        self.assertEqual(2, readme.count("github-task-protocol==1.0.3"))
+        self.assertNotIn("github-task-protocol==1.0.2", readme)
         self.assertNotIn("github-task-protocol==X.Y.Z", readme)
         self.assertIn(
             "https://pypi.org/project/github-task-protocol/X.Y.Z/", readme
@@ -856,13 +966,13 @@ class ReleaseSurfaceTests(unittest.TestCase):
             readme,
         )
         self.assertIn("両方が解決できることを確認した後だけです", readme)
-        self.assertIn("下の2つのcommandの`1.0.2`だけを", readme)
-        self.assertIn("public-release-v1.0.2.json", readme)
+        self.assertIn("下の2つのcommandの`1.0.3`だけを", readme)
+        self.assertIn(PUBLIC_RELEASE_EVIDENCE, readme)
         cli_section = readme.split("## CLIは任意の検証器", 1)[1].split(
             "## 仕様と判断記録", 1
         )[0]
         for line in cli_section.splitlines():
-            if "1.0.2" not in line:
+            if "1.0.3" not in line:
                 continue
             for unstable_label in (
                 "latest",
@@ -877,7 +987,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
             "現在のsource candidate",
             "`1.0.3`（公開前）",
             "まだ公開していない",
-            "利用commandは検証済みの`1.0.2`に固定",
+            "利用commandは検証済みの`1.0.3`に固定",
         ):
             self.assertNotIn(unstable, readme)
 

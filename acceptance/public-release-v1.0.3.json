@@ -1,0 +1,320 @@
+{
+  "schema": "github-task-protocol-public-release-evidence/v1",
+  "observed_at": "2026-07-26T03:47:49Z",
+  "issue": {
+    "url": "https://github.com/shinya0x00/github-task-protocol/issues/102",
+    "contract": "https://github.com/shinya0x00/github-task-protocol/issues/102#issuecomment-5081352051",
+    "start": "https://github.com/shinya0x00/github-task-protocol/issues/102#issuecomment-5081808131",
+    "branch": "codex/issue-102-release-v1.0.3",
+    "state_before_evidence_pr": "in_progress"
+  },
+  "release_scope": {
+    "published_behavior": "current Issue lifecycle v1 patch",
+    "two_layer_model_issue": "https://github.com/shinya0x00/github-task-protocol/issues/131",
+    "two_layer_model_included_in_v1_0_3": false
+  },
+  "published_candidate": {
+    "repository": "shinya0x00/github-task-protocol",
+    "version": "1.0.3",
+    "commit_sha": "70fab3aacf8637bc1255459afb5efec7a5cf48ee",
+    "source_changed_during_publication": false,
+    "main_ci": {
+      "run_id": 30181079496,
+      "run_attempt": 1,
+      "url": "https://github.com/shinya0x00/github-task-protocol/actions/runs/30181079496",
+      "event": "push",
+      "head_branch": "main",
+      "head_sha": "70fab3aacf8637bc1255459afb5efec7a5cf48ee",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-07-26T00:23:39Z",
+      "completed_at": "2026-07-26T00:24:30Z",
+      "jobs": {
+        "build": {
+          "id": 89737574953,
+          "url": "https://github.com/shinya0x00/github-task-protocol/actions/runs/30181079496/job/89737574953",
+          "conclusion": "success"
+        },
+        "python_311": {
+          "id": 89737598350,
+          "url": "https://github.com/shinya0x00/github-task-protocol/actions/runs/30181079496/job/89737598350",
+          "conclusion": "success"
+        },
+        "python_312": {
+          "id": 89737598355,
+          "url": "https://github.com/shinya0x00/github-task-protocol/actions/runs/30181079496/job/89737598355",
+          "conclusion": "success"
+        },
+        "python_313": {
+          "id": 89737598372,
+          "url": "https://github.com/shinya0x00/github-task-protocol/actions/runs/30181079496/job/89737598372",
+          "conclusion": "success"
+        },
+        "release_ready": {
+          "id": 89737635600,
+          "url": "https://github.com/shinya0x00/github-task-protocol/actions/runs/30181079496/job/89737635600",
+          "conclusion": "success"
+        }
+      }
+    },
+    "artifact": {
+      "id": 8625553709,
+      "name": "v1.0.3-main-candidate-70fab3aacf8637bc1255459afb5efec7a5cf48ee",
+      "archive_download_url": "https://api.github.com/repos/shinya0x00/github-task-protocol/actions/artifacts/8625553709/zip",
+      "size_in_bytes": 200166,
+      "created_at": "2026-07-26T00:23:55Z",
+      "expires_at": "2026-10-24T00:23:39Z",
+      "expired_at_publication": false,
+      "retention_days": 90,
+      "build_conditions": {
+        "source_sha": "70fab3aacf8637bc1255459afb5efec7a5cf48ee",
+        "source_date_epoch": 1785025417,
+        "python_implementation": "CPython",
+        "python_version": "3.11.15",
+        "zlib_compile_version": "1.3",
+        "zlib_runtime_version": "1.3",
+        "pip_version": "26.1.2",
+        "twine_version": "6.2.0"
+      },
+      "files": [
+        {
+          "filename": "github_task_protocol-1.0.3.tar.gz",
+          "path": "dist/github_task_protocol-1.0.3.tar.gz",
+          "size": 166958,
+          "sha256": "8fd00f8b8f90fef2207a0a6063d27bcbac5e1a99941bcad1400c1735810b9f89"
+        },
+        {
+          "filename": "github_task_protocol-1.0.3-py3-none-any.whl",
+          "path": "dist/github_task_protocol-1.0.3-py3-none-any.whl",
+          "size": 33175,
+          "sha256": "5a45df28bec73443b6de76e0457503579d1227ca5db933fce700bf53599f7ecc"
+        },
+        {
+          "filename": "SHA256SUMS",
+          "path": "SHA256SUMS",
+          "size": 220,
+          "sha256": "f0381e33c0882c8fad36b4106f82423b867cf56112da31688145b1d5d4b19efe"
+        },
+        {
+          "filename": "BUILD-INFO",
+          "path": "BUILD-INFO",
+          "size": 659,
+          "sha256": "9c0b387cddce8666e15cb6f4f2708ffdd7bf027f003c29747def03231f7b1f2d"
+        }
+      ]
+    }
+  },
+  "tag": {
+    "name": "v1.0.3",
+    "kind": "annotated",
+    "unsigned": true,
+    "tag_object_sha": "c9da53415248a12ee180f3a6e5802d2793844737",
+    "target_commit_sha": "70fab3aacf8637bc1255459afb5efec7a5cf48ee",
+    "tagger": {
+      "name": "ao-codex-agent[bot]",
+      "email": "308751785+ao-codex-agent[bot]@users.noreply.github.com",
+      "date": "2026-07-26T03:33:17Z"
+    },
+    "message": "GitHub Task Protocol 1.0.3"
+  },
+  "github_release": {
+    "id": 359917979,
+    "url": "https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.3",
+    "title": "GitHub Task Protocol 1.0.3",
+    "author": "ao-codex-agent[bot]",
+    "created_at": "2026-07-26T03:33:17Z",
+    "published_at": "2026-07-26T03:40:22Z",
+    "draft": false,
+    "prerelease": false,
+    "latest_stable": true,
+    "release_body": {
+      "source": "https://github.com/shinya0x00/github-task-protocol/blob/70fab3aacf8637bc1255459afb5efec7a5cf48ee/acceptance/release-notes-v1.0.3.md",
+      "size": 3760,
+      "sha256": "f644c1df00649eaefc1c05b0ea422eb06a6d6a48fa16160f417734b56c9164d3"
+    },
+    "assets_redownloaded_and_hashed": true,
+    "assets": [
+      {
+        "id": 490002080,
+        "filename": "github_task_protocol-1.0.3.tar.gz",
+        "size": 166958,
+        "sha256": "8fd00f8b8f90fef2207a0a6063d27bcbac5e1a99941bcad1400c1735810b9f89",
+        "url": "https://github.com/shinya0x00/github-task-protocol/releases/download/v1.0.3/github_task_protocol-1.0.3.tar.gz"
+      },
+      {
+        "id": 490002079,
+        "filename": "github_task_protocol-1.0.3-py3-none-any.whl",
+        "size": 33175,
+        "sha256": "5a45df28bec73443b6de76e0457503579d1227ca5db933fce700bf53599f7ecc",
+        "url": "https://github.com/shinya0x00/github-task-protocol/releases/download/v1.0.3/github_task_protocol-1.0.3-py3-none-any.whl"
+      },
+      {
+        "id": 490002076,
+        "filename": "SHA256SUMS",
+        "size": 220,
+        "sha256": "f0381e33c0882c8fad36b4106f82423b867cf56112da31688145b1d5d4b19efe",
+        "url": "https://github.com/shinya0x00/github-task-protocol/releases/download/v1.0.3/SHA256SUMS"
+      },
+      {
+        "id": 490002085,
+        "filename": "BUILD-INFO",
+        "size": 659,
+        "sha256": "9c0b387cddce8666e15cb6f4f2708ffdd7bf027f003c29747def03231f7b1f2d",
+        "url": "https://github.com/shinya0x00/github-task-protocol/releases/download/v1.0.3/BUILD-INFO"
+      }
+    ]
+  },
+  "pypi": {
+    "project": "github-task-protocol",
+    "project_url": "https://pypi.org/project/github-task-protocol/",
+    "release_url": "https://pypi.org/project/github-task-protocol/1.0.3/",
+    "json_api_url": "https://pypi.org/pypi/github-task-protocol/1.0.3/json",
+    "package_version": "1.0.3",
+    "metadata": {
+      "name": "github-task-protocol",
+      "version": "1.0.3",
+      "requires_python": ">=3.11",
+      "license_expression": "MIT"
+    },
+    "files_redownloaded_and_hashed": true,
+    "files": [
+      {
+        "filename": "github_task_protocol-1.0.3-py3-none-any.whl",
+        "packagetype": "bdist_wheel",
+        "size": 33175,
+        "sha256": "5a45df28bec73443b6de76e0457503579d1227ca5db933fce700bf53599f7ecc",
+        "upload_time": "2026-07-26T03:37:47.835453Z",
+        "url": "https://files.pythonhosted.org/packages/21/ae/29bf4271759ec70bb708a3924241994af0955f710a20670856dedad307c4/github_task_protocol-1.0.3-py3-none-any.whl"
+      },
+      {
+        "filename": "github_task_protocol-1.0.3.tar.gz",
+        "packagetype": "sdist",
+        "size": 166958,
+        "sha256": "8fd00f8b8f90fef2207a0a6063d27bcbac5e1a99941bcad1400c1735810b9f89",
+        "upload_time": "2026-07-26T03:37:49.290642Z",
+        "url": "https://files.pythonhosted.org/packages/a3/cd/f980139bba8799ba7dd8ad8daa60382d00ed5a5dd13638ead99db59ad504/github_task_protocol-1.0.3.tar.gz"
+      }
+    ]
+  },
+  "public_validation": {
+    "candidate_github_release_pypi_sdist_bytes_equal": true,
+    "candidate_github_release_pypi_wheel_bytes_equal": true,
+    "github_release_sidecars_equal_candidate": true,
+    "metadata": {
+      "name": "github-task-protocol",
+      "version": "1.0.3",
+      "requires_python": ">=3.11",
+      "license_expression": "MIT"
+    },
+    "clean_installs": {
+      "github_release_wheel": {
+        "isolated_venv": true,
+        "offline_install": true,
+        "install_exit_code": 0,
+        "version_stdout": "1.0.3"
+      },
+      "pypi_wheel": {
+        "isolated_venv": true,
+        "offline_install": true,
+        "install_exit_code": 0,
+        "version_stdout": "1.0.3"
+      }
+    },
+    "offline_check": {
+      "input": "fixed malformed Carrier",
+      "github_release_wheel_exit_code": 1,
+      "pypi_wheel_exit_code": 1,
+      "recognized": true,
+      "schema_valid": false,
+      "error_code": "invalid_carrier",
+      "error_path": "$",
+      "authority": "none"
+    },
+    "live_status": {
+      "installed_from": "PyPI redownloaded wheel",
+      "issue_127": {
+        "url": "https://github.com/shinya0x00/github-task-protocol/issues/127",
+        "exit_code": 0,
+        "state": "halt",
+        "reason": "stale_evidence",
+        "next_action": "inspect_halt",
+        "primary_url": "https://github.com/shinya0x00/github-task-protocol/issues/127#issuecomment-5079094301",
+        "authority": "none",
+        "http_get_count": 15,
+        "http_non_get_count": 0,
+        "mutation_callbacks": 0,
+        "before_after_snapshot_equal": true,
+        "snapshot": {
+          "body_sha256": "c8a1234265f0f534b17abd7edb1e02929e76e44360216dddc8e55259e212ba63",
+          "comment_count": 11,
+          "labels": [],
+          "state": "closed",
+          "branch": {
+            "name": "codex/issue-127-v103-release-ready",
+            "exists": false,
+            "head_sha": null
+          },
+          "pull_request": {
+            "number": 128,
+            "state": "closed",
+            "head_sha": "95fc99b37d20353f610c095e5777a24b084437ed",
+            "merged_at": "2026-07-26T00:23:37Z"
+          }
+        }
+      },
+      "issue_91": {
+        "url": "https://github.com/shinya0x00/github-task-protocol/issues/91",
+        "exit_code": 0,
+        "state": "done",
+        "next_action": "none_done",
+        "primary_url": "https://github.com/shinya0x00/github-task-protocol/pull/92",
+        "authority": "none",
+        "http_get_count": 27,
+        "http_non_get_count": 0,
+        "mutation_callbacks": 0,
+        "before_after_snapshot_equal": true,
+        "snapshot": {
+          "body_sha256": "3f9fc4e20e02722ce6e9f41cd94e8ef2c22a11c880cea1f77ed75250871a2394",
+          "comment_count": 9,
+          "labels": [],
+          "state": "closed",
+          "branch": {
+            "name": "codex/issue-91-issue-url-probe",
+            "exists": false,
+            "head_sha": null
+          },
+          "pull_request": {
+            "number": 92,
+            "state": "closed",
+            "head_sha": "f10dd272052665ba3374436b473d7529069fda56",
+            "merged_at": "2026-07-20T13:52:14Z"
+          }
+        }
+      }
+    },
+    "latest_stable_release": "v1.0.3",
+    "tag_target_matches_published_candidate": true
+  },
+  "evidence_pr": {
+    "url": "pending",
+    "head_sha": null,
+    "final_head_owner": "Issue #102 Done Record and GitHub pull request metadata",
+    "scope": [
+      "README.md",
+      "acceptance/public-release-v1.0.3.json",
+      "build_backend.py",
+      "tests/test_build_backend.py",
+      "tests/test_release_surface.py"
+    ],
+    "artifact_role": "inspection_only_not_publication",
+    "published_sdist_contains_this_evidence": false,
+    "final_checks": "presented by the Done Record after the final source head passes CI"
+  },
+  "evidence_limits": [
+    "The published sdist and wheel always originate from commit 70fab3aacf8637bc1255459afb5efec7a5cf48ee, not from the Evidence pull request or its merge commit.",
+    "Evidence pull request and post-merge main artifacts inspect their own source trees and are not publication candidates for the already published 1.0.3 files.",
+    "The published 1.0.3 sdist does not contain acceptance/public-release-v1.0.3.json because that public Evidence was created after publication.",
+    "Matching public hashes establish byte correspondence to the fixed candidate; they do not independently prove code quality or safety.",
+    "CLI output, CI success, Records, and this Evidence grant no authority to complete or merge the Evidence pull request."
+  ]
+}

@@ -60,6 +60,7 @@ SDIST_SOURCE_MANIFEST = (
     "acceptance/problem-explanations/run.json",
     "acceptance/public-release-v1.0.1.json",
     "acceptance/public-release-v1.0.2.json",
+    "acceptance/public-release-v1.0.3.json",
     "acceptance/purpose-alignment/run.json",
     "acceptance/purpose-alignment/walking-skeleton.json",
     "acceptance/purpose-safety-run.json",
