@@ -48,11 +48,15 @@ CHECK_PROBLEMS = {
     "schema": ("投稿前GTP Recordがclosed schemaに適合しません", "投稿前CarrierのRecord JSON", "error pathが示すschema不適合箇所（修正候補。根本的な修正責任は未確定）", "未確認のIssue、branch、PR、公開protocol vocabulary", "error codeとpathのfieldだけを修正してgtp checkを再実行する", "recognizedとschema_validがともにtrueになる"),
 }
 SCHEMA_ERROR_CODES = {"duplicate_value", "invalid_condition_id", "invalid_type", "invalid_url", "invalid_value", "missing_field", "unknown_field"}
+
+
 def _problem_lines(values: tuple[str, ...]) -> list[str]:
     return ["問題の整理:"] + [
         f"  {index}. {label}: {value}"
         for index, (label, value) in enumerate(zip(PROBLEM_LABELS, values), start=1)
     ]
+
+
 def _halt_observation(machine: dict[str, Any], token: str) -> str:
     diagnostics = machine.get("diagnostics")
     diagnostic = (
@@ -80,6 +84,8 @@ def _halt_observation(machine: dict[str, Any], token: str) -> str:
             )
         return f"PRに変更範囲外のfile {', '.join(safe_paths)}が含まれています"
     return HALT_OBSERVATIONS.get(token, "protocol上の不適合を観測しました")
+
+
 def _acquisition_observation(error: dict[str, Any] | None) -> str:
     code = (
         error.get("code", "acquisition_incomplete")
@@ -91,6 +97,8 @@ def _acquisition_observation(error: dict[str, Any] | None) -> str:
     if isinstance(status, int) and not isinstance(status, bool):
         observation += f"; status: {status}"
     return observation
+
+
 def _status_problem(machine: dict[str, Any]) -> tuple[str, ...] | None:
     if machine["state"] == "halt":
         token = machine["halt_reason"] or "unknown"
@@ -171,6 +179,8 @@ def _status_problem(machine: dict[str, Any]) -> tuple[str, ...] | None:
             "取得がcompleteとなりstateを再構成できる",
         )
     return None
+
+
 def _check_problem(result: CarrierResult) -> tuple[str, ...] | None:
     if result.recognized and result.schema_valid:
         return None
@@ -200,6 +210,8 @@ def _check_problem(result: CarrierResult) -> tuple[str, ...] | None:
         "URLなし（投稿前入力）",
         resolution,
     )
+
+
 def _input_error_problem() -> tuple[str, ...]:
     return (
         "入力fileをUTF-8のMarkdown commentとして取得できません",
@@ -211,6 +223,8 @@ def _input_error_problem() -> tuple[str, ...]:
         "URLなし（投稿前入力）",
         "input_errorがなくなりCarrier検査結果を取得できる",
     )
+
+
 def _record(value: dict[str, Any] | None) -> dict[str, Any] | None:
     if value is None:
         return None
@@ -227,9 +241,13 @@ def _record(value: dict[str, Any] | None) -> dict[str, Any] | None:
     if isinstance(value.get("content"), dict):
         result["content"] = value["content"]
     return result
+
+
 def _content(record: dict[str, Any] | None) -> dict[str, Any]:
     value = record.get("content") if isinstance(record, dict) else None
     return value if isinstance(value, dict) else {}
+
+
 def _task_context(
     *,
     issue_url: str,
@@ -311,11 +329,15 @@ def _task_context(
         "not_proven": not_proven,
         "evidence_limits": list(EVIDENCE_LIMITS_11 if protocol_version == "1.1" else EVIDENCE_LIMITS),
     }
+
+
 def _branch(value: dict[str, Any] | None) -> dict[str, Any] | None:
     if value is None:
         return None
     observation = {"exists": value["exists"]} if "exists" in value else {}
     return {"name": value.get("name"), "observation": observation}
+
+
 def _next_action(result: StatusResult) -> str:
     if result.state is None:
         return "retry_acquisition"
@@ -336,6 +358,8 @@ def _next_action(result: StatusResult) -> str:
     if result.current.get("bound_pr") or result.current.get("pr_candidates"):
         return "post_done"
     return "continue_work"
+
+
 def _primary_url(result: StatusResult) -> str:
     if result.acquisition_errors:
         resource = result.acquisition_errors[0].get("resource")
@@ -355,6 +379,8 @@ def _primary_url(result: StatusResult) -> str:
         if isinstance(value, dict) and isinstance(value.get("url"), str):
             return value["url"]
     return result.issue_url
+
+
 def status_projection(result: StatusResult) -> dict[str, Any]:
     diagnostics = [item.projection() for item in result.diagnostics]
     current = result.current
@@ -414,6 +440,8 @@ def status_projection(result: StatusResult) -> dict[str, Any]:
     if result.protocol_version == "1.1":
         machine["amendment"] = _record(current.get("amendment"))
     return machine
+
+
 def _plain_summary(machine: dict[str, Any], context: dict[str, Any]) -> list[str]:
     state = machine["state"]
     pending = state == "in_progress" and machine["next_action"] == "retry_acquisition"
@@ -509,6 +537,8 @@ def _plain_summary(machine: dict[str, Any], context: dict[str, Any]) -> list[str
         )
     lines.append("  ここまでが人向けの説明です。続くJSONは機械処理用です。")
     return lines
+
+
 def _status_text(machine: dict[str, Any]) -> list[str]:
     state = machine["state"] if machine["state"] is not None else "不明"
     action = machine["next_action"]
@@ -576,6 +606,8 @@ def _status_text(machine: dict[str, Any]) -> list[str]:
     if not isinstance(goal, str):
         return lines
     return lines
+
+
 def present_status(result: StatusResult) -> tuple[list[str], dict[str, Any]]:
     machine = status_projection(result)
     lines = _status_text(machine)
@@ -583,6 +615,8 @@ def present_status(result: StatusResult) -> tuple[list[str], dict[str, Any]]:
     if problem is not None:
         lines[6:6] = _problem_lines(problem)
     return lines, machine
+
+
 def check_projection(result: CarrierResult) -> dict[str, Any]:
     record = None
     if result.record is not None:
@@ -598,6 +632,8 @@ def check_projection(result: CarrierResult) -> dict[str, Any]:
         "errors": result.errors,
         "authority": "none",
     }
+
+
 def present_check(result: CarrierResult) -> tuple[list[str], dict[str, Any]]:
     machine = check_projection(result)
     if not result.recognized:
@@ -615,6 +651,8 @@ def present_check(result: CarrierResult) -> tuple[list[str], dict[str, Any]]:
     if problem is not None:
         lines.extend(_problem_lines(problem))
     return lines, machine
+
+
 def present_input_error(message: str) -> tuple[list[str], dict[str, Any]]:
     lines = [
         "検査結果: 入力ファイルをUTF-8のMarkdown commentとして読めません",

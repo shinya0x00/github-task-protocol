@@ -18,12 +18,12 @@
   "budgets": {
     "README.md": 150,
     "GTP.md": 400,
-    "production_python": 2500
+    "production_python_nonblank_lines": 2500
   },
   "baselines": {
     "README.md": 131,
     "GTP.md": 368,
-    "production_python": 2500
+    "production_python_nonblank_lines": 2229
   },
   "versions": {
     "package": {
@@ -49,7 +49,8 @@
       "adr/0036-reproducible-release-artifacts.md",
       "adr/0037-separate-private-instructions-from-public-records.md",
       "adr/0038-protocol-1-1-revisions-and-package-versioning.md",
-      "adr/0039-existing-instructions-and-issue-lifecycle-boundary.md"
+      "adr/0039-existing-instructions-and-issue-lifecycle-boundary.md",
+      "adr/0040-production-source-budget-and-formatting.md"
     ],
     "candidate_notes": "acceptance/release-notes-v1.0.4.md",
     "published_history": {

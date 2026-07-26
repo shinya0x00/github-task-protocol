@@ -11,10 +11,14 @@ UUID_V4 = re.compile(
 )
 FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
 CONDITION_ID = re.compile(r"^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$")
+
+
 class DuplicateKeyError(ValueError):
     def __init__(self, key: str):
         super().__init__(f"duplicate key: {key}")
         self.key = key
+
+
 def _pairs_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
@@ -22,6 +26,8 @@ def _pairs_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
             raise DuplicateKeyError(key)
         result[key] = value
     return result
+
+
 def strict_json_loads(source: str) -> tuple[Any | None, list[dict[str, str]]]:
     try:
         value = json.loads(
@@ -34,11 +40,15 @@ def strict_json_loads(source: str) -> tuple[Any | None, list[dict[str, str]]]:
     except (json.JSONDecodeError, ValueError) as error:
         return None, [{"code": "invalid_json", "path": "$", "message": str(error)}]
     return value, []
+
+
 def _error(errors: list[dict[str, str]], code: str, path: str, message: str | None = None) -> None:
     item = {"code": code, "path": path}
     if message:
         item["message"] = message
     errors.append(item)
+
+
 def _closed_object(
     value: object,
     path: str,
@@ -54,6 +64,8 @@ def _closed_object(
     for field in sorted(required - set(value)):
         _error(errors, "missing_field", f"{path}.{field}")
     return value
+
+
 def _clean_text(value: object) -> bool:
     return (
         isinstance(value, str)
@@ -61,6 +73,8 @@ def _clean_text(value: object) -> bool:
         and value == value.strip()
         and not any(unicodedata.category(char) == "Cc" for char in value)
     )
+
+
 def _scope_path_valid(value: object) -> bool:
     if (
         not isinstance(value, str)
@@ -75,6 +89,8 @@ def _scope_path_valid(value: object) -> bool:
     core = value[:-1] if directory else value
     segments = core.split("/")
     return bool(core) and all(segment and segment not in {".", ".."} for segment in segments)
+
+
 def _validate_envelope(record: dict[str, Any], errors: list[dict[str, str]]) -> None:
     versions = {"1.0": {"contract", "start", "done", "stop"}, "1.1": {"contract", "start", "amendment", "done", "stop"}}
     version = record.get("gtp")
@@ -84,6 +100,8 @@ def _validate_envelope(record: dict[str, Any], errors: list[dict[str, str]]) -> 
         _error(errors, "invalid_value", "$.type")
     if not isinstance(record.get("id"), str) or not UUID_V4.fullmatch(record["id"]):
         _error(errors, "invalid_value", "$.id")
+
+
 def _validate_conditions(record: dict[str, Any], errors: list[dict[str, str]]) -> None:
     conditions = record.get("done_conditions")
     if not isinstance(conditions, dict) or not conditions:
@@ -100,6 +118,8 @@ def _validate_conditions(record: dict[str, Any], errors: list[dict[str, str]]) -
             _error(errors, "invalid_value", f"{base}.text")
         if item.get("evidence_kind") not in {"check", "artifact"}:
             _error(errors, "invalid_value", f"{base}.evidence_kind")
+
+
 def _validate_contract(record: dict[str, Any], errors: list[dict[str, str]]) -> None:
     if not _clean_text(record.get("goal")):
         _error(errors, "invalid_value", "$.goal")
@@ -117,6 +137,8 @@ def _validate_contract(record: dict[str, Any], errors: list[dict[str, str]]) -> 
             else:
                 seen.add(item)
     _validate_conditions(record, errors)
+
+
 def _validate_start(record: dict[str, Any], errors: list[dict[str, str]]) -> None:
     if parse_github_url(record.get("contract_ref"), "comment") is None:
         _error(errors, "invalid_url", "$.contract_ref")
@@ -128,6 +150,8 @@ def _validate_start(record: dict[str, Any], errors: list[dict[str, str]]) -> Non
         or (parsed is not None and (parsed.scheme or parsed.netloc))
     ):
         _error(errors, "invalid_value", "$.branch")
+
+
 def _validate_done(record: dict[str, Any], errors: list[dict[str, str]]) -> None:
     if record.get("gtp") == "1.1":
         if parse_github_url(record.get("revision_ref"), "comment") is None:
@@ -150,10 +174,14 @@ def _validate_done(record: dict[str, Any], errors: list[dict[str, str]]) -> None
             _error(errors, "invalid_condition_id", path)
         if parse_github_url(url, "check") is None and parse_github_url(url, "artifact") is None:
             _error(errors, "invalid_url", path)
+
+
 def _validate_amendment(record: dict[str, Any], errors: list[dict[str, str]]) -> None:
     if parse_github_url(record.get("predecessor_ref"), "comment") is None:
         _error(errors, "invalid_url", "$.predecessor_ref")
     _validate_conditions(record, errors)
+
+
 def _validate_stop(record: dict[str, Any], errors: list[dict[str, str]]) -> None:
     reason = record.get("reason")
     successor = record.get("successor_ref")
@@ -165,6 +193,8 @@ def _validate_stop(record: dict[str, Any], errors: list[dict[str, str]]) -> None
             _error(errors, "invalid_url", "$.successor_ref")
     else:
         _error(errors, "invalid_value", "$.reason")
+
+
 RECORD_FIELDS = {
     "contract": {"gtp", "type", "id", "goal", "scope", "done_conditions"},
     "start": {"gtp", "type", "id", "contract_ref", "branch"},
@@ -176,6 +206,8 @@ RECORD_FIELDS_11 = {
     "amendment": {"gtp", "type", "id", "predecessor_ref", "done_conditions"},
     "done": {"gtp", "type", "id", "revision_ref", "previous_done_ref", "pr_ref", "head_sha", "evidence"},
 }
+
+
 def validate_record(value: object) -> list[dict[str, str]]:
     errors: list[dict[str, str]] = []
     if not isinstance(value, dict):

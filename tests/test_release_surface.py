@@ -23,7 +23,7 @@ MATRIX = json.loads(
     )
 )
 PROJECT = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
-SOURCE_PACKAGE_VERSION = "1.0.4"
+SOURCE_PACKAGE_VERSION = PROJECT["version"]
 SOURCE_PROTOCOL_VERSION = "1.1"
 PUBLISHED_CLI_VERSION = "1.0.3"
 PUBLISHED_CANDIDATE = "70fab3aacf8637bc1255459afb5efec7a5cf48ee"
@@ -161,6 +161,23 @@ def _workflow_job(workflow: str, name: str) -> str:
     return match.group("body")
 
 
+def _workflow_literal_run(workflow: str, step_name: str) -> str:
+    """Return one literal-style workflow run block with YAML indent removed."""
+    marker = f"      - name: {step_name}\n"
+    self_and_after = workflow.split(marker, 1)
+    if len(self_and_after) != 2:
+        raise AssertionError(f"workflow step not found: {step_name}")
+    step = self_and_after[1].split("\n      - ", 1)[0]
+    run_marker = "        run: |\n"
+    if run_marker not in step:
+        raise AssertionError(f"literal run block not found: {step_name}")
+    body = step.split(run_marker, 1)[1]
+    lines = body.splitlines(keepends=True)
+    if any(line.strip() and not line.startswith("          ") for line in lines):
+        raise AssertionError(f"invalid run block indentation: {step_name}")
+    return "".join(line[10:] if line.strip() else line for line in lines)
+
+
 def _install_commands(text: str) -> list[tuple[str, str, str]]:
     matches = re.findall(
         r'^uvx --from "?github-task-protocol==([^" ]+)"? '
@@ -169,6 +186,24 @@ def _install_commands(text: str) -> list[tuple[str, str, str]]:
         flags=re.MULTILINE,
     )
     return [(version, command, argument) for version, command, argument in matches]
+
+
+def _production_python_nonblank_lines(root: Path = ROOT) -> int:
+    """Count physical, nonblank production Python lines."""
+    return sum(
+        1
+        for path in (root / "src" / "gtp").glob("*.py")
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    )
+
+
+def _production_python_physical_lines(root: Path = ROOT) -> int:
+    """Count all physical production Python lines for non-budget telemetry."""
+    return sum(
+        len(path.read_text(encoding="utf-8").splitlines())
+        for path in (root / "src" / "gtp").glob("*.py")
+    )
 
 
 class ReleaseSurfaceTests(unittest.TestCase):
@@ -763,19 +798,31 @@ class ReleaseSurfaceTests(unittest.TestCase):
             len((ROOT / "GTP.md").read_text(encoding="utf-8").splitlines()),
             MATRIX["budgets"]["GTP.md"],
         )
-        production = sum(
-            len(path.read_text(encoding="utf-8").splitlines())
-            for path in (ROOT / "src" / "gtp").glob("*.py")
+        self.assertLessEqual(
+            len((ROOT / "README.md").read_text(encoding="utf-8").splitlines()),
+            MATRIX["budgets"]["README.md"],
         )
-        self.assertLessEqual(production, MATRIX["budgets"]["production_python"])
+        production_nonblank = _production_python_nonblank_lines()
+        self.assertLessEqual(
+            production_nonblank,
+            MATRIX["budgets"]["production_python_nonblank_lines"],
+        )
 
     def test_baseline_and_budgets_are_explicit(self) -> None:
         self.assertEqual(
-            {"README.md": 131, "GTP.md": 368, "production_python": 2500},
+            {
+                "README.md": 131,
+                "GTP.md": 368,
+                "production_python_nonblank_lines": 2229,
+            },
             MATRIX["baselines"],
         )
         self.assertEqual(
-            {"README.md": 150, "GTP.md": 400, "production_python": 2500},
+            {
+                "README.md": 150,
+                "GTP.md": 400,
+                "production_python_nonblank_lines": 2500,
+            },
             MATRIX["budgets"],
         )
         for surface, baseline in MATRIX["baselines"].items():
@@ -1094,7 +1141,9 @@ class ReleaseSurfaceTests(unittest.TestCase):
                 "unit_tests": 162,
                 "GTP.md_lines": 368,
                 "README.md_lines": 131,
-                "production_python_lines": 2500,
+                "production_python_nonblank_lines": 2229,
+                "production_python_physical_lines": 2500,
+                "production_python_blank_lines": 271,
             },
             candidate["baseline"],
         )
@@ -1105,13 +1154,23 @@ class ReleaseSurfaceTests(unittest.TestCase):
             discovered.countTestCases(),
             candidate["candidate"]["unit_tests"]["count"],
         )
-        production = sum(
-            len(path.read_text(encoding="utf-8").splitlines())
-            for path in (ROOT / "src" / "gtp").glob("*.py")
+        production_nonblank = _production_python_nonblank_lines()
+        production_physical = _production_python_physical_lines()
+        self.assertEqual(
+            production_nonblank,
+            candidate["candidate"]["line_budgets"][
+                "production_python_nonblank_lines"
+            ],
         )
         self.assertEqual(
-            production,
-            candidate["candidate"]["line_budgets"]["production_python"],
+            production_physical,
+            candidate["candidate"]["line_budgets"][
+                "production_python_physical_lines"
+            ],
+        )
+        self.assertEqual(
+            production_physical - production_nonblank,
+            candidate["candidate"]["line_budgets"]["production_python_blank_lines"],
         )
         self.assertEqual(
             "https://github.com/shinya0x00/github-task-protocol/pull/136",
@@ -1121,11 +1180,18 @@ class ReleaseSurfaceTests(unittest.TestCase):
             name: section["status"]
             for name, section in candidate["candidate"].items()
         }
-        self.assertEqual("pending", statuses.pop("review"))
         self.assertEqual({"success"}, set(statuses.values()))
+        self.assertNotIn("hosted_ci", candidate["candidate"])
+        self.assertNotIn("review", candidate["candidate"])
+        self.assertIn("GitHub Check Runs", candidate["exact_head_owner"])
+        self.assertIn("GitHub review submissions", candidate["exact_head_owner"])
         self.assertEqual(
-            "Run exact-head CI, then obtain a fresh exact-head review.",
-            candidate["candidate"]["review"]["next_action"],
+            {
+                "repository_only": 2,
+                "missing_git_release_lock": 2,
+                "total": 4,
+            },
+            candidate["candidate"]["sdist_tests"]["expected_skips"],
         )
         self.assertEqual(
             {"native_merge": False, "tag": False, "github_release": False, "pypi": False},
@@ -1465,6 +1531,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
                     "adr/0037-separate-private-instructions-from-public-records.md",
                     "adr/0038-protocol-1-1-revisions-and-package-versioning.md",
                     "adr/0039-existing-instructions-and-issue-lifecycle-boundary.md",
+                    "adr/0040-production-source-budget-and-formatting.md",
                 ],
                 "candidate_notes": "acceptance/release-notes-v1.0.4.md",
                 "published_history": {
@@ -1628,8 +1695,8 @@ class ReleaseSurfaceTests(unittest.TestCase):
             "SOURCE_SHA",
             "Python 3.11",
             "Python 3.11、3.12、3.13",
-            "v1.0.4-pr-verification-<SOURCE_SHA>",
-            "v1.0.4-main-candidate-<SOURCE_SHA>",
+            f"v{SOURCE_PACKAGE_VERSION}-pr-verification-<SOURCE_SHA>",
+            f"v{SOURCE_PACKAGE_VERSION}-main-candidate-<SOURCE_SHA>",
             "tag、GitHub Release、PyPIを変更しない",
         ):
             self.assertIn(value, design)
@@ -1642,6 +1709,20 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn("producer処理は実行しない", adr)
         self.assertIn("temporary directory", adr)
         self.assertIn("full 40文字のlowercase commit SHAだけ", adr)
+        self.assertIn("直接buildしたsdistを展開", adr)
+        self.assertIn("Run bundled tests from the built sdist", adr)
+        self.assertIn("repository-only assertion 2件", adr)
+        self.assertIn("release lockを照合できないassertion 2件", adr)
+        self.assertIn("v<PKG_VERSION>-pr-verification-<SOURCE_SHA>", adr)
+        self.assertNotIn("v1.0.3-pr-verification-<SOURCE_SHA>", adr)
+        self.assertIn("直接buildしたsdistを展開", design)
+        self.assertIn("Run bundled tests from the built sdist", design)
+        self.assertIn("そこへ収録されたtest suite", design)
+        candidate_notes = (
+            ROOT / "acceptance" / f"release-notes-v{SOURCE_PACKAGE_VERSION}.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("physical nonblank lines 2500以下", candidate_notes)
+        self.assertIn("Ruff 0.12.3", candidate_notes)
 
         notes = (ROOT / "acceptance" / "release-notes-v1.0.3.md").read_text(
             encoding="utf-8"
@@ -1651,6 +1732,33 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn("公開候補sdist／wheel", notes)
         self.assertIn("producer処理は実行しない", notes)
         self.assertIn("temporary directory", notes)
+
+    def test_adr_0040_source_budget_and_formatting_gates_are_pinned(self) -> None:
+        adr_path = ROOT / "adr" / "0040-production-source-budget-and-formatting.md"
+        self.assertTrue(adr_path.exists())
+        adr = adr_path.read_text(encoding="utf-8")
+        design = (ROOT / "DESIGN.md").read_text(encoding="utf-8")
+        self.assertIn(
+            "[ADR-040](adr/0040-production-source-budget-and-formatting.md)",
+            design,
+        )
+        self.assertIn("physical nonblank lines", adr)
+        self.assertIn("2500", adr)
+        self.assertIn("Ruff 0.12.3", adr)
+        workflow_path = ROOT / ".github" / "workflows" / "ci.yml"
+        if _is_manifest_verified_sdist():
+            self.assertFalse(workflow_path.exists())
+            return
+        workflow = workflow_path.read_text(encoding="utf-8")
+        for job in (
+            _workflow_job(workflow, "build"),
+            _workflow_job(workflow, "integration"),
+        ):
+            self.assertEqual(1, job.count("ruff==0.12.3"))
+            self.assertEqual(
+                1,
+                job.count("--preview --select E301,E302,E305 src/gtp"),
+            )
 
     def test_repository_has_one_non_publish_ci_workflow(self) -> None:
         workflow = self._repository_workflow()
@@ -1672,6 +1780,16 @@ class ReleaseSurfaceTests(unittest.TestCase):
             '"$RUNNER_TEMP/venv-check/bin/python" -m unittest discover -s tests',
             workflow,
         )
+        for job in (
+            _workflow_job(workflow, "build"),
+            _workflow_job(workflow, "integration"),
+        ):
+            self.assertEqual(
+                1,
+                job.count(
+                    "ReleaseSurfaceTests.test_root_surface_and_line_budgets"
+                ),
+            )
         self.assertNotIn("publish", workflow.lower())
 
     def test_ci_builds_exact_source_once_and_fans_out_one_artifact(self) -> None:
@@ -1700,8 +1818,12 @@ class ReleaseSurfaceTests(unittest.TestCase):
         )
         self.assertEqual(
             {
-                "pull_request": "v1.0.4-pr-verification-<SOURCE_SHA>",
-                "main_push": "v1.0.4-main-candidate-<SOURCE_SHA>",
+                "pull_request": (
+                    f"v{SOURCE_PACKAGE_VERSION}-pr-verification-<SOURCE_SHA>"
+                ),
+                "main_push": (
+                    f"v{SOURCE_PACKAGE_VERSION}-main-candidate-<SOURCE_SHA>"
+                ),
                 "sidecars": ["BUILD-INFO", "SHA256SUMS"],
                 "retention_days": 90,
             },
@@ -1745,22 +1867,41 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn('git show -s --format=%ct "$SOURCE_SHA"', workflow)
         self.assertGreaterEqual(workflow.count('git archive "$SOURCE_SHA"'), 2)
         self.assertIn("SOURCE_DATE_EPOCH", workflow)
+        self.assertEqual(1, workflow.count('Path("pyproject.toml")'))
+        self.assertIn('echo "PKG_VERSION=$package_version" >> "$GITHUB_ENV"', workflow)
+        self.assertNotIn(SOURCE_PACKAGE_VERSION, workflow)
 
         build_job = _workflow_job(workflow, "build")
         integration_job = _workflow_job(workflow, "integration")
         self.assertIn("Run bundled tests from the built sdist", build_job)
         self.assertIn(
-            'tar -xzf "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.4.tar.gz"',
+            'tar -xzf "$RUNNER_TEMP/dist-a/github_task_protocol-${PKG_VERSION}.tar.gz"',
             build_job,
         )
         self.assertIn(
-            'cd "$RUNNER_TEMP/sdist-tests/github-task-protocol-1.0.4"',
+            'cd "$RUNNER_TEMP/sdist-tests/github-task-protocol-${PKG_VERSION}"',
             build_job,
         )
-        self.assertIn(
-            "PYTHONPATH=src python -m unittest discover -s tests",
-            build_job,
+        self.assertIn("unittest.TextTestRunner", build_job)
+        self.assertIn("result.wasSuccessful()", build_job)
+        self.assertIn("len(result.skipped) != 4", build_job)
+        self.assertIn("re.fullmatch(", build_job)
+        self.assertIn("[0-9a-f]{40}", build_job)
+        self.assertIn('observed["repository_only"] != 2', build_job)
+        self.assertIn('observed["missing_git_release_lock"] != 2', build_job)
+        self.assertIn('observed["missing_git_release_lock_short"] != 1', build_job)
+        self.assertIn('observed["missing_git_release_lock_sources"] != 1', build_job)
+        sdist_script = _workflow_literal_run(
+            workflow, "Run bundled tests from the built sdist"
         )
+        shell_check = subprocess.run(
+            ["bash", "-n"],
+            input=sdist_script,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(0, shell_check.returncode, shell_check.stderr)
         ordered_build_steps = (
             "Build twice from clean exports",
             "Run bundled tests from the built sdist",
@@ -1816,8 +1957,8 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn(
             'test "${{ needs.integration.result }}" = "success"', workflow
         )
-        self.assertIn("v1.0.4-pr-verification-${SOURCE_SHA}", workflow)
-        self.assertIn("v1.0.4-main-candidate-${SOURCE_SHA}", workflow)
+        self.assertIn("v${package_version}-pr-verification-${SOURCE_SHA}", workflow)
+        self.assertIn("v${package_version}-main-candidate-${SOURCE_SHA}", workflow)
         self.assertIn("retention-days: 90", workflow)
         self.assertIn("BUILD-INFO", workflow)
         self.assertIn("SHA256SUMS", workflow)

@@ -14,10 +14,14 @@ HALT_REASONS = frozenset(
         "terminal_violation",
     }
 )
+
+
 def _diagnose(result: FoldResult, token: str, *urls: str) -> None:
     diagnostic = Diagnostic(token, tuple(dict.fromkeys(urls)))
     if diagnostic not in result.diagnostics:
         result.diagnostics.append(diagnostic)
+
+
 def _remove_observation(result: FoldResult, target: RecordObservation) -> None:
     result.active[target.type] = [item for item in result.active[target.type] if item is not target]
     if result.bound_contract is target:
@@ -27,10 +31,16 @@ def _remove_observation(result: FoldResult, target: RecordObservation) -> None:
         result.started_once = False
     if result.terminal_stop is target:
         result.terminal_stop = None
+
+
 def effective_revision(result: FoldResult) -> RecordObservation | None:
     return result.active["amendment"][-1] if result.active["amendment"] else result.bound_contract
+
+
 def effective_conditions(result: FoldResult) -> dict[str, dict[str, str]]:
     return conditions_at_revision(result, effective_revision(result))
+
+
 def conditions_at_revision(result: FoldResult, revision: RecordObservation | None) -> dict[str, dict[str, str]]:
     conditions = dict(result.bound_contract.record["done_conditions"]) if result.bound_contract else {}
     for amendment in result.active["amendment"]:
@@ -40,13 +50,19 @@ def conditions_at_revision(result: FoldResult, revision: RecordObservation | Non
         if amendment is revision:
             break
     return conditions
+
+
 def current_done(result: FoldResult) -> RecordObservation | None:
     done = result.active["done"]
     return done[-1] if result.protocol_11_seen and done else done[0] if len(done) == 1 else None
+
+
 def revision_for_done(result: FoldResult, done: RecordObservation) -> RecordObservation | None:
     if done.record["gtp"] == "1.0":
         return result.bound_contract
     return result.observations_by_url.get(done.record["revision_ref"])
+
+
 def _expect_ref(result: FoldResult, observation: RecordObservation, field: str,
                 expected: RecordObservation) -> bool:
     ref = observation.record[field]
@@ -56,6 +72,8 @@ def _expect_ref(result: FoldResult, observation: RecordObservation, field: str,
     urls = (observation.comment.url, ref) if isinstance(ref, str) else (observation.comment.url,)
     _diagnose(result, "invalid_transition" if target is not None else "invalid_binding", *urls)
     return False
+
+
 def _evidence_matches(result: FoldResult, observation: RecordObservation) -> bool:
     expected = effective_conditions(result)
     actual = observation.record["evidence"]
@@ -67,6 +85,8 @@ def _evidence_matches(result: FoldResult, observation: RecordObservation) -> boo
             _diagnose(result, "invalid_evidence", observation.comment.url, actual[condition_id])
             return False
     return True
+
+
 def _accept_context(result: FoldResult, observation: RecordObservation) -> None:
     record_type = observation.type
     url = observation.comment.url
@@ -168,6 +188,8 @@ def _accept_context(result: FoldResult, observation: RecordObservation) -> None:
     if record_type == "stop":
         result.active[record_type].append(observation)
         result.terminal_stop = observation
+
+
 def successor_refs(comments: list[Comment]) -> list[str]:
     refs: list[str] = []
     for comment in comments:
@@ -178,6 +200,8 @@ def successor_refs(comments: list[Comment]) -> list[str]:
         if record["type"] == "stop" and record["reason"] == "superseded":
             refs.append(record["successor_ref"])
     return list(dict.fromkeys(refs))
+
+
 def fold_comments(comments: list[Comment], context: FoldContext | None = None) -> FoldResult:
     """Fold a complete, strictly ordered issue-comment snapshot without live I/O."""
     del context  # Live successor facts belong to the status adapter, not the pure fold.
@@ -226,6 +250,8 @@ def fold_comments(comments: list[Comment], context: FoldContext | None = None) -
         result.observations_by_url[comment.url] = observation
         _accept_context(result, observation)
     return result
+
+
 def historical_state(result: FoldResult) -> str:
     if result.recognized_count == 0:
         return "unmanaged"

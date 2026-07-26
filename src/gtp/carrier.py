@@ -9,6 +9,8 @@ DETAILS_OPEN = "<details><summary>記録(JSON)</summary>"
 DETAILS_CLOSE = "</details>"
 JSON_OPEN = "```json"
 JSON_CLOSE = "```"
+
+
 @dataclass(frozen=True)
 class CarrierResult:
     recognized: bool
@@ -16,6 +18,7 @@ class CarrierResult:
     record: dict[str, Any] | None
     errors: list[dict[str, str]]
     observed_gtp: str | None = None
+
     def projection(self) -> dict[str, Any]:
         result: dict[str, Any] = {
             "recognized": self.recognized,
@@ -25,8 +28,12 @@ class CarrierResult:
         if self.errors:
             result["errors"] = self.errors
         return result
+
+
 def _blank(line: str) -> bool:
     return not line.strip()
+
+
 def classify_carrier(body: str) -> CarrierResult:
     lines = body.split("\n")
     recognized = any(line == MARKER for line in lines)

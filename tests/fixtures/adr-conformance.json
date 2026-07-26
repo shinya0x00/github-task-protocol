@@ -37,5 +37,6 @@
   "ADR-036": "test_build_backend.BuildBackendTests.test_same_sources_and_epoch_produce_byte_identical_normalized_archives",
   "ADR-037": "test_release_surface.ReleaseSurfaceTests.test_public_record_disclosure_boundary",
   "ADR-038": "test_release_surface.ReleaseSurfaceTests.test_package_and_protocol_versions_are_separate",
-  "ADR-039": "test_release_surface.ReleaseSurfaceTests.test_existing_instruction_vocabulary_is_not_protocol_owned"
+  "ADR-039": "test_release_surface.ReleaseSurfaceTests.test_existing_instruction_vocabulary_is_not_protocol_owned",
+  "ADR-040": "test_release_surface.ReleaseSurfaceTests.test_adr_0040_source_budget_and_formatting_gates_are_pinned"
 }

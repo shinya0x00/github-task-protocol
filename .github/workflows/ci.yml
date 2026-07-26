@@ -37,10 +37,20 @@ jobs:
           source_date_epoch="$(git show -s --format=%ct "$SOURCE_SHA")"
           test -n "$source_date_epoch"
           echo "SOURCE_DATE_EPOCH=$source_date_epoch" >> "$GITHUB_ENV"
+          package_version="$(python - <<'PY'
+          from pathlib import Path
+          import tomllib
+
+          project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          print(project["project"]["version"])
+          PY
+          )"
+          [[ "$package_version" =~ ^[0-9]+([.][0-9]+)*([a-zA-Z0-9.-]*)?$ ]]
+          echo "PKG_VERSION=$package_version" >> "$GITHUB_ENV"
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            artifact_name="v1.0.4-pr-verification-${SOURCE_SHA}"
+            artifact_name="v${package_version}-pr-verification-${SOURCE_SHA}"
           else
-            artifact_name="v1.0.4-main-candidate-${SOURCE_SHA}"
+            artifact_name="v${package_version}-main-candidate-${SOURCE_SHA}"
           fi
           echo "ARTIFACT_NAME=$artifact_name" >> "$GITHUB_ENV"
           echo "artifact_name=$artifact_name" >> "$GITHUB_OUTPUT"
@@ -60,21 +70,14 @@ jobs:
           )
           PY
       - name: Check release budgets
+        run: >-
+          PYTHONPATH=src python -m unittest
+          tests.test_release_surface.ReleaseSurfaceTests.test_root_surface_and_line_budgets
+          tests.test_release_surface.ReleaseSurfaceTests.test_package_metadata_and_runtime_version_are_consistent
+      - name: Check production Python formatting
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          import tomllib
-
-          assert len(Path("GTP.md").read_text(encoding="utf-8").splitlines()) <= 400
-          assert len(Path("README.md").read_text(encoding="utf-8").splitlines()) <= 150
-          production = sum(
-              len(path.read_text(encoding="utf-8").splitlines())
-              for path in Path("src/gtp").glob("*.py")
-          )
-          assert production <= 2500
-          project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]
-          assert project["dependencies"] == []
-          PY
+          python -m pip install ruff==0.12.3
+          python -m ruff check --preview --select E301,E302,E305 src/gtp
       - name: Build twice from clean exports
         shell: bash
         run: |
@@ -95,22 +98,80 @@ jobs:
             python -c 'import build_backend, sys; print(build_backend.build_sdist(sys.argv[1])); print(build_backend.build_wheel(sys.argv[1]))' "$RUNNER_TEMP/dist-b"
           )
           cmp \
-            "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.4.tar.gz" \
-            "$RUNNER_TEMP/dist-b/github_task_protocol-1.0.4.tar.gz"
+            "$RUNNER_TEMP/dist-a/github_task_protocol-${PKG_VERSION}.tar.gz" \
+            "$RUNNER_TEMP/dist-b/github_task_protocol-${PKG_VERSION}.tar.gz"
           cmp \
-            "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.4-py3-none-any.whl" \
-            "$RUNNER_TEMP/dist-b/github_task_protocol-1.0.4-py3-none-any.whl"
+            "$RUNNER_TEMP/dist-a/github_task_protocol-${PKG_VERSION}-py3-none-any.whl" \
+            "$RUNNER_TEMP/dist-b/github_task_protocol-${PKG_VERSION}-py3-none-any.whl"
       - name: Run bundled tests from the built sdist
         shell: bash
         run: |
           set -euo pipefail
           mkdir "$RUNNER_TEMP/sdist-tests"
-          tar -xzf "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.4.tar.gz" \
+          tar -xzf "$RUNNER_TEMP/dist-a/github_task_protocol-${PKG_VERSION}.tar.gz" \
             -C "$RUNNER_TEMP/sdist-tests"
-          (
-            cd "$RUNNER_TEMP/sdist-tests/github-task-protocol-1.0.4"
-            PYTHONPATH=src python -m unittest discover -s tests
-          )
+          cd "$RUNNER_TEMP/sdist-tests/github-task-protocol-${PKG_VERSION}"
+          PYTHONPATH=src python - <<'PY'
+          from collections import Counter
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import unittest
+
+          os.environ.pop("GTP_RELEASE_LOCK_REQUIRED", None)
+          loader = unittest.TestLoader()
+          suite = loader.discover("tests")
+          if loader.errors:
+              raise SystemExit("test discovery failed: " + "\n".join(loader.errors))
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          tracked_count = json.loads(
+              (
+                  Path("acceptance")
+                  / f"v{os.environ['PKG_VERSION']}"
+                  / "release-candidate.json"
+              ).read_text(encoding="utf-8")
+          )["candidate"]["unit_tests"]["count"]
+          if not result.wasSuccessful():
+              raise SystemExit("bundled sdist tests failed")
+          if result.testsRun != tracked_count:
+              raise SystemExit(
+                  f"bundled sdist ran {result.testsRun} tests; "
+                  f"tracked candidate records {tracked_count}"
+              )
+          if len(result.skipped) != 4:
+              raise SystemExit(f"expected exactly 4 skips, got {result.skipped!r}")
+          observed = Counter()
+          for _, reason in result.skipped:
+              if reason == (
+                  "repository-only workflow assertions do not apply to the "
+                  "manifest-verified extracted sdist"
+              ):
+                  observed["repository_only"] += 1
+              elif re.fullmatch(
+                  r"commit [0-9a-f]{40} cannot be read in this source tree",
+                  reason,
+              ):
+                  observed["missing_git_release_lock"] += 1
+                  observed["missing_git_release_lock_short"] += 1
+              elif re.fullmatch(
+                  r"commit [0-9a-f]{40} cannot be read in this source tree, "
+                  r"so the locked source sha256 values cannot be verified here",
+                  reason,
+              ):
+                  observed["missing_git_release_lock"] += 1
+                  observed["missing_git_release_lock_sources"] += 1
+              else:
+                  raise SystemExit(f"unexpected bundled sdist skip: {reason}")
+          if observed["repository_only"] != 2:
+              raise SystemExit(f"repository-only skip mismatch: {observed!r}")
+          if observed["missing_git_release_lock"] != 2:
+              raise SystemExit(f"release-lock skip mismatch: {observed!r}")
+          if observed["missing_git_release_lock_short"] != 1:
+              raise SystemExit(f"short release-lock skip mismatch: {observed!r}")
+          if observed["missing_git_release_lock_sources"] != 1:
+              raise SystemExit(f"locked-source skip mismatch: {observed!r}")
+          PY
       - name: Rebuild the wheel from a fresh sdist environment
         shell: bash
         run: |
@@ -119,10 +180,10 @@ jobs:
           mkdir "$RUNNER_TEMP/sdist-wheel"
           "$RUNNER_TEMP/sdist-wheel-env/bin/python" -m pip wheel --no-index --no-deps \
             --wheel-dir "$RUNNER_TEMP/sdist-wheel" \
-            "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.4.tar.gz"
+            "$RUNNER_TEMP/dist-a/github_task_protocol-${PKG_VERSION}.tar.gz"
           cmp \
-            "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.4-py3-none-any.whl" \
-            "$RUNNER_TEMP/sdist-wheel/github_task_protocol-1.0.4-py3-none-any.whl"
+            "$RUNNER_TEMP/dist-a/github_task_protocol-${PKG_VERSION}-py3-none-any.whl" \
+            "$RUNNER_TEMP/sdist-wheel/github_task_protocol-${PKG_VERSION}-py3-none-any.whl"
       - name: Check distribution metadata with Twine
         run: |
           python -m pip install twine==6.2.0
@@ -218,21 +279,14 @@ jobs:
           PYTHONPATH: src
           GTP_RELEASE_LOCK_REQUIRED: "1"
       - name: Check merge-result release budgets
+        run: >-
+          PYTHONPATH=src python -m unittest
+          tests.test_release_surface.ReleaseSurfaceTests.test_root_surface_and_line_budgets
+          tests.test_release_surface.ReleaseSurfaceTests.test_package_metadata_and_runtime_version_are_consistent
+      - name: Check merge-result production Python formatting
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          import tomllib
-
-          assert len(Path("GTP.md").read_text(encoding="utf-8").splitlines()) <= 400
-          assert len(Path("README.md").read_text(encoding="utf-8").splitlines()) <= 150
-          production = sum(
-              len(path.read_text(encoding="utf-8").splitlines())
-              for path in Path("src/gtp").glob("*.py")
-          )
-          assert production <= 2500
-          project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]
-          assert project["dependencies"] == []
-          PY
+          python -m pip install ruff==0.12.3
+          python -m ruff check --preview --select E301,E302,E305 src/gtp
 
   test:
     needs: build

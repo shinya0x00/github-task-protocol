@@ -79,6 +79,7 @@ SDIST_SOURCE_MANIFEST = (
     "adr/0037-separate-private-instructions-from-public-records.md",
     "adr/0038-protocol-1-1-revisions-and-package-versioning.md",
     "adr/0039-existing-instructions-and-issue-lifecycle-boundary.md",
+    "adr/0040-production-source-budget-and-formatting.md",
     "build_backend.py",
     "pyproject.toml",
     "src/gtp/__init__.py",

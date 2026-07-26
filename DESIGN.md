@@ -148,9 +148,11 @@ diagnostic tokenは最初に確認する層を示すが、根本原因や修正�
 
 pull requestでは`github.event.pull_request.head.sha`、main pushでは`github.sha`を唯一の`SOURCE_SHA`とする。checkout、commit timestamp、manifest、build、artifact identityをこのSHAへ束縛し、PR merge refをsource identityやDone Evidenceへ使わない。
 
-producerはPython 3.11でexact sourceから2回buildし、sdist／wheelのbytes一致、sdist-to-wheel、SHA-256、Twineを検査する。同じuploaded artifactをPython 3.11、3.12、3.13 consumerが検査する。runtime dependencyは0を維持する。
+producerはPython 3.11でexact sourceから2回buildし、sdist／wheelのbytes一致、sdist-to-wheel、SHA-256、Twineを検査する。CI step `Run bundled tests from the built sdist`は、直接buildしたsdistを展開し、そこへ収録されたtest suiteも実行する。suite全体の成功に加え、repository-only assertion 2件と`.git`を含まない配布物でのrelease-lock assertion 2件だけがskipされることを検査し、件数または理由のdriftを失敗にする。同じuploaded artifactをPython 3.11、3.12、3.13 consumerが検査する。runtime dependencyは0を維持する。
 
-PR artifactは`v1.0.4-pr-verification-<SOURCE_SHA>`、main artifactは`v1.0.4-main-candidate-<SOURCE_SHA>`とする。workflowの権限は`contents: read`だけであり、tag、GitHub Release、PyPIを変更しない。再現可能buildの詳細と限界は[ADR-036](adr/0036-reproducible-release-artifacts.md)が所有する。
+production Pythonのbudgetは、`src/gtp/*.py`のphysical nonblank linesを数え、2500以下に固定する。blank lineはcomplexity budgetへ算入せず、Ruff 0.12.3の`E301`、`E302`、`E305`をsource headとsynthetic mergeの双方で検査する。詳細と理由は[ADR-040](adr/0040-production-source-budget-and-formatting.md)が所有する。
+
+PR artifactは`v1.0.4-pr-verification-<SOURCE_SHA>`、main artifactは`v1.0.4-main-candidate-<SOURCE_SHA>`とする。このpackage versionはworkflow内で`pyproject.toml`から1回だけ導出し、build pathとartifact名へ共通利用する。workflowの権限は`contents: read`だけであり、tag、GitHub Release、PyPIを変更しない。再現可能buildの詳細と限界は[ADR-036](adr/0036-reproducible-release-artifacts.md)が所有する。
 
 READMEと配布metadataは、「現在公開済み」というmoving claimをsourceへ固定しない。利用時はGitHub latest stable ReleaseとPyPIの両方で解決したversionを選ぶ。したがってsource merge後・publication前とpublication後で文言修正用PRを必要としない。
 

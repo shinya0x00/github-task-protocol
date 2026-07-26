@@ -2,11 +2,11 @@
   "schema": "gtp-release-candidate-v1",
   "owner_issue": "https://github.com/shinya0x00/github-task-protocol/issues/130",
   "source_pr": "https://github.com/shinya0x00/github-task-protocol/pull/136",
-  "exact_head_owner": "The pull request URL, GitHub Check Runs, and final Done Record own exact-head identity; this tracked file does not self-reference its containing commit.",
+  "exact_head_owner": "The pull request URL, GitHub Check Runs, GitHub review submissions, and final Done Record own exact-head identity; this tracked file does not self-reference its containing commit.",
   "versions": {"package": "1.0.4", "protocol": "1.1"},
-  "baseline": {"unit_tests": 162, "GTP.md_lines": 368, "README.md_lines": 131, "production_python_lines": 2500},
+  "baseline": {"unit_tests": 162, "GTP.md_lines": 368, "README.md_lines": 131, "production_python_nonblank_lines": 2229, "production_python_physical_lines": 2500, "production_python_blank_lines": 271},
   "candidate": {
-    "unit_tests": {"status": "success", "count": 213},
+    "unit_tests": {"status": "success", "count": 220},
     "build": {
       "status": "success",
       "reproducible_sdist": true,
@@ -17,22 +17,21 @@
     },
     "installed_cli": {"status": "success", "version": "1.0.4", "protocol_10_check": "passed", "protocol_11_check": "passed"},
     "scope": {"status": "success", "explicit_manifest": "exact"},
-    "line_budgets": {"status": "success", "GTP.md": 302, "README.md": 108, "production_python": 2497},
-    "hosted_ci": {
+    "line_budgets": {
       "status": "success",
-      "observed_head": "1fb604cfed0e97ca53120e6e5cc6215da23ce92e",
-      "run": "https://github.com/shinya0x00/github-task-protocol/actions/runs/30200960598",
-      "checks": ["build", "integration", "release-ready", "test (3.11)", "test (3.12)", "test (3.13)"],
-      "final_head_policy": "GitHub Check Runs own the result for each later exact PR head."
+      "GTP.md": 302,
+      "README.md": 108,
+      "production_python_nonblank_lines": 2498,
+      "production_python_physical_lines": 2735,
+      "production_python_blank_lines": 237
     },
-    "review": {
-      "status": "pending",
-      "observed_head": "7aeb9eb54c65f9b285a869c84f5b934fe8c208d4",
-      "source_review_ids": [4781813696, 4781815707],
-      "blocking_findings": 3,
-      "addressed_in_candidate": true,
-      "next_action": "Run exact-head CI, then obtain a fresh exact-head review.",
-      "final_head_policy": "GitHub review submissions own the final result; this tracked file does not pre-claim review success."
+    "sdist_tests": {
+      "status": "success",
+      "expected_skips": {
+        "repository_only": 2,
+        "missing_git_release_lock": 2,
+        "total": 4
+      }
     }
   },
   "source_done_conditions": [
@@ -49,6 +48,6 @@
   "publication": {"native_merge": false, "tag": false, "github_release": false, "pypi": false},
   "limits": [
     "This source artifact does not claim merge or publication.",
-    "Exact PR head and hosted Check status must be read from GitHub at handoff time."
+    "Exact PR head, hosted Check status, and review status must be read from GitHub at handoff time."
   ]
 }

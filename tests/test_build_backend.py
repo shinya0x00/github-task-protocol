@@ -22,6 +22,9 @@ import build_backend
 import gtp
 
 
+SOURCE_PACKAGE_VERSION = build_backend._project()["version"]
+
+
 EXPECTED_WHEEL_SOURCE_MANIFEST = (
     "src/gtp/__init__.py",
     "src/gtp/__main__.py",
@@ -86,6 +89,7 @@ EXPECTED_SDIST_SOURCE_MANIFEST = (
     "adr/0037-separate-private-instructions-from-public-records.md",
     "adr/0038-protocol-1-1-revisions-and-package-versioning.md",
     "adr/0039-existing-instructions-and-issue-lifecycle-boundary.md",
+    "adr/0040-production-source-budget-and-formatting.md",
     "build_backend.py",
     "pyproject.toml",
     "src/gtp/__init__.py",
@@ -150,7 +154,7 @@ class BuildBackendTests(unittest.TestCase):
             build_backend.SDIST_SOURCE_MANIFEST,
         )
         self.assertEqual(11, len(build_backend.WHEEL_SOURCE_MANIFEST))
-        self.assertEqual(88, len(build_backend.SDIST_SOURCE_MANIFEST))
+        self.assertEqual(89, len(build_backend.SDIST_SOURCE_MANIFEST))
         backend_source = Path(build_backend.__file__).read_text(encoding="utf-8")
         self.assertNotIn(".glob(", backend_source)
         self.assertNotIn(".rglob(", backend_source)
@@ -472,7 +476,7 @@ class BuildBackendTests(unittest.TestCase):
             ] + [f"{sdist_root}/PKG-INFO"]
             with tarfile.open(first_sdist, "r:gz") as archive:
                 self.assertEqual(expected_sdist_names, archive.getnames())
-                self.assertEqual(89, len(archive.getmembers()))
+                self.assertEqual(90, len(archive.getmembers()))
                 for info in archive.getmembers():
                     self.assertTrue(info.isreg())
                     self.assertEqual(0o644, info.mode)
@@ -508,7 +512,10 @@ class BuildBackendTests(unittest.TestCase):
                 sdist_name = build_backend.build_sdist(str(sdist_directory))
             with tarfile.open(sdist_directory / sdist_name, "r:gz") as archive:
                 archive.extractall(extracted_directory, filter="data")
-            source_root = extracted_directory / "github-task-protocol-1.0.4"
+            source_root = (
+                extracted_directory
+                / f"github-task-protocol-{SOURCE_PACKAGE_VERSION}"
+            )
             environment = os.environ.copy()
             environment["SOURCE_DATE_EPOCH"] = epoch
             subprocess.run(
