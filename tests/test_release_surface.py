@@ -879,6 +879,10 @@ class ReleaseSurfaceTests(unittest.TestCase):
         )
         evidence_pr = current_evidence["evidence_pr"]
         self.assertEqual(
+            "https://github.com/shinya0x00/github-task-protocol/pull/132",
+            evidence_pr["url"],
+        )
+        self.assertEqual(
             "inspection_only_not_publication", evidence_pr["artifact_role"]
         )
         self.assertIsNone(evidence_pr["head_sha"])

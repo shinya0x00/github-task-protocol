@@ -296,7 +296,7 @@
     "tag_target_matches_published_candidate": true
   },
   "evidence_pr": {
-    "url": "pending",
+    "url": "https://github.com/shinya0x00/github-task-protocol/pull/132",
     "head_sha": null,
     "final_head_owner": "Issue #102 Done Record and GitHub pull request metadata",
     "scope": [
