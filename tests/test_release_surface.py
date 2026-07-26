@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 import tomllib
 import unittest
 from unittest.mock import patch
@@ -96,6 +97,30 @@ def _release_lock_required() -> bool:
     raise ValueError(f"{RELEASE_LOCK_REQUIRED_ENV} must be 1 when set")
 
 
+def _is_manifest_verified_sdist(root: Path = ROOT) -> bool:
+    """True only for the exact unpacked sdist layout produced by this source."""
+    expected_root = f"{PROJECT['name']}-{PROJECT['version']}"
+    pkg_info = root / "PKG-INFO"
+    if root.name != expected_root or not pkg_info.is_file() or pkg_info.is_symlink():
+        return False
+    try:
+        if pkg_info.read_bytes() != build_backend._metadata():
+            return False
+        paths = list(root.rglob("*"))
+        if any(path.is_symlink() for path in paths):
+            return False
+        observed = {
+            path.relative_to(root).as_posix()
+            for path in paths
+            if path.is_file()
+            and not (path.parent.name == "__pycache__" and path.suffix == ".pyc")
+        }
+    except (OSError, ValueError):
+        return False
+    expected = {*build_backend.SDIST_SOURCE_MANIFEST, "PKG-INFO"}
+    return observed == expected
+
+
 def _observed_verification_mode(commit: str) -> str:
     required = _release_lock_required()
     return _verification_mode(
@@ -147,6 +172,16 @@ def _install_commands(text: str) -> list[tuple[str, str, str]]:
 
 
 class ReleaseSurfaceTests(unittest.TestCase):
+    def _repository_workflow(self) -> str:
+        if _is_manifest_verified_sdist():
+            self.skipTest(
+                "repository-only workflow assertions do not apply to the "
+                "manifest-verified extracted sdist"
+            )
+        workflows = list((ROOT / ".github" / "workflows").glob("*.yml"))
+        self.assertEqual([ROOT / ".github" / "workflows" / "ci.yml"], workflows)
+        return workflows[0].read_text(encoding="utf-8")
+
     def test_private_planning_metadata_is_absent(self) -> None:
         marker = "doc" + "trine"
         forbidden = (
@@ -716,7 +751,11 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn("protocol versionに対応するRecord", adapter)
 
     def test_root_surface_and_line_budgets(self) -> None:
+        extracted_sdist = _is_manifest_verified_sdist()
         for required in MATRIX["required_root"]:
+            if required == ".github/workflows/ci.yml" and extracted_sdist:
+                self.assertFalse((ROOT / required).exists(), required)
+                continue
             self.assertTrue((ROOT / required).exists(), required)
         for forbidden in MATRIX["forbidden_root"]:
             self.assertFalse((ROOT / forbidden).exists(), forbidden)
@@ -1063,8 +1102,16 @@ class ReleaseSurfaceTests(unittest.TestCase):
             "https://github.com/shinya0x00/github-task-protocol/pull/136",
             candidate["source_pr"],
         )
-        statuses = {section["status"] for section in candidate["candidate"].values()}
-        self.assertEqual({"success"}, statuses)
+        statuses = {
+            name: section["status"]
+            for name, section in candidate["candidate"].items()
+        }
+        self.assertEqual("pending", statuses.pop("review"))
+        self.assertEqual({"success"}, set(statuses.values()))
+        self.assertEqual(
+            "Run exact-head CI, then obtain a fresh exact-head review.",
+            candidate["candidate"]["review"]["next_action"],
+        )
         self.assertEqual(
             {"native_merge": False, "tag": False, "github_release": False, "pypi": False},
             candidate["publication"],
@@ -1511,6 +1558,38 @@ class ReleaseSurfaceTests(unittest.TestCase):
                 required,
             )
 
+    def test_extracted_sdist_context_requires_pkg_info_and_exact_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / f"{PROJECT['name']}-{PROJECT['version']}"
+            for member in build_backend.SDIST_SOURCE_MANIFEST:
+                path = root / member
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"")
+            self.assertFalse(_is_manifest_verified_sdist(root))
+
+            (root / "PKG-INFO").write_bytes(build_backend._metadata())
+            self.assertTrue(_is_manifest_verified_sdist(root))
+
+            bytecode = root / "tests" / "__pycache__" / "test_cli.cpython-312.pyc"
+            bytecode.parent.mkdir(parents=True, exist_ok=True)
+            bytecode.write_bytes(b"standard unittest cache")
+            self.assertTrue(_is_manifest_verified_sdist(root))
+
+            arbitrary = root / "tests" / "unexpected.cache"
+            arbitrary.write_bytes(b"not a standard bytecode cache")
+            self.assertFalse(_is_manifest_verified_sdist(root))
+            arbitrary.unlink()
+
+            unexpected = root / ".github" / "workflows" / "ci.yml"
+            unexpected.parent.mkdir(parents=True, exist_ok=True)
+            unexpected.write_text("name: unexpected\n", encoding="utf-8")
+            self.assertFalse(_is_manifest_verified_sdist(root))
+            unexpected.unlink()
+            repository_marker = root / ".git" / "HEAD"
+            repository_marker.parent.mkdir(parents=True, exist_ok=True)
+            repository_marker.write_text("ref: refs/heads/test\n", encoding="utf-8")
+            self.assertFalse(_is_manifest_verified_sdist(root))
+
     def test_reproducible_release_design_and_adr_are_current(self) -> None:
         design = (ROOT / "DESIGN.md").read_text(encoding="utf-8")
         adr_path = ROOT / "adr" / "0036-reproducible-release-artifacts.md"
@@ -1559,9 +1638,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn("temporary directory", notes)
 
     def test_repository_has_one_non_publish_ci_workflow(self) -> None:
-        workflows = list((ROOT / ".github" / "workflows").glob("*.yml"))
-        self.assertEqual([ROOT / ".github" / "workflows" / "ci.yml"], workflows)
-        workflow = workflows[0].read_text(encoding="utf-8")
+        workflow = self._repository_workflow()
         self.assertIn('python-version: ["3.11", "3.12", "3.13"]', workflow)
         self.assertIn('GTP_RELEASE_LOCK_REQUIRED: "1"', workflow)
         if (
@@ -1571,6 +1648,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
         ):
             self.assertEqual("1", os.environ.get(RELEASE_LOCK_REQUIRED_ENV))
         self.assertIn("Build twice from clean exports", workflow)
+        self.assertIn("Run bundled tests from the built sdist", workflow)
         self.assertIn("Rebuild the wheel from a fresh sdist environment", workflow)
         self.assertIn("Assemble checksummed artifact", workflow)
         self.assertIn("Install wheel in clean environment", workflow)
@@ -1582,9 +1660,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertNotIn("publish", workflow.lower())
 
     def test_ci_builds_exact_source_once_and_fans_out_one_artifact(self) -> None:
-        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
-            encoding="utf-8"
-        )
+        workflow = self._repository_workflow()
         pins = {
             "actions/checkout": "3d3c42e5aac5ba805825da76410c181273ba90b1",
             "actions/setup-python": "5fda3b95a4ea91299a34e894583c3862153e4b97",
@@ -1657,6 +1733,29 @@ class ReleaseSurfaceTests(unittest.TestCase):
 
         build_job = _workflow_job(workflow, "build")
         integration_job = _workflow_job(workflow, "integration")
+        self.assertIn("Run bundled tests from the built sdist", build_job)
+        self.assertIn(
+            'tar -xzf "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.4.tar.gz"',
+            build_job,
+        )
+        self.assertIn(
+            'cd "$RUNNER_TEMP/sdist-tests/github-task-protocol-1.0.4"',
+            build_job,
+        )
+        self.assertIn(
+            "PYTHONPATH=src python -m unittest discover -s tests",
+            build_job,
+        )
+        ordered_build_steps = (
+            "Build twice from clean exports",
+            "Run bundled tests from the built sdist",
+            "Rebuild the wheel from a fresh sdist environment",
+            "Assemble checksummed artifact",
+        )
+        self.assertEqual(
+            sorted(build_job.index(step) for step in ordered_build_steps),
+            [build_job.index(step) for step in ordered_build_steps],
+        )
         oracle = "build_backend._validate_tracked_source_manifest"
         self.assertEqual(2, workflow.count(oracle))
         self.assertEqual(1, build_job.count(oracle))

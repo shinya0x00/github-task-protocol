@@ -70,18 +70,20 @@ def _evidence_matches(result: FoldResult, observation: RecordObservation) -> boo
 def _accept_context(result: FoldResult, observation: RecordObservation) -> None:
     record_type = observation.type
     url = observation.comment.url
-    if result.protocol_11_seen and observation.record["gtp"] == "1.0":
+    record_version = observation.record["gtp"]
+    if result.protocol_11_seen and record_version == "1.0":
         _diagnose(result, "invalid_transition", url)
         return
+    first_protocol_11 = record_version == "1.1" and not result.protocol_11_seen
+    if first_protocol_11:
+        result.protocol_11_seen = True
     prior_10 = any(
         item is not observation and item.record["gtp"] == "1.0"
         for members in result.ids.values() for item in members
     )
-    if observation.record["gtp"] == "1.1" and not result.protocol_11_seen and prior_10 and record_type not in {"amendment", "done"}:
+    if first_protocol_11 and prior_10 and record_type not in {"amendment", "done"}:
         _diagnose(result, "invalid_transition", url)
         return
-    if observation.record["gtp"] == "1.1":
-        result.protocol_11_seen = True
     if record_type == "contract":
         result.active[record_type].append(observation)
         if result.started_once:

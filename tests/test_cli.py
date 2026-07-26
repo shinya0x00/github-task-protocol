@@ -230,10 +230,11 @@ class CliTests(unittest.TestCase):
                     raise HTTPError(url, 404, "not found", {}, None)
             elif parsed.path == "/repos/o/r/pulls":
                 pull_reads += 1
+                default_count = 1 if "done" in case["records"] else 0
                 count = (
                     1
                     if case.get("candidate_moves") and pull_reads > 1
-                    else case.get("candidate_count", 0)
+                    else case.get("candidate_count", default_count)
                 )
                 body = [self._matrix_pr(case, sha, number) for number in range(7, 7 + count)]
             elif parsed.path == "/repos/o/r/pulls/7":
@@ -740,6 +741,101 @@ class CliTests(unittest.TestCase):
         self.assertEqual("1.1", output["gtp"])
         self.assertIsNone(output["amendment"])
         self.assertEqual("Protocol 1.1 walking skeleton", output["task_context"]["goal"])
+
+    def test_protocol_11_compound_stale_repair_names_every_re_done_binding(self) -> None:
+        issue_url = "https://github.com/o/r/issues/1"
+        done_url = f"{issue_url}#issuecomment-3"
+        amendment_url = f"{issue_url}#issuecomment-4"
+        pr_url = "https://github.com/o/r/pull/7"
+        old_head = "0" * 40
+        current_head = "f" * 40
+        observed = StatusResult(
+            issue_url,
+            "halt",
+            [Diagnostic("stale_evidence", (done_url, pr_url))],
+            {
+                "contract": {
+                    "id": "01234567-89ab-4def-8123-456789abcdef",
+                    "type": "contract",
+                    "url": f"{issue_url}#issuecomment-1",
+                    "content": {
+                        "goal": "compound stale repair",
+                        "scope": ["src/"],
+                        "done_conditions": {
+                            "proof": {
+                                "text": "proof exists",
+                                "evidence_kind": "artifact",
+                            }
+                        },
+                    },
+                },
+                "start": {
+                    "id": "12345678-9abc-4def-8123-456789abcdef",
+                    "type": "start",
+                    "url": f"{issue_url}#issuecomment-2",
+                    "content": {
+                        "contract_ref": f"{issue_url}#issuecomment-1",
+                        "branch": "agent/test",
+                    },
+                },
+                "done": {
+                    "id": "22345678-9abc-4def-8123-456789abcdef",
+                    "type": "done",
+                    "url": done_url,
+                    "content": {
+                        "pr_ref": pr_url,
+                        "head_sha": old_head,
+                        "evidence": {
+                            "proof": f"https://github.com/o/r/blob/{old_head}/proof.txt"
+                        },
+                    },
+                },
+                "amendment": {
+                    "id": "32345678-9abc-4def-8123-456789abcdef",
+                    "type": "amendment",
+                    "url": amendment_url,
+                    "content": {
+                        "predecessor_ref": f"{issue_url}#issuecomment-1",
+                        "done_conditions": {
+                            "extra": {
+                                "text": "extra proof exists",
+                                "evidence_kind": "artifact",
+                            }
+                        },
+                    },
+                },
+                "stop": None,
+                "branch": {"name": "agent/test"},
+                "bound_pr": pr_url,
+                "bound_pr_head_sha": current_head,
+            },
+            _effective_done_conditions={
+                "proof": {"text": "proof exists", "evidence_kind": "artifact"},
+                "extra": {
+                    "text": "extra proof exists",
+                    "evidence_kind": "artifact",
+                },
+            },
+            protocol_version="1.1",
+        )
+        with patch("gtp.cli.evaluate_issue", return_value=observed):
+            code, human, output = self.call(["status", issue_url])
+
+        labels = json.loads(
+            (CLI_FIXTURES / "problem-explanations.json").read_text(encoding="utf-8")
+        )["labels"]
+        problem = self.problem_values(human, labels)
+        self.assertEqual(0, code)
+        self.assertEqual("stale_evidence", output["halt_reason"])
+        self.assertEqual(
+            "not_presented",
+            output["task_context"]["conditions"]["extra"]["evidence_status"],
+        )
+        for value in (problem[3], problem[7]):
+            self.assertIn("current effective revision", value)
+            self.assertIn("current PR head", value)
+            self.assertIn("全effective Done ConditionのEvidence", value)
+        self.assertIn("merge済みなら同じIssueでは修復しない", problem[7])
 
     def test_status_done_http_fixture_uses_all_production_logic(self) -> None:
         code, human, output = self.call_http_fixture("done-success.json")

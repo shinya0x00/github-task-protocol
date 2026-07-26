@@ -100,6 +100,17 @@ jobs:
           cmp \
             "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.4-py3-none-any.whl" \
             "$RUNNER_TEMP/dist-b/github_task_protocol-1.0.4-py3-none-any.whl"
+      - name: Run bundled tests from the built sdist
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir "$RUNNER_TEMP/sdist-tests"
+          tar -xzf "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.4.tar.gz" \
+            -C "$RUNNER_TEMP/sdist-tests"
+          (
+            cd "$RUNNER_TEMP/sdist-tests/github-task-protocol-1.0.4"
+            PYTHONPATH=src python -m unittest discover -s tests
+          )
       - name: Rebuild the wheel from a fresh sdist environment
         shell: bash
         run: |

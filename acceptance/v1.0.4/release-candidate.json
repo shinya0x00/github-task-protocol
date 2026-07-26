@@ -6,7 +6,7 @@
   "versions": {"package": "1.0.4", "protocol": "1.1"},
   "baseline": {"unit_tests": 162, "GTP.md_lines": 368, "README.md_lines": 131, "production_python_lines": 2500},
   "candidate": {
-    "unit_tests": {"status": "success", "count": 191},
+    "unit_tests": {"status": "success", "count": 209},
     "build": {
       "status": "success",
       "reproducible_sdist": true,
@@ -17,7 +17,7 @@
     },
     "installed_cli": {"status": "success", "version": "1.0.4", "protocol_10_check": "passed", "protocol_11_check": "passed"},
     "scope": {"status": "success", "explicit_manifest": "exact"},
-    "line_budgets": {"status": "success", "GTP.md": 302, "README.md": 108, "production_python": 2464},
+    "line_budgets": {"status": "success", "GTP.md": 302, "README.md": 108, "production_python": 2496},
     "hosted_ci": {
       "status": "success",
       "observed_head": "1fb604cfed0e97ca53120e6e5cc6215da23ce92e",
@@ -26,10 +26,13 @@
       "final_head_policy": "GitHub Check Runs own the result for each later exact PR head."
     },
     "review": {
-      "status": "success",
-      "observed_head": "76426bbb8e973e2a55a96cf5e9100995d11e459d",
-      "blocking_findings": 0,
-      "final_head_policy": "Any later head requires another exact-head review."
+      "status": "pending",
+      "observed_head": "7aeb9eb54c65f9b285a869c84f5b934fe8c208d4",
+      "source_review_ids": [4781813696, 4781815707],
+      "blocking_findings": 3,
+      "addressed_in_candidate": true,
+      "next_action": "Run exact-head CI, then obtain a fresh exact-head review.",
+      "final_head_policy": "GitHub review submissions own the final result; this tracked file does not pre-claim review success."
     }
   },
   "source_done_conditions": [

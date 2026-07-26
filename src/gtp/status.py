@@ -331,6 +331,8 @@ def _evaluate_done(
             _diagnostic("stale_evidence", done.comment.url, done.record["pr_ref"])
         )
         return result
+    pulls_resource = f"https://api.github.com/repos/{pr_url.owner}/{pr_url.repo}/pulls"
+    candidates = client.pull_requests(pr_url.owner, pr_url.repo, branch_name)
     scope_diagnostics = _scope_diagnostics(
         client,
         pr_url.owner,
@@ -346,10 +348,28 @@ def _evaluate_done(
             client, repo_id, conditions, done
         )
     pr_after = client.pull_request(pr_url.owner, pr_url.repo, pr_url.number or 0)
-    if _pr_snapshot_key(pr_after, done.record["pr_ref"]) != _pr_snapshot_key(
-        pr, done.record["pr_ref"]
-    ):
+    detail_key = _pr_snapshot_key(pr_after, done.record["pr_ref"])
+    if detail_key != _pr_snapshot_key(pr, done.record["pr_ref"]):
         raise AcquisitionError(done.record["pr_ref"], "bound pull request head changed during acquisition")
+    candidates_after = client.pull_requests(pr_url.owner, pr_url.repo, branch_name)
+    if _pr_collection_snapshot(candidates, pulls_resource) != _pr_collection_snapshot(
+        candidates_after, pulls_resource
+    ):
+        raise AcquisitionError(pulls_resource, "pull request collection changed during acquisition")
+    bound = [item for item in candidates_after
+             if item.get("number") == pr_after.get("number")]
+    if len(bound) != 1:
+        raise AcquisitionError(pulls_resource, "bound pull request is missing or duplicated")
+    listed_key = _pr_snapshot_key(bound[0], pulls_resource)
+    if listed_key[:-1] != detail_key[:-1] or (
+        listed_key[-1] is not None and listed_key[-1] != detail_key[-1]
+    ):
+        raise AcquisitionError(pulls_resource, "bound pull request collection entry disagrees with detail")
+    competitors = [item["html_url"] for item in candidates_after
+                   if item.get("number") != pr_after.get("number")]
+    if competitors:
+        result.diagnostics.append(_diagnostic("invalid_binding", start.comment.url,
+            done.comment.url, done.record["pr_ref"], *competitors))
     result.pr = pr_after
     if scope_diagnostics:
         result.diagnostics.extend(scope_diagnostics)
@@ -395,6 +415,23 @@ def _terminal_violations(
             if item not in result:
                 result.append(item)
     return result
+def _successor_diagnostics(
+    client: GitHubClient, repo_id: int, stop: RecordObservation, context: FoldContext,
+) -> list[Diagnostic]:
+    if stop.record["reason"] != "superseded":
+        return []
+    ref = stop.record["successor_ref"]
+    if ref not in context.successors:
+        context.successors.update(_successor_context(client, [ref]))
+    fact = context.successors[ref]
+    if (
+        not fact.exists or fact.repository_id != repo_id
+        or fact.issue_id == context.issue_id or context.issue_created_at is None
+        or fact.created_at is None
+        or not (context.issue_created_at < fact.created_at <= stop.comment.created_at)
+    ):
+        return [_diagnostic("invalid_binding", stop.comment.url, fact.url)]
+    return []
 def _stop_diagnostics(
     client: GitHubClient,
     owner: str,
@@ -403,23 +440,12 @@ def _stop_diagnostics(
     stop: RecordObservation,
     start: RecordObservation | None,
     context: FoldContext,
+    terminal: tuple[list[Diagnostic], list[Any], set[str],
+                    tuple[str, str] | None] | None = None,
 ) -> list[Diagnostic]:
-    diagnostics: list[Diagnostic] = []
-    if stop.record["reason"] == "superseded":
-        fact = context.successors[stop.record["successor_ref"]]
-        if (
-            not fact.exists
-            or fact.repository_id != repo_id
-            or fact.issue_id == context.issue_id
-            or context.issue_created_at is None
-            or fact.created_at is None
-            or not (context.issue_created_at < fact.created_at <= stop.comment.created_at)
-        ):
-            diagnostics.append(
-                _diagnostic("invalid_binding", stop.comment.url, fact.url)
-            )
-            return diagnostics
-    if start is None:
+    diagnostics = (_successor_diagnostics(client, repo_id, stop, context)
+                   if start is None or terminal is None else [])
+    if diagnostics or start is None:
         return diagnostics
     branch_name = start.record["branch"]
     resource = f"https://api.github.com/repos/{owner}/{repo}/pulls"
@@ -429,6 +455,9 @@ def _stop_diagnostics(
         candidates_after, resource
     ):
         raise AcquisitionError(resource, "pull request collection changed during acquisition")
+    prior, recognized, retries, done_merge = terminal or ([], [], set(), None)
+    first_merge = ((_github_time(done_merge[0], done_merge[1], "merged_at"), done_merge[0]) if done_merge else None)
+    stop_time = _github_time(stop.comment.created_at, stop.comment.url, "Stop created_at")
     for pr in candidates_after:
         if not _pr_matches(pr, repo_id, branch_name):
             continue
@@ -437,9 +466,6 @@ def _stop_diagnostics(
             raise AcquisitionError(stop.comment.url, "pull request ordering fields missing")
         created_time = _github_time(
             pr.get("created_at"), pr_url, "pull request created_at"
-        )
-        stop_time = _github_time(
-            stop.comment.created_at, stop.comment.url, "Stop created_at"
         )
         if created_time == stop_time:
             raise AcquisitionError(
@@ -455,13 +481,33 @@ def _stop_diagnostics(
         merged_time = _github_time(merged_at, pr_url, "pull request merged_at")
         if merged_time == stop_time:
             raise AcquisitionError(pr_url, "merge and Stop ordering is ambiguous")
+        if first_merge is None or merged_time < first_merge[0]:
+            first_merge = (merged_time, merged_at)
         if merged_time > stop_time:
             diagnostics.append(
                 _diagnostic("terminal_violation", stop.comment.url, pr_url)
             )
+    if terminal and first_merge is not None:
+        if first_merge[0] == stop_time:
+            raise AcquisitionError(stop.comment.url, "native merge and Stop ordering is ambiguous")
+        if first_merge[0] < stop_time:
+            terminal_diagnostics = _terminal_violations(prior, recognized, first_merge[1], retries, True)
+            terminal_diagnostics.extend(item for item in diagnostics
+                                        if item not in terminal_diagnostics)
+            return terminal_diagnostics
+        if done_merge is not None:
+            item = _diagnostic("terminal_violation", stop.comment.url, done_merge[1])
+            if item not in diagnostics:
+                diagnostics.append(item)
+    if terminal:
+        diagnostics.extend(_successor_diagnostics(client, repo_id, stop, context))
+        return [*prior, *diagnostics]
     return diagnostics
 def _has_terminal_violation(diagnostics: list[Diagnostic]) -> bool:
     return any(item.token == "terminal_violation" for item in diagnostics)
+def _safe_retry_aliases(fold: Any) -> set[str]:
+    return {alias.url for members in fold.ids.values() for observation in members
+            for alias in observation.aliases}
 def _done_can_be_evaluated(
     conditions: dict[str, dict[str, str]],
     done: RecordObservation,
@@ -507,14 +553,6 @@ def _evaluate_acquired(
             repository_id=repo_id,
         )
         fold = fold_comments(comments, context)
-        if fold.terminal_stop is not None and not _has_terminal_violation(
-            fold.diagnostics
-        ):
-            stop_record = fold.terminal_stop.record
-            if stop_record["reason"] == "superseded":
-                context.successors = _successor_context(
-                    client, [stop_record["successor_ref"]]
-                )
     except IncompleteSnapshotError as error:
         return _acquisition(issue_url, AcquisitionError(issue_url, str(error)))
     except AcquisitionError as error:
@@ -564,8 +602,10 @@ def _evaluate_acquired(
     branch_name = fold.bound_start.record["branch"]
     current["branch"] = {"name": branch_name}
     if fold.terminal_stop is not None:
-        if _has_terminal_violation(fold.diagnostics):
+        if not fold.protocol_11_seen and _has_terminal_violation(fold.diagnostics):
             return StatusResult(issue_url, "halt", list(fold.diagnostics), current)
+        done_merge: tuple[str, str] | None = None
+        prior_diagnostics = list(fold.diagnostics)
         try:
             if terminal_done is not None and _done_can_be_evaluated(done_conditions, terminal_done):
                 live_done = _evaluate_done(
@@ -579,34 +619,33 @@ def _evaluate_acquired(
                     not fold.protocol_11_seen,
                 )
                 done_terminal = live_done.merged_at if fold.protocol_11_seen else live_done.terminal_at
-                if done_terminal == fold.terminal_stop.comment.created_at:
-                    raise AcquisitionError(
-                        terminal_done.record["pr_ref"],
-                        "Done terminal and Stop ordering is ambiguous",
-                    )
-                if (
-                    done_terminal is not None
-                    and done_terminal < fold.terminal_stop.comment.created_at
-                ):
-                    return StatusResult(
-                        issue_url,
-                        "halt",
-                        [
-                            _diagnostic(
-                                "terminal_violation",
-                                fold.terminal_stop.comment.url,
-                                terminal_done.record["pr_ref"],
-                            )
-                        ],
-                        current,
-                    )
+                if fold.protocol_11_seen:
+                    prior_diagnostics.extend(live_done.diagnostics)
+                    if revision_mismatch:
+                        prior_diagnostics.append(_diagnostic("invalid_transition",
+                            terminal_done.comment.url, effective_revision(fold).comment.url))
+                    if live_done.merged_at is not None:
+                        done_merge = (live_done.merged_at, terminal_done.record["pr_ref"])
+                elif done_terminal is not None:
+                    if done_terminal == fold.terminal_stop.comment.created_at:
+                        raise AcquisitionError(terminal_done.record["pr_ref"], "Done terminal and Stop ordering is ambiguous")
+                    if done_terminal < fold.terminal_stop.comment.created_at:
+                        return StatusResult(issue_url, "halt", [_diagnostic(
+                            "terminal_violation", fold.terminal_stop.comment.url,
+                            terminal_done.record["pr_ref"],
+                        )], current)
+            terminal = ((prior_diagnostics, fold.recognized_comments,
+                         _safe_retry_aliases(fold), done_merge)
+                        if fold.protocol_11_seen else None)
             stop_diagnostics = _stop_diagnostics(
-                client, parsed.owner, parsed.repo, repo_id, fold.terminal_stop, fold.bound_start, context
+                client, parsed.owner, parsed.repo, repo_id, fold.terminal_stop,
+                fold.bound_start, context, terminal,
             )
         except AcquisitionError as error:
             return _acquisition(issue_url, error)
-        if stop_diagnostics:
-            return StatusResult(issue_url, "halt", [*fold.diagnostics, *stop_diagnostics], current)
+        diagnostics = stop_diagnostics if terminal else [*fold.diagnostics, *stop_diagnostics]
+        if diagnostics:
+            return StatusResult(issue_url, "halt", diagnostics, current)
         return StatusResult(issue_url, "stopped", list(fold.diagnostics), current)
     default_branch = repository.get("default_branch")
     if not isinstance(default_branch, str):
@@ -636,30 +675,25 @@ def _evaluate_acquired(
             if live.pr is not None:
                 current["bound_pr"] = live.pr.get("html_url")
                 current["bound_pr_head_sha"] = live.pr.get("head", {}).get("sha")
+            revision_diagnostics = ([_diagnostic("invalid_transition",
+                terminal_done.comment.url, effective_revision(fold).comment.url)]
+                if fold.protocol_11_seen and revision_mismatch else [])
             if fold.protocol_11_seen and live.merged_at is not None:
-                safe_retry_urls = {
-                    alias.url
-                    for observations in fold.ids.values()
-                    for observation in observations
-                    for alias in observation.aliases
-                }
                 diagnostics = _terminal_violations(
-                    [*fold.diagnostics, *live.diagnostics], fold.recognized_comments,
-                    live.merged_at, safe_retry_urls, True,
+                    [*fold.diagnostics, *live.diagnostics, *revision_diagnostics],
+                    fold.recognized_comments,
+                    live.merged_at, _safe_retry_aliases(fold), True,
                 )
                 diagnostics.sort(key=lambda item: item.token != "terminal_violation")
                 if diagnostics:
                     return StatusResult(issue_url, "halt", diagnostics, current)
+            elif fold.protocol_11_seen:
+                diagnostics = [*fold.diagnostics, *live.diagnostics,
+                               *revision_diagnostics]
+                if diagnostics:
+                    return StatusResult(issue_url, "halt", diagnostics, current)
             elif live.diagnostics:
                 return StatusResult(issue_url, "halt", [*fold.diagnostics, *live.diagnostics], current)
-            if fold.protocol_11_seen and fold.diagnostics:
-                return StatusResult(issue_url, "halt", list(fold.diagnostics), current)
-            if fold.protocol_11_seen and revision_mismatch:
-                return StatusResult(
-                    issue_url, "halt",
-                    [_diagnostic("invalid_transition", terminal_done.comment.url,
-                                 effective_revision(fold).comment.url)], current,
-                )
             if live.terminal_at is not None:
                 safe_retry_urls = {
                     url
@@ -749,13 +783,9 @@ def _evaluate_acquired(
         if len(candidates) == 1 and candidates[0].get("merged_at"):
             diagnostics = list(fold.diagnostics)
             if fold.protocol_11_seen:
-                safe_retry_urls = {
-                    alias.url for members in fold.ids.values()
-                    for observation in members for alias in observation.aliases
-                }
                 diagnostics = _terminal_violations(
                     diagnostics, fold.recognized_comments, candidates[0]["merged_at"],
-                    safe_retry_urls, True,
+                    _safe_retry_aliases(fold), True,
                 )
                 diagnostics.sort(key=lambda item: item.token != "terminal_violation")
             return StatusResult(

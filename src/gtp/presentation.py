@@ -108,8 +108,8 @@ def _status_problem(machine: dict[str, Any]) -> tuple[str, ...] | None:
             repair = "amendment後の旧Doneなら同じIssue・PRへre-Doneし、それ以外は人間がStopと後継Issueを選ぶ"
             resolution = "current Doneがeffective revisionを指すre-Doneでhaltが消える、または後継Issueへ移る"
         if machine.get("gtp") == "1.1" and token == "stale_evidence":
-            repair = "native merge前なら同じIssue・PRのcurrent headへre-Doneする"
-            resolution = "valid re-Doneでhaltが消える。merge済みなら同じIssueでは修復しない"
+            repair = "native merge前なら同じIssue・PRで、current effective revisionとcurrent PR headへ束縛し、全effective Done ConditionのEvidenceを含むre-Doneを提示する"
+            resolution = "current effective revisionとcurrent PR headへ束縛し、全effective Done ConditionのEvidenceを含むvalid re-Doneでhaltが消える。merge済みなら同じIssueでは修復しない"
         if token == "invalid_binding":
             diagnostics = machine.get("diagnostics")
             diagnostic = (

@@ -241,6 +241,68 @@ class ReducerTests(unittest.TestCase):
         native = fold_comments([comment(1, contract_11), comment(2, start_11)])
         self.assertEqual("in_progress", historical_state(native))
 
+    def test_invalid_first_11_record_locks_version_before_later_10_record(self) -> None:
+        invalid_first_records = {
+            "contract": dict(contract(IDS[1]), gtp="1.1"),
+            "start": dict(start(IDS[1]), gtp="1.1"),
+            "stop": dict(stop(IDS[1]), gtp="1.1"),
+        }
+        later_10_records = {
+            "start": start(IDS[2]),
+            "stop": stop(IDS[2]),
+        }
+
+        for first_type, first_record in invalid_first_records.items():
+            for later_type, later_record in later_10_records.items():
+                with self.subTest(first_type=first_type, later_type=later_type):
+                    result = fold_comments([
+                        comment(1, contract(IDS[0])),
+                        comment(2, first_record),
+                        comment(3, later_record),
+                    ])
+
+                    self.assertTrue(result.protocol_11_seen)
+                    self.assertEqual(
+                        ["invalid_transition", "invalid_transition"],
+                        [diagnostic.token for diagnostic in result.diagnostics],
+                    )
+                    self.assertIsNone(result.bound_start)
+                    self.assertIsNone(result.terminal_stop)
+                    self.assertEqual("halt", historical_state(result))
+
+    def test_invalid_11_contract_after_start_cannot_enable_later_10_stop(self) -> None:
+        result = fold_comments([
+            comment(1, contract(IDS[0])),
+            comment(2, start(IDS[1])),
+            comment(3, dict(contract(IDS[2]), gtp="1.1")),
+            comment(4, stop(IDS[3])),
+        ])
+
+        self.assertTrue(result.protocol_11_seen)
+        self.assertEqual(
+            ["invalid_transition", "invalid_transition"],
+            [diagnostic.token for diagnostic in result.diagnostics],
+        )
+        self.assertIsNone(result.terminal_stop)
+        self.assertEqual([], result.active["stop"])
+        self.assertEqual("halt", historical_state(result))
+
+    def test_schema_invalid_11_record_still_locks_version(self) -> None:
+        invalid_11 = dict(contract(IDS[1]), gtp="1.1", scope="src/")
+        result = fold_comments([
+            comment(1, contract(IDS[0])),
+            comment(2, invalid_11),
+            comment(3, stop(IDS[2])),
+        ])
+
+        self.assertTrue(result.protocol_11_seen)
+        self.assertEqual(
+            ["invalid_record", "invalid_transition"],
+            [diagnostic.token for diagnostic in result.diagnostics],
+        )
+        self.assertIsNone(result.terminal_stop)
+        self.assertEqual("halt", historical_state(result))
+
     def test_first_done_requires_null_previous_and_redone_uses_immediate_logical_done(self) -> None:
         non_null_first = fold_comments([
             comment(1, contract(IDS[0])),
