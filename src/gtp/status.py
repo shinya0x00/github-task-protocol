@@ -652,6 +652,8 @@ def _evaluate_acquired(
                     return StatusResult(issue_url, "halt", diagnostics, current)
             elif live.diagnostics:
                 return StatusResult(issue_url, "halt", [*fold.diagnostics, *live.diagnostics], current)
+            if fold.protocol_11_seen and fold.diagnostics:
+                return StatusResult(issue_url, "halt", list(fold.diagnostics), current)
             if fold.protocol_11_seen and revision_mismatch:
                 return StatusResult(
                     issue_url, "halt",
@@ -718,7 +720,7 @@ def _evaluate_acquired(
                 _pending_evidence_urls=tuple(live.pending_evidence_urls),
                 _native_merge_observed=False if live.pending_evidence_urls else None,
             )
-        if fold.diagnostics:
+        if fold.diagnostics and not fold.protocol_11_seen:
             return StatusResult(issue_url, "halt", list(fold.diagnostics), current)
         branch = client.branch(parsed.owner, parsed.repo, branch_name)
         observed_candidates = client.pull_requests(parsed.owner, parsed.repo, branch_name)
@@ -745,12 +747,24 @@ def _evaluate_acquired(
             urls = [fold.bound_start.comment.url] + [pr["html_url"] for pr in candidates]
             return StatusResult(issue_url, "halt", [_diagnostic("invalid_binding", *urls)], current)
         if len(candidates) == 1 and candidates[0].get("merged_at"):
+            diagnostics = list(fold.diagnostics)
+            if fold.protocol_11_seen:
+                safe_retry_urls = {
+                    alias.url for members in fold.ids.values()
+                    for observation in members for alias in observation.aliases
+                }
+                diagnostics = _terminal_violations(
+                    diagnostics, fold.recognized_comments, candidates[0]["merged_at"],
+                    safe_retry_urls, True,
+                )
+                diagnostics.sort(key=lambda item: item.token != "terminal_violation")
             return StatusResult(
-                issue_url,
-                "halt",
-                [_diagnostic("terminal_violation", fold.bound_start.comment.url, candidates[0]["html_url"])],
-                current,
+                issue_url, "halt", diagnostics or [
+                    _diagnostic("terminal_violation", fold.bound_start.comment.url, candidates[0]["html_url"])
+                ], current,
             )
+        if fold.diagnostics:
+            return StatusResult(issue_url, "halt", list(fold.diagnostics), current)
         if len(candidates) == 1:
             scope_diagnostics = _scope_diagnostics(
                 client,

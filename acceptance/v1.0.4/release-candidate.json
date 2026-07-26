@@ -1,12 +1,12 @@
 {
   "schema": "gtp-release-candidate-v1",
   "owner_issue": "https://github.com/shinya0x00/github-task-protocol/issues/130",
-  "source_pr": null,
+  "source_pr": "https://github.com/shinya0x00/github-task-protocol/pull/136",
   "exact_head_owner": "The pull request URL, GitHub Check Runs, and final Done Record own exact-head identity; this tracked file does not self-reference its containing commit.",
   "versions": {"package": "1.0.4", "protocol": "1.1"},
   "baseline": {"unit_tests": 162, "GTP.md_lines": 368, "README.md_lines": 131, "production_python_lines": 2500},
   "candidate": {
-    "unit_tests": {"status": "success", "count": 188},
+    "unit_tests": {"status": "success", "count": 191},
     "build": {
       "status": "success",
       "reproducible_sdist": true,
@@ -17,7 +17,8 @@
     },
     "installed_cli": {"status": "success", "version": "1.0.4", "protocol_10_check": "passed", "protocol_11_check": "passed"},
     "scope": {"status": "success", "explicit_manifest": "exact"},
-    "line_budgets": {"status": "success", "GTP.md": 302, "README.md": 108, "production_python": 2444},
+    "line_budgets": {"status": "success", "GTP.md": 302, "README.md": 108, "production_python": 2464},
+    "hosted_ci": {"status": "pending", "reason": "final pushed head has not completed all hosted checks"},
     "review": {"status": "pending", "blocking_findings": null}
   },
   "source_done_conditions": [

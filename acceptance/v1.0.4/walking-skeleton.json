@@ -6,6 +6,30 @@
     "state": "in_progress",
     "goal": "Protocol 1.1 walking skeleton"
   },
+  "observed": {
+    "unit_test_count": 1,
+    "exit_code": 0,
+    "state": "in_progress",
+    "top_level_gtp": "1.1",
+    "current_amendment": null,
+    "baseline_production_python_lines": 2500,
+    "walking_skeleton_production_python_lines": 2500,
+    "installed_candidate_cli": "passed for protocol 1.0 and 1.1 offline check",
+    "draft_pr": "https://github.com/shinya0x00/github-task-protocol/pull/136",
+    "first_pushed_implementation_head": "55d12c9616246b8b9e45328c5d97774c3e10a475",
+    "hosted_ci": {
+      "status": "success",
+      "workflow_run": "https://github.com/shinya0x00/github-task-protocol/actions/runs/30199485386",
+      "checks": ["build", "integration", "release-ready", "test (3.11)", "test (3.12)", "test (3.13)"]
+    }
+  },
+  "attachments": [
+    "Carrier and closed schema",
+    "Server Order reducer",
+    "GET-only status acquisition",
+    "human and machine presentation",
+    "public CLI entry point"
+  ],
   "limits": [
     "This milestone proves real-path attachment only.",
     "Amendment and re-Done feature depth is verified by later acceptance artifacts."

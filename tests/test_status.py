@@ -4,6 +4,7 @@ import copy
 import unittest
 
 from gtp.github import AcquisitionError
+from gtp.model import Comment
 from gtp.presentation import status_projection
 from gtp.status import evaluate_issue
 
@@ -250,6 +251,36 @@ class StatusTests(unittest.TestCase):
         self.assertEqual("terminal_violation", after_merge.diagnostics[0].token)
         self.assertEqual(comments[3].url, after_merge.diagnostics[0].urls[0])
 
+    def test_malformed_latest_done_outranks_obsolete_revision_pre_merge(self) -> None:
+        invalid = {"gtp": "1.1", "type": "done", "id": IDS[4]}
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, start(IDS[1])),
+            comment(3, done(IDS[2])),
+            comment(4, amendment(IDS[3], f"{ISSUE}#issuecomment-1")),
+            comment(5, None, source=body(invalid)),
+        ]
+        result = evaluate_issue(FakeGitHub(comments, pr=pr(merged=False)), ISSUE)
+        self.assertEqual("halt", result.state)
+        self.assertEqual("invalid_record", result.diagnostics[0].token)
+        self.assertEqual(comments[4].url, result.diagnostics[0].urls[0])
+
+    def test_malformed_11_after_merge_without_done_is_terminal_violation(self) -> None:
+        invalid = {"gtp": "1.1", "type": "done", "id": IDS[2]}
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, start(IDS[1])),
+            comment(4, None, source=body(invalid)),
+        ]
+        merged = pr(merged=True)
+        merged["merged_at"] = "2026-07-19T00:00:03.500000Z"
+        result = evaluate_issue(
+            FakeGitHub(comments, branch=False, candidates=[merged]), ISSUE
+        )
+        self.assertEqual("halt", result.state)
+        self.assertEqual("terminal_violation", result.diagnostics[0].token)
+        self.assertEqual(comments[2].url, result.diagnostics[0].urls[0])
+
     def test_post_merge_identity_collision_has_terminal_priority(self) -> None:
         comments = [
             comment(1, contract(IDS[0])),
@@ -409,6 +440,22 @@ class StatusTests(unittest.TestCase):
         result = evaluate_issue(FakeGitHub(comments, branch=False, pr=merged), ISSUE)
         self.assertIsNone(result.state)
         self.assertEqual("acquisition_incomplete", result.acquisition_errors[0]["code"])
+
+    def test_actor_and_merger_metadata_do_not_change_protocol_11_result(self) -> None:
+        contract_record = dict(contract(IDS[0]), gtp="1.1")
+        start_record = dict(start(IDS[1]), gtp="1.1")
+        done_record = done_11(IDS[2], f"{ISSUE}#issuecomment-1", None, extra=False)
+        comments = [comment(1, contract_record), comment(2, start_record), comment(3, done_record)]
+        relogged = [
+            Comment(item.id, item.url, item.body, item.created_at, item.updated_at, "another-actor")
+            for item in comments
+        ]
+        merged_a = dict(pr(merged=True), merged_by={"login": "actor-a"})
+        merged_b = dict(pr(merged=True), merged_by={"login": "actor-b"})
+        first = status_projection(evaluate_issue(FakeGitHub(comments, branch=False, pr=merged_a), ISSUE))
+        second = status_projection(evaluate_issue(FakeGitHub(relogged, branch=False, pr=merged_b), ISSUE))
+        self.assertEqual(first, second)
+        self.assertEqual(("done", "none"), (first["state"], first["authority"]))
 
     def test_invalid_check_status_combinations_halt(self) -> None:
         check_contract = contract(IDS[0])

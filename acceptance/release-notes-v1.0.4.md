@@ -23,7 +23,7 @@
 ## 検証surface
 
 - [`v1.0.4/walking-skeleton.json`](v1.0.4/walking-skeleton.json)は、追加したRecordが実際のreader経路へ接続される最初の縦切りを記録する。
-- [`v1.0.4/live-paths.json`](v1.0.4/live-paths.json)は、revision chain、re-Done、merge cutoff、旧CLI fail-closedをproduction pathで検査する。
+- [`v1.0.4/live-paths.json`](v1.0.4/live-paths.json)は、merge前に観測できるrevision移行、re-Done、旧CLI fail-closedをproduction pathで検査する。native merge cutoffはunit／HTTP acceptanceで固定し、実GitHubのpost-merge観測はmergeが別途許可されるまでpendingとする。
 - [`v1.0.4/public-record-disclosure.json`](v1.0.4/public-record-disclosure.json)は、公開Record／Evidenceへ秘密情報を転載しない境界を検査する。
 - [`v1.0.4/release-candidate.json`](v1.0.4/release-candidate.json)は、source候補、line budget、build、install、test、Twine、artifact metadataを検査する。final source SHAはPR head確定後のEvidenceが所有し、この文書へ先書きしない。
 

@@ -557,13 +557,14 @@ class BuildBackendTests(unittest.TestCase):
 
             marker = sha256(str(root).encode("utf-8")).hexdigest().encode("ascii")
             local_path = str(root / "private" / "credentials.json").encode("utf-8")
+            token_assignment = b"GITHUB_TOKEN=gh" + b"p_" + marker
             undeclared = {
                 "src/gtp/undeclared.py": b"# " + marker + b"\n",
                 "acceptance/undeclared.json": (
                     b'{"marker":"' + marker + b'","path":"' + local_path + b'"}\n'
                 ),
                 "adr/undeclared.md": b"# " + marker + b"\n",
-                ".env": b"GITHUB_TOKEN=ghp_" + marker + b"\n",
+                ".env": token_assignment + b"\n",
                 ".DS_Store": b"Finder metadata " + marker,
                 "src/gtp/__pycache__/x.pyc": b"\x00\x00" + marker,
             }
@@ -627,7 +628,7 @@ class BuildBackendTests(unittest.TestCase):
                     ),
                     relative_name,
                 )
-            for forbidden_content in (marker, local_path, b"GITHUB_TOKEN=ghp_" + marker):
+            for forbidden_content in (marker, local_path, token_assignment):
                 self.assertNotIn(forbidden_content, wheel_payload)
                 self.assertNotIn(forbidden_content, sdist_payload)
 

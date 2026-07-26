@@ -810,15 +810,68 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertEqual(0, evidence["canary"]["match_count"])
         self.assertFalse(evidence["publication_authority_inferred"])
         for target in evidence["inspected_targets"]:
-            self.assertIn(target["credential_match_count"], {None, 0})
-            self.assertIn(target["private_data_match_count"], {None, 0})
+            self.assertEqual(0, target["credential_match_count"])
+            self.assertEqual(0, target["private_data_match_count"])
+        clean = evidence["clean_agent_probe"]
+        self.assertEqual("success", clean["status"])
+        self.assertEqual(
+            {
+                "workspace_accessed": False,
+                "credentials_accessed": False,
+                "private_context_accessed": False,
+                "repository_code_executed": False,
+            },
+            {
+                key: clean["input_boundary"][key]
+                for key in (
+                    "workspace_accessed",
+                    "credentials_accessed",
+                    "private_context_accessed",
+                    "repository_code_executed",
+                )
+            },
+        )
+        self.assertEqual(
+            {
+                ("Issue", False),
+                ("Issue", True),
+                ("PR or ordinary task", False),
+                ("PR or ordinary task", True),
+            },
+            {
+                (case["entry"], case["valid_contract"])
+                for case in clean["activation_entry_cases"]
+            },
+        )
+        self.assertEqual(
+            {"none"},
+            {
+                case["existing_instructions_inference"]
+                for case in clean["activation_entry_cases"]
+            },
+        )
+        self.assertEqual(
+            {
+                "merge_inferred": False,
+                "publication_inferred": False,
+                "deployment_inferred": False,
+            },
+            {
+                key: clean["external_operation_authorization"][key]
+                for key in (
+                    "merge_inferred",
+                    "publication_inferred",
+                    "deployment_inferred",
+                )
+            },
+        )
         self.assertIn("credential", serialized.lower())
         self.assertIn("private", serialized.lower())
         for forbidden in (
-            "/Users/",
-            "ghp_",
-            "github_pat_",
-            "-----BEGIN PRIVATE KEY-----",
+            "/" + "Users" + "/",
+            "gh" + "p_",
+            "github_" + "pat_",
+            "-----BEGIN PRIVATE " + "KEY-----",
         ):
             self.assertNotIn(forbidden, serialized)
         notes = (ROOT / "acceptance" / "release-notes-v1.0.4.md").read_text(
@@ -893,12 +946,57 @@ class ReleaseSurfaceTests(unittest.TestCase):
         )
         self.assertEqual("gtp-live-paths-v1", live["schema"])
         self.assertEqual(
-            {"pending"},
-            {observation["status"] for observation in live["observations"].values()},
+            {
+                "condition_only_amendment",
+                "downgrade_after_1_1",
+                "malformed_later_1_1",
+                "revision_bound_re_done_and_no_fallback",
+                "native_merge_cutoff",
+            },
+            set(live["cases"]),
         )
-        self.assertIsNone(live["mixed_history_fixture"]["pr"])
-        self.assertIsNone(live["mixed_history_fixture"]["done_10"])
-        self.assertIsNone(live["mixed_history_fixture"]["redone_11"])
+        for name in (
+            "condition_only_amendment",
+            "downgrade_after_1_1",
+            "malformed_later_1_1",
+        ):
+            case = live["cases"][name]
+            self.assertEqual("success", case["status"])
+            for observation in case["observations"].values():
+                self.assertGreater(observation["http_get_count"], 0)
+                self.assertEqual(0, observation["http_non_get_count"])
+                self.assertTrue(observation["before_after_snapshot_equal"])
+                self.assertEqual("none", observation["authority"])
+                self.assertEqual("complete", observation["acquisition"])
+        amendment = live["cases"]["condition_only_amendment"]["observations"]
+        self.assertEqual("in_progress", amendment["source_cli_1_0_4"]["state"])
+        self.assertEqual(
+            ("halt", "invalid_record", 0),
+            (
+                amendment["public_cli_1_0_3"]["state"],
+                amendment["public_cli_1_0_3"]["halt_reason"],
+                amendment["public_cli_1_0_3"]["exit_code"],
+            ),
+        )
+        downgrade = live["cases"]["downgrade_after_1_1"]["observations"]
+        self.assertEqual(
+            ("halt", "invalid_transition"),
+            (
+                downgrade["source_cli_1_0_4"]["state"],
+                downgrade["source_cli_1_0_4"]["halt_reason"],
+            ),
+        )
+        self.assertEqual("stopped", downgrade["public_cli_1_0_3"]["state"])
+        self.assertFalse(downgrade["public_cli_1_0_3"]["completion_claimed"])
+        malformed = live["cases"]["malformed_later_1_1"]["observations"]
+        self.assertEqual(
+            {("halt", "invalid_record")},
+            {(item["state"], item["halt_reason"]) for item in malformed.values()},
+        )
+        self.assertEqual(
+            "pending", live["cases"]["revision_bound_re_done_and_no_fallback"]["status"]
+        )
+        self.assertEqual("pending", live["cases"]["native_merge_cutoff"]["status"])
 
         candidate = json.loads(
             (ROOT / "acceptance" / "v1.0.4" / "release-candidate.json").read_text(
@@ -919,7 +1017,10 @@ class ReleaseSurfaceTests(unittest.TestCase):
             },
             candidate["baseline"],
         )
-        self.assertIsNone(candidate["source_pr"])
+        self.assertEqual(
+            "https://github.com/shinya0x00/github-task-protocol/pull/136",
+            candidate["source_pr"],
+        )
         statuses = {section["status"] for section in candidate["candidate"].values()}
         self.assertLessEqual(statuses, {"pending", "success"})
         self.assertIn("pending", statuses)
