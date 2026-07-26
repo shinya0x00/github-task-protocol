@@ -44,3 +44,5 @@ Agent Bはroot `GTP.md`をtask protocolの唯一の正本として読み、Issue
 GitHub URLとcommit SHAはresourceと履歴の存在を示す。各Agentが内部で何を読んだか、別のmemoryを一切持たなかったこと、記述内容の真実性そのものまでは自動的に証明しない。実行環境、prompt、command、exit code、選択した最初の行動を`run.json`へ記録して境界を明示する。
 
 Agent Bのsystem環境には`GTP.md`掲載の共通adapter文が設定されていた。この試験が示すのは「GTP.mdと詳細なadapterを導入した環境」で引き継げたことまでであり、Issue URLだけからGTP.mdを自力で発見できることまでは示さない。
+
+<!-- acceptance-only v1.0.4 re-Done fixture head: 1; never merge -->
