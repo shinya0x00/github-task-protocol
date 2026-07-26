@@ -1,6 +1,5 @@
 {
   "schema": "github-task-protocol-public-release-evidence/v1",
-  "observed_at": "2026-07-26T03:47:49Z",
   "issue": {
     "url": "https://github.com/shinya0x00/github-task-protocol/issues/102",
     "contract": "https://github.com/shinya0x00/github-task-protocol/issues/102#issuecomment-5081352051",
@@ -197,6 +196,7 @@
     ]
   },
   "public_validation": {
+    "observed_at": "2026-07-26T03:47:49Z",
     "candidate_github_release_pypi_sdist_bytes_equal": true,
     "candidate_github_release_pypi_wheel_bytes_equal": true,
     "github_release_sidecars_equal_candidate": true,
@@ -295,6 +295,57 @@
     "latest_stable_release": "v1.0.3",
     "tag_target_matches_published_candidate": true
   },
+  "human_output_validation": {
+    "observed_at": "2026-07-26T04:59:08Z",
+    "installed_from": "PyPI redownloaded wheel",
+    "isolated_venv": true,
+    "offline_install": true,
+    "python_version": "3.12.12",
+    "wheel": {
+      "url": "https://files.pythonhosted.org/packages/21/ae/29bf4271759ec70bb708a3924241994af0955f710a20670856dedad307c4/github_task_protocol-1.0.3-py3-none-any.whl",
+      "size": 33175,
+      "sha256": "5a45df28bec73443b6de76e0457503579d1227ca5db933fce700bf53599f7ecc"
+    },
+    "stdout_boundary": "human_stdout is the exact UTF-8 prefix before the machine JSON object in stdout.",
+    "offline_check": {
+      "command": "gtp check malformed-carrier.md",
+      "exact_input": "<!-- gtp-record:v1 -->\n壊れたCarrier\n",
+      "exact_input_sha256": "505c0394bb329010ac400b2e990b1597d9a6746dd4cf8a6be0e8bd016d1f7ae3",
+      "exit_code": 1,
+      "human_stdout": "検査結果: GTP Carrierとして認識しましたが、形式・JSON・schemaに適合しません\ncontextual checks: Issue上の参照関係とstateは検査していません\n非許可表示: この出力は変更・完了・mergeの許可を与えません\n問題の整理:\n  1. 何が問題か: 投稿前GTP CarrierのMarkdown構造が形式に適合しません\n  2. どこが問題か: 投稿前Carrier\n  3. なぜそう判断したか: check error: invalid_carrier at $\n  4. どこを直すか: error pathが示すCarrier構造（修正候補。根本的な修正責任は未確定）\n  5. 何を直さないか: 未確認のIssue、branch、PR、Record grammar\n  6. 次の安全な一手: error codeとpathの入力箇所を修正してgtp checkを再実行する\n  7. 最初に確認するURL: URLなし（投稿前入力）\n  8. 解決したと判断する条件: recognizedとschema_validがともにtrueになる\n",
+      "human_stdout_sha256": "9275af20369c8930f71e9ad8eefa05e79e84e9f2347861bc23602ec7661e7ded",
+      "full_stdout_sha256": "c492732be22c1ad980a91c80c3b28d4824f9d4ca0a5b1255b50b99dd54261e33",
+      "stderr": "",
+      "problem_block": "present",
+      "problem_item_count": 8
+    },
+    "issue_127": {
+      "command": "gtp status https://github.com/shinya0x00/github-task-protocol/issues/127",
+      "exact_input": "https://github.com/shinya0x00/github-task-protocol/issues/127",
+      "exit_code": 0,
+      "human_stdout": "状態: halt\n停止要否: このtransitionは進められません\n次の行動: 最初のURLを確認し、記録を推測で補わず人間へ戻してください\n理由: stale_evidence — EvidenceがDoneのsource head SHAと一致しません\n最初のURL: https://github.com/shinya0x00/github-task-protocol/issues/127#issuecomment-5079094301\n非許可表示: この出力は変更・完了・mergeの許可を与えません\n問題の整理:\n  1. 何が問題か: EvidenceがDoneのsource head SHAと一致しません\n  2. どこが問題か: Done Claim、Evidence resource、source head\n  3. なぜそう判断したか: Evidenceが示すcommitとDoneが示すsource headが異なります\n  4. どこを直すか: 新しいsource headを扱う通常の後継Issue（修正候補。根本的な修正責任は未確定）\n  5. 何を直さないか: 既存Done Carrier、Evidence URL、source履歴の書換え\n  6. 次の安全な一手: 最初のURLでDone、Evidence、現在のPR headをread-onlyで比較する\n  7. 最初に確認するURL: https://github.com/shinya0x00/github-task-protocol/issues/127#issuecomment-5079094301\n  8. 解決したと判断する条件: 元のDoneと履歴を変更せずvalid Stopで元Issueをstoppedにし、後継Issueで新しいheadへ束縛する\nかんたんな説明:\n  結論: このIssueの完了は確認できません。作業を止めて人が確認してください。\n  次にすること: 原因の記録を開いてください: https://github.com/shinya0x00/github-task-protocol/issues/127#issuecomment-5079094301\n  この作業の目的: 公開済みv1.0.2とGTP 1.0の公開surfaceを変えず、exact main sourceから再現可能で不純物を含まないv1.0.3配布artifactを生成・検証できるmainを1本の訂正PRで確定する\n  変更してよい場所: .github/workflows/ci.yml、README.md、DESIGN.md、build_backend.py、src/gtp/status.py、adr/0036-reproducible-release-artifacts.md、acceptance/release-notes-v1.0.3.md、tests/fixtures/adr-conformance.json、tests/fixtures/http/live-binding-matrix.json、tests/fixtures/release/surface.json、tests/test_build_backend.py、tests/test_cli.py、tests/test_release_surface.py、tests/test_status.py\n  作業場所: branch codex/issue-127-v103-release-ready / PR https://github.com/shinya0x00/github-task-protocol/pull/128\n  未確認事項の確認先: https://github.com/shinya0x00/github-task-protocol/issues/127（Issue本文・通常commentの意味は自動判定していません）\n  記録に確認資料へのリンクがある条件（達成済みとはまだ断定しません）:\n    - Python 3.11、3.12、3.13が同じPR source-head artifactを検証し、review後の固定headがsquash merge可能なv1.0.3公開準備mainとして提示される（識別子: release_ready_delivery）\n      確認資料: https://github.com/shinya0x00/github-task-protocol/runs/89693207164\n    - GTP Record、state、halt reason、machine JSON key、next_action token、protocol version、runtime dependency 0、production Python 2500行、公開済みv1.0.2を変更しない（識別子: release_surface_compatibility）\n      確認資料: https://github.com/shinya0x00/github-task-protocol/runs/89693165524\n    - 同じSOURCE_SHA、SOURCE_DATE_EPOCH、記録したPythonとzlib条件からbuildしたsdistとwheelのbytesが2回一致する（識別子: reproducible_artifacts）\n      確認資料: https://github.com/shinya0x00/github-task-protocol/runs/89693127109\n    - pull_requestではsource head、main pushではmain commitを唯一のSOURCE_SHAとしてcheckout、build、manifest、artifact、Checkが同じSHAへ束縛される（識別子: source_head_ci_binding）\n      確認資料: https://github.com/shinya0x00/github-task-protocol/runs/89693127109\n    - 既知非終端statusと明示conclusion nullだけをpendingとし、conclusion key欠落を既存invalid_evidenceへ分類する（識別子: strict_pending_response）\n      確認資料: https://github.com/shinya0x00/github-task-protocol/runs/89693165533\n    - explicit distribution manifestがSOURCE_SHAの許可されたtracked file集合と完全一致し、未宣言file、cache、secret、symlink、非regular fileをartifactへ収録しない（識別子: tracked_manifest_complete）\n      確認資料: https://github.com/shinya0x00/github-task-protocol/runs/89693127109\n    - README、PKG-INFO、wheel METADATA、release notesはsource versionと公開済みFactを混同せず、公開後も意味が変わらない（識別子: truthful_distribution_metadata）\n      確認資料: https://github.com/shinya0x00/github-task-protocol/runs/89693165522\n  大事な点: 足りない記録を推測で補わないでください。この表示だけでは変更・完了・mergeできません。\n  ここまでが人向けの説明です。続くJSONは機械処理用です。\n",
+      "human_stdout_sha256": "6bc46a38a332108babe62e4c4784179f158a630648e0b7fb30549a279fcd6f21",
+      "full_stdout_sha256": "ee157eed00a865a6ef1e502722b456e245989ba87f8d9a69c8d05e31f556622b",
+      "stderr": "",
+      "problem_block": "present",
+      "problem_item_count": 8,
+      "leading_summary_item_count": 6,
+      "before_after_snapshot_equal": true
+    },
+    "issue_91": {
+      "command": "gtp status https://github.com/shinya0x00/github-task-protocol/issues/91",
+      "exact_input": "https://github.com/shinya0x00/github-task-protocol/issues/91",
+      "exit_code": 0,
+      "human_stdout": "状態: done\n停止要否: 停止は不要です。完了状態です\n次の行動: 追加のprotocol actionはありません\n理由: Done Claimのsource head、Evidence binding、native mergeを確認しました\n最初のURL: https://github.com/shinya0x00/github-task-protocol/pull/92\n非許可表示: この出力は変更・完了・mergeの許可を与えません\nかんたんな説明:\n  結論: Done ClaimのEvidence bindingとnative mergeを確認しました。条件内容の充足はEvidenceを読んで判断してください。\n  この作業の目的: 別clean agentがtarget Issue URLだけからGTP stateを再構成し、既存branchとDraft PRを再利用して重複を作らないことをEvidenceで確認する\n  変更してよい場所: README.md、acceptance/explicit-setup-install/、tests/test_release_surface.py\n  作業場所: branch codex/issue-91-issue-url-probe / PR https://github.com/shinya0x00/github-task-protocol/pull/92\n  未確認事項の確認先: https://github.com/shinya0x00/github-task-protocol/issues/91（Issue本文・通常commentの意味は自動判定していません）\n  Evidence bindingを確認した条件（条件内容の充足は自動判定していません）:\n    - 別clean agentへtarget Issue URLだけを渡し、state、最初の行動、Contract、Start、既存PR参照、既存branch/PR再利用、重複なしを公開可能範囲と限界付きで記録する（識別子: issue_url_probe）\n      確認資料: https://github.com/shinya0x00/github-task-protocol/blob/f10dd272052665ba3374436b473d7529069fda56/acceptance/explicit-setup-install/run.json\n    - Issue URL-only Evidence反映後の最終source headへ関連付いたPython 3.11 PR Check Runで全test、build、clean-installed CLI E2Eが成功する（識別子: python_311）\n      確認資料: https://github.com/shinya0x00/github-task-protocol/runs/88368526548\n    - Issue URL-only Evidence反映後の最終source headへ関連付いたPython 3.12 PR Check Runで全test、build、clean-installed CLI E2Eが成功する（識別子: python_312）\n      確認資料: https://github.com/shinya0x00/github-task-protocol/runs/88368526207\n    - Issue URL-only Evidence反映後の最終source headへ関連付いたPython 3.13 PR Check Runで全test、build、clean-installed CLI E2Eが成功する（識別子: python_313）\n      確認資料: https://github.com/shinya0x00/github-task-protocol/runs/88368526174\n  ここまでが人向けの説明です。続くJSONは機械処理用です。\n",
+      "human_stdout_sha256": "082bd5031664a8bfe45ab84a4f475a8471e589adddf488b4d7d59851e1dac600",
+      "full_stdout_sha256": "3c1236c82db71ffe362ca7b6ff8cb211706692efdeef2815806dcfd37de1eded",
+      "stderr": "",
+      "problem_block": "absent",
+      "problem_item_count": 0,
+      "leading_summary_item_count": 6,
+      "before_after_snapshot_equal": true
+    }
+  },
   "credential_boundary": {
     "credential_value_published": false,
     "credential_deleted": false,
@@ -318,7 +369,7 @@
   },
   "evidence_limits": [
     "The published sdist and wheel always originate from commit 70fab3aacf8637bc1255459afb5efec7a5cf48ee, not from the Evidence pull request or its merge commit.",
-    "Evidence pull request and post-merge main artifacts inspect their own source trees and are not publication candidates for the already published 1.0.3 files.",
+    "The Evidence pull request artifact inspects its own source tree. This record does not redefine the role of a later main-push artifact; only the fixed candidate at commit 70fab3aacf8637bc1255459afb5efec7a5cf48ee was used for the completed 1.0.3 publication.",
     "The published 1.0.3 sdist does not contain acceptance/public-release-v1.0.3.json because that public Evidence was created after publication.",
     "Matching public hashes establish byte correspondence to the fixed candidate; they do not independently prove code quality or safety.",
     "CLI output, CI success, Records, and this Evidence grant no authority to complete or merge the Evidence pull request."

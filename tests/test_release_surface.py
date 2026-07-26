@@ -787,6 +787,11 @@ class ReleaseSurfaceTests(unittest.TestCase):
             "github-task-protocol-public-release-evidence/v1",
             current_evidence["schema"],
         )
+        self.assertNotIn("observed_at", current_evidence)
+        self.assertEqual(
+            "2026-07-26T03:47:49Z",
+            current_evidence["public_validation"]["observed_at"],
+        )
         self.assertEqual("1.0.3", PROJECT["version"])
         self.assertEqual(
             PUBLISHED_CLI_VERSION, current_evidence["pypi"]["package_version"]
@@ -863,6 +868,125 @@ class ReleaseSurfaceTests(unittest.TestCase):
             self.assertEqual(0, observation["http_non_get_count"])
             self.assertEqual(0, observation["mutation_callbacks"])
             self.assertTrue(observation["before_after_snapshot_equal"])
+        human_output = current_evidence["human_output_validation"]
+        self.assertEqual("2026-07-26T04:59:08Z", human_output["observed_at"])
+        self.assertEqual("PyPI redownloaded wheel", human_output["installed_from"])
+        self.assertTrue(human_output["isolated_venv"])
+        self.assertTrue(human_output["offline_install"])
+        self.assertEqual("3.12.12", human_output["python_version"])
+        self.assertEqual(
+            {
+                "url": (
+                    "https://files.pythonhosted.org/packages/21/ae/"
+                    "29bf4271759ec70bb708a3924241994af0955f710a20670856dedad307c4/"
+                    "github_task_protocol-1.0.3-py3-none-any.whl"
+                ),
+                "size": 33175,
+                "sha256": PUBLISHED_WHEEL_SHA256,
+            },
+            human_output["wheel"],
+        )
+        self.assertEqual(
+            "human_stdout is the exact UTF-8 prefix before the machine JSON "
+            "object in stdout.",
+            human_output["stdout_boundary"],
+        )
+        expected_output = {
+            "offline_check": {
+                "command": "gtp check malformed-carrier.md",
+                "exit_code": 1,
+                "human_stdout_sha256": (
+                    "9275af20369c8930f71e9ad8eefa05e79e84e9f2347861bc23602ec7661e7ded"
+                ),
+                "full_stdout_sha256": (
+                    "c492732be22c1ad980a91c80c3b28d4824f9d4ca0a5b1255b50b99dd54261e33"
+                ),
+                "problem_block": "present",
+                "problem_item_count": 8,
+            },
+            "issue_127": {
+                "command": (
+                    "gtp status "
+                    "https://github.com/shinya0x00/github-task-protocol/issues/127"
+                ),
+                "exit_code": 0,
+                "human_stdout_sha256": (
+                    "6bc46a38a332108babe62e4c4784179f158a630648e0b7fb30549a279fcd6f21"
+                ),
+                "full_stdout_sha256": (
+                    "ee157eed00a865a6ef1e502722b456e245989ba87f8d9a69c8d05e31f556622b"
+                ),
+                "problem_block": "present",
+                "problem_item_count": 8,
+            },
+            "issue_91": {
+                "command": (
+                    "gtp status "
+                    "https://github.com/shinya0x00/github-task-protocol/issues/91"
+                ),
+                "exit_code": 0,
+                "human_stdout_sha256": (
+                    "082bd5031664a8bfe45ab84a4f475a8471e589adddf488b4d7d59851e1dac600"
+                ),
+                "full_stdout_sha256": (
+                    "3c1236c82db71ffe362ca7b6ff8cb211706692efdeef2815806dcfd37de1eded"
+                ),
+                "problem_block": "absent",
+                "problem_item_count": 0,
+            },
+        }
+        for name, expected in expected_output.items():
+            observation = human_output[name]
+            with self.subTest(public_human_output=name):
+                for field, value in expected.items():
+                    self.assertEqual(value, observation[field])
+                self.assertEqual("", observation["stderr"])
+                self.assertEqual(
+                    observation["human_stdout_sha256"],
+                    hashlib.sha256(
+                        observation["human_stdout"].encode("utf-8")
+                    ).hexdigest(),
+                )
+                self.assertEqual(
+                    observation["problem_block"] == "present",
+                    "問題の整理:" in observation["human_stdout"],
+                )
+                if observation["problem_block"] == "present":
+                    lines = observation["human_stdout"].splitlines()
+                    start = lines.index("問題の整理:")
+                    problem_items = lines[start + 1 : start + 9]
+                    self.assertEqual(
+                        observation["problem_item_count"], len(problem_items)
+                    )
+                    for index, line in enumerate(problem_items, start=1):
+                        self.assertTrue(line.startswith(f"  {index}. "))
+        malformed = human_output["offline_check"]
+        self.assertEqual(
+            "<!-- gtp-record:v1 -->\n壊れたCarrier\n",
+            malformed["exact_input"],
+        )
+        self.assertEqual(
+            malformed["exact_input_sha256"],
+            hashlib.sha256(malformed["exact_input"].encode("utf-8")).hexdigest(),
+        )
+        summary_prefixes = (
+            "状態:",
+            "停止要否:",
+            "次の行動:",
+            "理由:",
+            "最初のURL:",
+            "非許可表示:",
+        )
+        for name in ("issue_127", "issue_91"):
+            observation = human_output[name]
+            self.assertEqual(6, observation["leading_summary_item_count"])
+            self.assertTrue(observation["before_after_snapshot_equal"])
+            for line, prefix in zip(
+                observation["human_stdout"].splitlines()[:6],
+                summary_prefixes,
+                strict=True,
+            ):
+                self.assertTrue(line.startswith(prefix))
         self.assertEqual(
             {
                 "credential_value_published": False,
@@ -893,6 +1017,20 @@ class ReleaseSurfaceTests(unittest.TestCase):
         )
         self.assertEqual(
             "inspection_only_not_publication", evidence_pr["artifact_role"]
+        )
+        self.assertIn(
+            "The Evidence pull request artifact inspects its own source tree. "
+            "This record does not redefine the role of a later main-push artifact; "
+            "only the fixed candidate at commit "
+            f"{PUBLISHED_CANDIDATE} was used for the completed 1.0.3 publication.",
+            current_evidence["evidence_limits"],
+        )
+        self.assertFalse(
+            any(
+                "post-merge main artifacts" in limit
+                and "not publication candidates" in limit
+                for limit in current_evidence["evidence_limits"]
+            )
         )
         self.assertIsNone(evidence_pr["head_sha"])
         self.assertEqual(
