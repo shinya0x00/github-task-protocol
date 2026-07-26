@@ -231,6 +231,49 @@ class StatusTests(unittest.TestCase):
         self.assertEqual(["invalid_binding"], [item.token for item in result.diagnostics])
         self.assertIn(competitor["html_url"], result.diagnostics[0].urls)
 
+    def test_done_ignores_same_branch_pr_created_after_native_merge(self) -> None:
+        bound = pr(merged=True)
+        reused = dict(
+            pr(merged=False),
+            number=8,
+            html_url="https://github.com/o/r/pull/8",
+            created_at="2026-07-19T01:00:01Z",
+        )
+        for version in ("1.0", "1.1"):
+            with self.subTest(version=version):
+                comments = [
+                    comment(1, dict(contract(IDS[0]), gtp=version)),
+                    comment(2, dict(start(IDS[1]), gtp=version)),
+                    comment(3, done(IDS[2]) if version == "1.0" else done_11(
+                        IDS[2], f"{ISSUE}#issuecomment-1", None, extra=False
+                    )),
+                ]
+                result = evaluate_issue(FakeGitHub(
+                    comments, branch=False, candidates=[bound, reused], pr=bound,
+                ), ISSUE)
+                self.assertEqual("done", result.state)
+                self.assertEqual([], result.diagnostics)
+                self.assertEqual(bound["html_url"], result.current["bound_pr"])
+
+    def test_done_rejects_same_branch_pr_created_at_native_merge(self) -> None:
+        bound = pr(merged=True)
+        competitor = dict(
+            pr(merged=False),
+            number=8,
+            html_url="https://github.com/o/r/pull/8",
+            created_at=bound["merged_at"],
+        )
+        comments = [
+            comment(1, contract(IDS[0])),
+            comment(2, start(IDS[1])),
+            comment(3, done(IDS[2])),
+        ]
+        result = evaluate_issue(FakeGitHub(
+            comments, branch=False, candidates=[bound, competitor], pr=bound,
+        ), ISSUE)
+        self.assertIsNone(result.state)
+        self.assertEqual("acquisition_incomplete", result.acquisition_errors[0]["code"])
+
     def test_done_rejects_second_same_branch_pr_created_before_start(self) -> None:
         bound = pr(merged=True)
         competitor = dict(pr(merged=False), number=8,
@@ -1182,6 +1225,34 @@ class StatusTests(unittest.TestCase):
         ]
         result = evaluate_issue(FakeGitHub(comments, pr=pr(merged=False)), ISSUE)
         self.assertEqual("stopped", result.state)
+
+    def test_stop_closes_preterminal_record_diagnostics(self) -> None:
+        for version in ("1.0", "1.1"):
+            for token in ("invalid_record", "invalid_transition", "invalid_evidence"):
+                with self.subTest(version=version, token=token):
+                    records = [
+                        comment(1, dict(contract(IDS[0]), gtp=version)),
+                        comment(2, dict(start(IDS[1]), gtp=version)),
+                    ]
+                    if token == "invalid_record":
+                        records.append(comment(3, None, source=body({
+                            "gtp": version, "type": "done",
+                        })))
+                    elif token == "invalid_transition":
+                        records.append(comment(3, dict(contract(IDS[2]), gtp=version)))
+                    else:
+                        invalid_done = (done(IDS[2]) if version == "1.0" else done_11(
+                            IDS[2], f"{ISSUE}#issuecomment-1", None, extra=False
+                        ))
+                        invalid_done["evidence"] = {
+                            "other": f"https://github.com/o/r/blob/{SHA}/other.json"
+                        }
+                        records.append(comment(3, invalid_done))
+                    records.append(comment(4, dict(stop(IDS[3]), gtp=version)))
+                    result = evaluate_issue(FakeGitHub(records), ISSUE)
+                    self.assertEqual("stopped", result.state)
+                    self.assertEqual([token], [item.token for item in result.diagnostics])
+                    self.assertEqual(records[2].url, result.diagnostics[0].urls[0])
 
     def test_stop_after_done_terminal_is_terminal_violation(self) -> None:
         comments = [

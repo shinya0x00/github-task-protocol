@@ -107,8 +107,8 @@ def _pr_snapshot_key(pr: dict[str, Any], resource: str) -> tuple[Any, ...]:
     head_repo_id = head.get("repo", {}).get("id")
     head_ref = head.get("ref")
     head_sha = head.get("sha")
+    state, created_at = pr.get("state"), pr.get("created_at")
     merged_at = pr.get("merged_at")
-    state = pr.get("state")
     changed_files = pr.get("changed_files")
     if (
         not isinstance(number, int)
@@ -120,6 +120,7 @@ def _pr_snapshot_key(pr: dict[str, Any], resource: str) -> tuple[Any, ...]:
         or not isinstance(head_ref, str)
         or not isinstance(head_sha, str)
         or not isinstance(state, str)
+        or not isinstance(created_at, str)
         or (merged_at is not None and not isinstance(merged_at, str))
         or (
             changed_files is not None
@@ -136,8 +137,7 @@ def _pr_snapshot_key(pr: dict[str, Any], resource: str) -> tuple[Any, ...]:
         head_repo_id,
         head_ref,
         head_sha,
-        state,
-        merged_at,
+        state, created_at, merged_at,
         changed_files,
     )
 def _pr_collection_snapshot(
@@ -205,17 +205,16 @@ def _github_time(value: object, resource: str, field: str) -> datetime:
         raise AcquisitionError(resource, f"{field} timezone missing")
     return observed.astimezone(timezone.utc)
 def _pr_not_after_start(
-    pr: dict[str, Any],
-    start: RecordObservation,
-    resource: str,
+    pr: dict[str, Any], start: RecordObservation, resource: str,
 ) -> bool:
-    created_time = _github_time(
-        pr.get("created_at"), resource, "pull request created_at"
-    )
-    start_time = _github_time(
-        start.comment.created_at, start.comment.url, "Start created_at"
-    )
-    return created_time <= start_time
+    return _github_time(pr.get("created_at"), resource, "pull request created_at") <= _github_time(
+        start.comment.created_at, start.comment.url, "Start created_at")
+def _pr_precedes_terminal(pr: dict[str, Any], terminal: datetime) -> bool:
+    resource = pr.get("html_url", "pull request")
+    created = _github_time(pr.get("created_at"), resource, "pull request created_at")
+    if created == terminal:
+        raise AcquisitionError(resource, "pull request creation and native merge ordering is ambiguous")
+    return created < terminal
 def _successor_context(
     client: GitHubClient,
     refs: list[str],
@@ -365,8 +364,9 @@ def _evaluate_done(
         listed_key[-1] is not None and listed_key[-1] != detail_key[-1]
     ):
         raise AcquisitionError(pulls_resource, "bound pull request collection entry disagrees with detail")
-    competitors = [item["html_url"] for item in candidates_after
-                   if item.get("number") != pr_after.get("number")]
+    terminal_time = _github_time(result.merged_at, done.record["pr_ref"], "merged_at") if result.merged_at else None
+    competitors = [item["html_url"] for item in candidates_after if item.get("number") != pr_after.get("number")
+                   and (terminal_time is None or _pr_precedes_terminal(item, terminal_time))]
     if competitors:
         result.diagnostics.append(_diagnostic("invalid_binding", start.comment.url,
             done.comment.url, done.record["pr_ref"], *competitors))
@@ -644,9 +644,11 @@ def _evaluate_acquired(
         except AcquisitionError as error:
             return _acquisition(issue_url, error)
         diagnostics = stop_diagnostics if terminal else [*fold.diagnostics, *stop_diagnostics]
-        if diagnostics:
+        if _has_terminal_violation(diagnostics) or (
+            stop_diagnostics if terminal is None else [item for item in stop_diagnostics if item not in prior_diagnostics]
+        ):
             return StatusResult(issue_url, "halt", diagnostics, current)
-        return StatusResult(issue_url, "stopped", list(fold.diagnostics), current)
+        return StatusResult(issue_url, "stopped", diagnostics, current)
     default_branch = repository.get("default_branch")
     if not isinstance(default_branch, str):
         return _acquisition(
