@@ -222,6 +222,7 @@ class StatusTests(unittest.TestCase):
         comments = [comment(1, check_contract), comment(2, start(IDS[1])), comment(3, check_done)]
         for check in (
             {"head_sha": SHA, "status": "queued", "conclusion": "success"},
+            {"head_sha": SHA, "status": "queued"},
             {"head_sha": SHA, "status": "mystery", "conclusion": None},
             {"head_sha": SHA, "conclusion": None},
             {"head_sha": SHA, "status": "completed", "conclusion": "failure"},

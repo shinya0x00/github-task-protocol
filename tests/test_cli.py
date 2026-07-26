@@ -254,6 +254,8 @@ class CliTests(unittest.TestCase):
                 }
                 if case.get("check_status_missing"):
                     body.pop("status")
+                if case.get("check_conclusion_missing"):
+                    body.pop("conclusion")
                 if case.get("check_completed_at_missing"):
                     body.pop("completed_at")
             elif parsed.path == "/repos/o/r/contents/src/a.py":

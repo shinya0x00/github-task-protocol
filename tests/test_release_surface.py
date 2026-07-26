@@ -11,6 +11,7 @@ import tomllib
 import unittest
 from unittest.mock import patch
 
+import build_backend
 import gtp
 
 
@@ -110,6 +111,17 @@ def _locked_source_mismatches(lock: dict, candidate: str) -> list[str]:
     return mismatches
 
 
+def _workflow_job(workflow: str, name: str) -> str:
+    """Return one top-level workflow job without parsing unrelated YAML."""
+    match = re.search(
+        rf"(?ms)^  {re.escape(name)}:\n(?P<body>.*?)(?=^  [a-z][a-z0-9-]*:\n|\Z)",
+        workflow,
+    )
+    if match is None:
+        raise AssertionError(f"workflow job not found: {name}")
+    return match.group("body")
+
+
 class ReleaseSurfaceTests(unittest.TestCase):
     def test_private_planning_metadata_is_absent(self) -> None:
         marker = "doc" + "trine"
@@ -178,7 +190,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn("[`GTP.md`](GTP.md)", readme)
         self.assertIn("人間がGTPを使うためにCLIをinstallする必要はありません", readme)
         self.assertIn(
-            f"uvx --from github-task-protocol=={PUBLISHED_CLI_VERSION} gtp status",
+            "uvx --from github-task-protocol==1.0.2 gtp status",
             readme,
         )
         self.assertNotIn("package registryへ一般公開していません", readme)
@@ -782,15 +794,188 @@ class ReleaseSurfaceTests(unittest.TestCase):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("CLI `1.0.2`は[PyPI]", readme)
         self.assertIn("public-release-v1.0.2.json", readme)
-        self.assertIn("現在のsource candidateは`1.0.3`（公開前）", readme)
-        self.assertIn("利用commandは検証済みの`1.0.2`に固定", readme)
-        self.assertNotIn("github-task-protocol==1.0.3", readme)
+        self.assertIn(
+            "`pyproject.toml`は、このsourceからbuildするpackage versionとして"
+            "`1.0.3`を宣言しています",
+            readme,
+        )
+        self.assertIn(
+            "この値はpublicationのEvidenceでも、exact source commitのidentityでもありません",
+            readme,
+        )
+        self.assertNotIn("source内容のidentity", readme)
+        self.assertNotIn("現在のsource candidate", readme)
         self.assertTrue((ROOT / "acceptance" / "release-notes-v1.0.2.md").exists())
         decisions = (ROOT / "DECISIONS.md").read_text(encoding="utf-8")
         self.assertIn(
             "## ADR-030: CLIを任意validatorとしてPyPIへ公開する",
             decisions,
         )
+
+    def test_v103_release_documents_are_time_stable(self) -> None:
+        self.assertEqual(
+            {
+                "current_design": "DESIGN.md",
+                "decision": "adr/0036-reproducible-release-artifacts.md",
+                "notes": "acceptance/release-notes-v1.0.3.md",
+            },
+            MATRIX["release_documents"],
+        )
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn(
+            "`pyproject.toml`は、このsourceからbuildするpackage versionとして"
+            "`1.0.3`を宣言しています",
+            readme,
+        )
+        self.assertIn(
+            "この値はpublicationのEvidenceでも、exact source commitのidentityでもありません",
+            readme,
+        )
+        self.assertNotIn("source内容のidentity", readme)
+        public_commands = re.findall(
+            r"^uvx --from github-task-protocol==[^ ]+ gtp (?:status|check) .+$",
+            readme,
+            flags=re.MULTILINE,
+        )
+        self.assertEqual(
+            [
+                "uvx --from github-task-protocol==1.0.2 gtp status <issue-url>",
+                "uvx --from github-task-protocol==1.0.2 gtp check <comment.md>",
+            ],
+            public_commands,
+        )
+        self.assertEqual(2, readme.count("github-task-protocol==1.0.2"))
+        self.assertNotIn("github-task-protocol==1.0.3", readme)
+        self.assertNotIn("github-task-protocol==X.Y.Z", readme)
+        self.assertIn(
+            "https://pypi.org/project/github-task-protocol/X.Y.Z/", readme
+        )
+        self.assertIn(
+            "https://github.com/shinya0x00/github-task-protocol/"
+            "releases/tag/vX.Y.Z",
+            readme,
+        )
+        self.assertIn("両方が解決できることを確認した後だけです", readme)
+        self.assertIn("下の2つのcommandの`1.0.2`だけを", readme)
+        self.assertIn("public-release-v1.0.2.json", readme)
+        cli_section = readme.split("## CLIは任意の検証器", 1)[1].split(
+            "## 仕様と判断記録", 1
+        )[0]
+        for line in cli_section.splitlines():
+            if "1.0.2" not in line:
+                continue
+            for unstable_label in (
+                "latest",
+                "recommended",
+                "current",
+                "最新",
+                "推奨",
+                "現行",
+            ):
+                self.assertNotIn(unstable_label, line.lower())
+        for unstable in (
+            "現在のsource candidate",
+            "`1.0.3`（公開前）",
+            "まだ公開していない",
+            "利用commandは検証済みの`1.0.2`に固定",
+        ):
+            self.assertNotIn(unstable, readme)
+
+        notes_path = ROOT / "acceptance" / "release-notes-v1.0.3.md"
+        self.assertTrue(notes_path.exists())
+        notes = notes_path.read_text(encoding="utf-8")
+        self.assertIn("# GitHub Task Protocol 1.0.3 release notes", notes)
+        self.assertIn("publicationをClaimしない", notes)
+        self.assertIn("PR artifactは検証専用", notes)
+        self.assertIn("main artifactだけを公開候補", notes)
+        self.assertIn("SOURCE_SHA", notes)
+        self.assertIn("SOURCE_DATE_EPOCH", notes)
+        self.assertIn("8項目の「問題の整理」", notes)
+        self.assertIn("machine JSONのkey集合", notes)
+        self.assertIn("`DESIGN.md`、`DECISIONS.md`、`adr/`", notes)
+        for excluded in (
+            "generic Contract amendment semantics",
+            "human-post checker／gate",
+            "line-budgetの置き換えまたはstatus split",
+            "publication operation",
+        ):
+            self.assertIn(excluded, notes)
+
+    def test_sdist_release_surface_is_explicit(self) -> None:
+        self.assertEqual(
+            [
+                "GTP.md",
+                "README.md",
+                "DESIGN.md",
+                "DECISIONS.md",
+                "LICENSE",
+                "pyproject.toml",
+                "build_backend.py",
+                "adr",
+                "src",
+                "tests",
+                "acceptance",
+            ],
+            MATRIX["required_sdist"],
+        )
+        manifest = set(build_backend.SDIST_SOURCE_MANIFEST)
+        self.assertNotIn(".gitignore", manifest)
+        self.assertFalse(any(path.startswith(".github/") for path in manifest))
+        self.assertIn("adr/0036-reproducible-release-artifacts.md", manifest)
+        self.assertIn("acceptance/release-notes-v1.0.3.md", manifest)
+        for required in MATRIX["required_sdist"]:
+            self.assertTrue(
+                required in manifest
+                or any(path.startswith(f"{required}/") for path in manifest),
+                required,
+            )
+
+    def test_reproducible_release_design_and_adr_are_current(self) -> None:
+        design = (ROOT / "DESIGN.md").read_text(encoding="utf-8")
+        adr_path = ROOT / "adr" / "0036-reproducible-release-artifacts.md"
+        self.assertTrue(adr_path.exists())
+        adr = adr_path.read_text(encoding="utf-8")
+        self.assertIn(
+            "[ADR-036](adr/0036-reproducible-release-artifacts.md)", design
+        )
+        for value in (
+            "SOURCE_SHA",
+            "SOURCE_DATE_EPOCH",
+            "BUILD-INFO",
+            "SHA256SUMS",
+            "Python 3.11",
+            "Python 3.12",
+            "Python 3.13",
+            "90日",
+        ):
+            self.assertIn(value, design)
+            self.assertIn(value, adr)
+        self.assertIn("PR artifactは検証専用", design)
+        self.assertIn("main artifactだけを公開候補", design)
+        self.assertIn("同じmanifest oracle", design)
+        self.assertIn("merge tree", design)
+        self.assertIn("公開候補sdist／wheel", design)
+        self.assertIn("producer処理は実行しない", design)
+        self.assertIn("temporary directory", design)
+        self.assertIn("full 40文字のlowercase commit SHAだけ", design)
+        self.assertIn("2つのclean source export", adr)
+        self.assertIn("tag作成、GitHub Release、PyPI uploadは行わない", adr)
+        self.assertIn("GTP Record、state、halt reason", adr)
+        self.assertIn("同じmanifest oracle", adr)
+        self.assertIn("merge tree", adr)
+        self.assertIn("公開候補sdist／wheel", adr)
+        self.assertIn("producer処理は実行しない", adr)
+        self.assertIn("temporary directory", adr)
+        self.assertIn("full 40文字のlowercase commit SHAだけ", adr)
+
+        notes = (ROOT / "acceptance" / "release-notes-v1.0.3.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("同じmanifest oracle", notes)
+        self.assertIn("merge tree", notes)
+        self.assertIn("公開候補sdist／wheel", notes)
+        self.assertIn("producer処理は実行しない", notes)
+        self.assertIn("temporary directory", notes)
 
     def test_repository_has_one_non_publish_ci_workflow(self) -> None:
         workflows = list((ROOT / ".github" / "workflows").glob("*.yml"))
@@ -804,14 +989,159 @@ class ReleaseSurfaceTests(unittest.TestCase):
             == "shinya0x00/github-task-protocol"
         ):
             self.assertEqual("1", os.environ.get(RELEASE_LOCK_REQUIRED_ENV))
-        self.assertIn("Build sdist and wheel without network", workflow)
+        self.assertIn("Build twice from clean exports", workflow)
+        self.assertIn("Rebuild the wheel from a fresh sdist environment", workflow)
+        self.assertIn("Assemble checksummed artifact", workflow)
         self.assertIn("Install wheel in clean environment", workflow)
-        self.assertIn("Run installed status E2E", workflow)
+        self.assertIn("Run all tests against the installed artifact", workflow)
         self.assertIn(
-            ".venv-check/bin/python -m unittest discover -s tests -p 'test_cli.py'",
+            '"$RUNNER_TEMP/venv-check/bin/python" -m unittest discover -s tests',
             workflow,
         )
         self.assertNotIn("publish", workflow.lower())
+
+    def test_ci_builds_exact_source_once_and_fans_out_one_artifact(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+        pins = {
+            "actions/checkout": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "actions/setup-python": "5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "actions/upload-artifact": "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+            "actions/download-artifact": "3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+        }
+        self.assertEqual(
+            {action.removeprefix("actions/"): pin for action, pin in pins.items()},
+            MATRIX["ci_release"]["actions"],
+        )
+        self.assertEqual("3.11", MATRIX["ci_release"]["producer_python"])
+        self.assertEqual(
+            ["3.11", "3.12", "3.13"],
+            MATRIX["ci_release"]["consumer_python"],
+        )
+        self.assertEqual(
+            {
+                "pull_request": "github.event.pull_request.head.sha",
+                "main_push": "github.sha",
+            },
+            MATRIX["ci_release"]["source_sha"],
+        )
+        self.assertEqual(
+            {
+                "pull_request": "v1.0.3-pr-verification-<SOURCE_SHA>",
+                "main_push": "v1.0.3-main-candidate-<SOURCE_SHA>",
+                "sidecars": ["BUILD-INFO", "SHA256SUMS"],
+                "retention_days": 90,
+            },
+            MATRIX["ci_release"]["artifacts"],
+        )
+        for pin in pins.values():
+            self.assertRegex(pin, r"\A[0-9a-f]{40}\Z")
+        for action, pin in pins.items():
+            self.assertIn(f"{action}@{pin}", workflow)
+        uses_line_count = sum(
+            1
+            for line in workflow.splitlines()
+            if re.match(r"^\s*(?:-\s*)?uses:", line)
+        )
+        action_uses = re.findall(
+            r"^\s*(?:-\s*)?uses:\s+actions/([^@\s]+)@([0-9a-f]{40})\s*$",
+            workflow,
+            flags=re.MULTILINE,
+        )
+        self.assertEqual(uses_line_count, len(action_uses))
+        expected_uses = {
+            action.removeprefix("actions/"): pin for action, pin in pins.items()
+        }
+        self.assertEqual(set(expected_uses), {action for action, _ in action_uses})
+        for action, execution_identity in action_uses:
+            self.assertEqual(expected_uses[action], execution_identity)
+        for mutable_ref in (
+            "actions/checkout@v",
+            "actions/setup-python@v",
+            "actions/upload-artifact@v",
+            "actions/download-artifact@v",
+        ):
+            self.assertNotIn(mutable_ref, workflow)
+
+        self.assertIn("github.event.pull_request.head.sha", workflow)
+        self.assertIn("github.sha", workflow)
+        self.assertIn('PYTHONDONTWRITEBYTECODE: "1"', workflow)
+        self.assertIn('[[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]', workflow)
+        self.assertGreaterEqual(workflow.count("ref: ${{ env.SOURCE_SHA }}"), 2)
+        self.assertEqual(3, workflow.count("persist-credentials: false"))
+        self.assertIn('git show -s --format=%ct "$SOURCE_SHA"', workflow)
+        self.assertGreaterEqual(workflow.count('git archive "$SOURCE_SHA"'), 2)
+        self.assertIn("SOURCE_DATE_EPOCH", workflow)
+
+        build_job = _workflow_job(workflow, "build")
+        integration_job = _workflow_job(workflow, "integration")
+        oracle = "build_backend._validate_tracked_source_manifest"
+        self.assertEqual(2, workflow.count(oracle))
+        self.assertEqual(1, build_job.count(oracle))
+        self.assertEqual(1, integration_job.count(oracle))
+        self.assertIn('git ls-tree -r --name-only "$SOURCE_SHA"', build_job)
+        self.assertNotIn("git ls-tree -r --name-only HEAD", build_job)
+        self.assertIn("git ls-tree -r --name-only HEAD", integration_job)
+        self.assertNotIn('git ls-tree -r --name-only "$SOURCE_SHA"', integration_job)
+        # Full unit tests exercise the backend with temporary archives.  This
+        # boundary excludes the release-candidate producer pipeline itself.
+        for forbidden in (
+            "Build twice from clean exports",
+            "Rebuild the wheel from a fresh sdist environment",
+            "Check distribution metadata with Twine",
+            "Assemble checksummed artifact",
+            "actions/upload-artifact",
+            "needs: build",
+            "release-artifact",
+            "SHA256SUMS",
+            "BUILD-INFO",
+        ):
+            self.assertNotIn(forbidden, integration_job)
+
+        self.assertIn('python-version: "3.11"', workflow)
+        self.assertIn('python-version: ["3.11", "3.12", "3.13"]', workflow)
+        self.assertIn("needs: build", workflow)
+        self.assertIn("integration:", workflow)
+        self.assertIn("GitHub's synthetic merge", workflow)
+        self.assertIn(
+            'test "$(git rev-parse HEAD)" = "${{ github.sha }}"', workflow
+        )
+        self.assertIn(
+            'test "$(git rev-parse HEAD^2)" = '
+            '"${{ github.event.pull_request.head.sha }}"',
+            workflow,
+        )
+        self.assertIn("Run merge-result integration tests", workflow)
+        self.assertIn("release-ready:", workflow)
+        self.assertIn("needs: [build, integration, test]", workflow)
+        self.assertIn("Gate the complete release-ready result", workflow)
+        self.assertIn('test "${{ needs.build.result }}" = "success"', workflow)
+        self.assertIn('test "${{ needs.test.result }}" = "success"', workflow)
+        self.assertIn(
+            'test "${{ needs.integration.result }}" = "success"', workflow
+        )
+        self.assertIn("v1.0.3-pr-verification-${SOURCE_SHA}", workflow)
+        self.assertIn("v1.0.3-main-candidate-${SOURCE_SHA}", workflow)
+        self.assertIn("retention-days: 90", workflow)
+        self.assertIn("BUILD-INFO", workflow)
+        self.assertIn("SHA256SUMS", workflow)
+        for build_info_field in (
+            "SOURCE_SHA",
+            "SOURCE_DATE_EPOCH",
+            "GITHUB_RUN_ID",
+            "GITHUB_RUN_ATTEMPT",
+            "ARTIFACT_NAME",
+        ):
+            self.assertIn(
+                f'f"{build_info_field}={{os.environ[\'{build_info_field}\']}}"',
+                workflow,
+            )
+        self.assertIn("sha256sum -c SHA256SUMS", workflow)
+        self.assertIn("pip wheel --no-index --no-deps", workflow)
+        self.assertNotIn("--no-build-isolation", workflow)
+        self.assertIn("python -m twine check", workflow)
+        self.assertIn("cmp", workflow)
 
 
 if __name__ == "__main__":
