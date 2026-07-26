@@ -1056,6 +1056,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
 
     def test_v104_candidate_manifest_is_complete(self) -> None:
         expected_acceptance = [
+            "acceptance/v1.0.4/human-probe.md",
             "acceptance/v1.0.4/walking-skeleton.json",
             "acceptance/v1.0.4/live-paths.json",
             "acceptance/v1.0.4/public-record-disclosure.json",
@@ -1070,6 +1071,19 @@ class ReleaseSurfaceTests(unittest.TestCase):
         ):
             self.assertTrue((ROOT / relative_path).is_file(), relative_path)
             self.assertIn(relative_path, manifest)
+
+        probe = (ROOT / expected_acceptance[0]).read_text(encoding="utf-8")
+        self.assertIn("Status: accepted", probe)
+        self.assertIn("実装と文言作成に参加せず", probe)
+        self.assertIn("実在の人間による調査ではない", probe)
+        questions = probe.split("回答者への追加説明は行わず", 1)[1].split(
+            "## 提示した複合halt", 1
+        )[0]
+        answers = probe.split("## 独立読者の回答", 1)[1].split(
+            "## 反復と限界", 1
+        )[0]
+        self.assertEqual(["1", "2", "3", "4", "5"], re.findall(r"^(\d)\. ", questions, re.MULTILINE))
+        self.assertEqual(["1", "2", "3", "4", "5"], re.findall(r"^(\d)\. ", answers, re.MULTILINE))
 
     def test_v104_acceptance_keeps_unobserved_facts_pending(self) -> None:
         live = json.loads(
@@ -1220,7 +1234,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
             candidate["candidate"]["line_budgets"]["production_python_blank_lines"],
         )
         self.assertEqual(
-            "https://github.com/shinya0x00/github-task-protocol/pull/136",
+            "https://github.com/shinya0x00/github-task-protocol/pull/141",
             candidate["source_pr"],
         )
         statuses = {
@@ -1230,6 +1244,15 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertEqual({"success"}, set(statuses.values()))
         self.assertNotIn("hosted_ci", candidate["candidate"])
         self.assertNotIn("review", candidate["candidate"])
+        self.assertEqual(
+            {
+                "status": "success",
+                "artifact": "acceptance/v1.0.4/human-probe.md",
+                "reader": "independent_non_implementer",
+                "real_human": False,
+            },
+            candidate["candidate"]["human_probe"],
+        )
         self.assertIn("GitHub Check Runs", candidate["exact_head_owner"])
         self.assertIn("GitHub review submissions", candidate["exact_head_owner"])
         self.assertEqual(

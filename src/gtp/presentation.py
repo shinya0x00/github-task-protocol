@@ -119,9 +119,9 @@ def _status_problem(machine: dict[str, Any]) -> tuple[str, ...] | None:
         if machine.get("gtp") == "1.1" and token == "stale_evidence":
             compound_stale = any(isinstance(item, dict) and item.get("token") == "invalid_transition" for item in machine.get("diagnostics") or ())
             if compound_stale:
-                what, layer, observation = "完了条件を追加した後にPRの内容が変わり、前回のDoneでは現在の完成候補を確認できません", "前回のDone、追加後の完了条件、現在のPR、条件ごとの確認資料", "前回のDoneと確認資料は変更前のPRを指しています。その後、完了条件が追加され、PRの内容も更新されました"
-            repair = "PRをmergeする前なら、追加後の現在の完了条件と現在のPRの内容に合わせ、すべての完了条件の確認資料をそろえてDoneを出し直す"
-            resolution = "現在の完了条件と現在のPRの内容について、すべての完了条件の確認資料をそろえたDoneを出し直すと、このhaltが消える。merge済みなら同じIssueではDoneを出し直せない"
+                what, layer, observation, excluded, next_step = "完了条件を追加した後にPRの内容が変わり、前回のDoneでは現在の完成候補を確認できません", "前回のDone、追加後の現在の完了条件、現在のPRの最新commit、条件ごとの確認資料", "前回のDoneと確認資料は変更前のcommitを指しています。その後、完了条件が追加され、PRの最新commitも変わりました", "過去のDone、確認資料のURL、commit履歴を書き換えない。PRの内容が完了条件を満たすかをGTPだけで決めない", "最初のURLを開き、追加後の現在の完了条件、前回のDone、現在のPRの最新commit、条件ごとの確認資料をread-onlyで比べる"
+            repair = "まず現在のPRの内容が追加後の現在の完了条件を満たすか人が確認する。merge前なら必要なPR修正を行い、現在のPRの最新commitについて、すべての完了条件の確認資料をそろえてDoneを出し直す"
+            resolution = "追加後の現在の完了条件に合わせ、現在のPRの最新commitについて、すべての完了条件の確認資料をそろえたDoneを出し直すと、このhaltが消える。merge済みなら同じIssueではDoneを出し直せない"
         if token == "invalid_binding":
             diagnostics = machine.get("diagnostics")
             diagnostic = (

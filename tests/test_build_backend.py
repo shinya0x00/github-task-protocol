@@ -80,6 +80,7 @@ EXPECTED_SDIST_SOURCE_MANIFEST = (
     "acceptance/release-notes-v1.0.4.md",
     "acceptance/release.json",
     "acceptance/stop-time-boundary-run.json",
+    "acceptance/v1.0.4/human-probe.md",
     "acceptance/v1.0.4/live-paths.json",
     "acceptance/v1.0.4/public-record-disclosure.json",
     "acceptance/v1.0.4/release-candidate.json",
@@ -155,7 +156,7 @@ class BuildBackendTests(unittest.TestCase):
             build_backend.SDIST_SOURCE_MANIFEST,
         )
         self.assertEqual(11, len(build_backend.WHEEL_SOURCE_MANIFEST))
-        self.assertEqual(90, len(build_backend.SDIST_SOURCE_MANIFEST))
+        self.assertEqual(91, len(build_backend.SDIST_SOURCE_MANIFEST))
         backend_source = Path(build_backend.__file__).read_text(encoding="utf-8")
         self.assertNotIn(".glob(", backend_source)
         self.assertNotIn(".rglob(", backend_source)
@@ -477,7 +478,7 @@ class BuildBackendTests(unittest.TestCase):
             ] + [f"{sdist_root}/PKG-INFO"]
             with tarfile.open(first_sdist, "r:gz") as archive:
                 self.assertEqual(expected_sdist_names, archive.getnames())
-                self.assertEqual(91, len(archive.getmembers()))
+                self.assertEqual(92, len(archive.getmembers()))
                 for info in archive.getmembers():
                     self.assertTrue(info.isreg())
                     self.assertEqual(0o644, info.mode)
@@ -742,6 +743,7 @@ class BuildBackendTests(unittest.TestCase):
             "adr/0038-protocol-1-1-revisions-and-package-versioning.md",
             "adr/0039-existing-instructions-and-issue-lifecycle-boundary.md",
             "acceptance/release-notes-v1.0.4.md",
+            "acceptance/v1.0.4/human-probe.md",
             "acceptance/v1.0.4/walking-skeleton.json",
             "acceptance/v1.0.4/live-paths.json",
             "acceptance/v1.0.4/public-record-disclosure.json",

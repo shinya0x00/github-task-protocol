@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from contextlib import redirect_stdout
+import hashlib
 from io import StringIO
 import json
 from pathlib import Path
+import re
 import tempfile
 import unittest
 from urllib.error import HTTPError
@@ -846,7 +848,7 @@ class CliTests(unittest.TestCase):
         )
         for value in (problem[3], problem[7]):
             self.assertIn("現在の完了条件", value)
-            self.assertIn("現在のPRの内容", value)
+            self.assertIn("現在のPRの最新commit", value)
             self.assertIn("すべての完了条件", value)
             self.assertIn("確認資料", value)
         self.assertIn("Doneを出し直す", problem[3])
@@ -921,16 +923,16 @@ class CliTests(unittest.TestCase):
         self.assertIn("完了条件を追加した後", problem[0])
         self.assertIn("PRの内容が変わり", problem[0])
         self.assertIn("前回のDone", problem[1])
-        self.assertIn("追加後の完了条件", problem[1])
+        self.assertIn("追加後の現在の完了条件", problem[1])
         self.assertIn("現在のPR", problem[1])
         self.assertIn("条件ごとの確認資料", problem[1])
-        self.assertIn("変更前のPR", problem[2])
+        self.assertIn("変更前のcommit", problem[2])
         self.assertIn("完了条件が追加", problem[2])
         self.assertNotIn("EvidenceがDoneのsource head SHAと一致しません", problem[0])
         self.assertNotIn("Evidenceが示すcommitとDoneが示すsource headが異なります", problem[2])
         for expected in (
             "現在の完了条件",
-            "現在のPRの内容",
+            "現在のPRの最新commit",
             "すべての完了条件",
             "確認資料",
         ):
@@ -938,9 +940,33 @@ class CliTests(unittest.TestCase):
             self.assertIn(expected, resolution)
         self.assertIn("Doneを出し直す", repair)
         self.assertIn("merge済みなら同じIssueではDoneを出し直せない", resolution)
+        self.assertIn("PRの内容", repair)
+        self.assertIn("人が確認する", repair)
+        self.assertIn("必要なPR修正", repair)
+        self.assertIn("書き換えない", problem[4])
+        self.assertIn("GTPだけで決めない", problem[4])
+        self.assertIn("最初のURLを開き", problem[5])
+        self.assertIn("現在のPRの最新commit", problem[5])
         self.assertNotIn("current effective revision", repair)
         self.assertNotIn("current PR head", repair)
         self.assertNotIn("effective Done Condition", repair)
+
+        probe = (
+            Path(__file__).parent.parent / "acceptance" / "v1.0.4" / "human-probe.md"
+        ).read_text(encoding="utf-8")
+        match = re.search(
+            r"## 提示した複合halt\n\nPresented SHA-256: `([0-9a-f]{64})`"
+            r"\n\n```text\n(.*?)\n```",
+            probe,
+            flags=re.DOTALL,
+        )
+        self.assertIsNotNone(match)
+        presented_hash, presented_text = match.groups()
+        self.assertEqual(
+            hashlib.sha256(presented_text.encode()).hexdigest(), presented_hash
+        )
+        start = human.index("問題の整理:")
+        self.assertEqual("\n".join(human[start:start + 9]), presented_text)
 
     def test_status_done_http_fixture_uses_all_production_logic(self) -> None:
         code, human, output = self.call_http_fixture("done-success.json")

@@ -61,6 +61,7 @@
     }
   },
   "acceptance_v1_0_4": [
+    "acceptance/v1.0.4/human-probe.md",
     "acceptance/v1.0.4/walking-skeleton.json",
     "acceptance/v1.0.4/live-paths.json",
     "acceptance/v1.0.4/public-record-disclosure.json",
