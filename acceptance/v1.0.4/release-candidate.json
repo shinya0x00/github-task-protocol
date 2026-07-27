@@ -1,13 +1,14 @@
 {
   "schema": "gtp-release-candidate-v1",
   "owner_issue": "https://github.com/shinya0x00/github-task-protocol/issues/130",
-  "source_pr": "https://github.com/shinya0x00/github-task-protocol/pull/141",
-  "exact_head_owner": "The repair pull request URL, GitHub Check Runs, and GitHub review submissions own exact-head identity; #130 remains halt / stale_evidence and does not authorize publication; this tracked file does not self-reference its containing commit.",
+  "repair_owner_issue": "https://github.com/shinya0x00/github-task-protocol/issues/142",
+  "source_pr": "https://github.com/shinya0x00/github-task-protocol/pull/143",
+  "exact_head_owner": "The current source pull request URL, GitHub Check Runs, and GitHub review submissions own exact-head identity; #130 remains halt / stale_evidence and does not authorize publication; this tracked file does not self-reference its containing commit.",
   "versions": {"package": "1.0.4", "protocol": "1.1"},
   "baseline": {"unit_tests": 162, "GTP.md_lines": 368, "README.md_lines": 131, "production_python_nonblank_lines": 2229, "production_python_physical_lines": 2500, "production_python_blank_lines": 271},
   "candidate": {
-    "unit_tests": {"status": "success", "count": 222},
-    "human_probe": {"status": "success", "artifact": "acceptance/v1.0.4/human-probe.md", "reader": "independent_non_implementer", "real_human": false},
+    "unit_tests": {"status": "success", "count": 234},
+    "human_probe": {"status": "success", "artifact": "acceptance/v1.0.4/human-probe.md", "reader": "fresh_url_only_non_engineer_agents", "real_human": false, "external_issue": "https://github.com/agent-operated/cyan-tigers/issues/5", "external_pr": "https://github.com/agent-operated/cyan-tigers/pull/6"},
     "build": {
       "status": "success",
       "reproducible_sdist": true,
@@ -16,15 +17,15 @@
       "twine_6_2_0": "passed",
       "artifact_identity_owner": "The hosted Check artifact, BUILD-INFO, and SHA256SUMS own final bytes; this tracked file does not self-reference their hashes."
     },
-    "installed_cli": {"status": "success", "version": "1.0.4", "protocol_10_check": "passed", "protocol_11_check": "passed"},
+    "installed_cli": {"status": "success", "version": "1.0.4", "protocol_10_check": "passed", "protocol_11_check": "passed", "human_issue_check": "passed", "human_pr_check": "passed"},
     "scope": {"status": "success", "explicit_manifest": "exact"},
     "line_budgets": {
       "status": "success",
-      "GTP.md": 302,
-      "README.md": 138,
+      "GTP.md": 359,
+      "README.md": 158,
       "production_python_nonblank_lines": 2500,
-      "production_python_physical_lines": 2737,
-      "production_python_blank_lines": 237
+      "production_python_physical_lines": 2742,
+      "production_python_blank_lines": 242
     },
     "sdist_tests": {
       "status": "success",
@@ -45,6 +46,16 @@
     "public_record_boundary",
     "release_surface",
     "integrated_candidate"
+  ],
+  "repair_done_conditions": [
+    "human_post_contract",
+    "producer_wiring",
+    "human_acceptance",
+    "status_truth",
+    "compatibility",
+    "release_candidate",
+    "decision_record",
+    "review_basis"
   ],
   "publication": {"native_merge": false, "tag": false, "github_release": false, "pypi": false},
   "limits": [

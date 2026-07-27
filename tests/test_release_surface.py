@@ -1057,6 +1057,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
     def test_v104_candidate_manifest_is_complete(self) -> None:
         expected_acceptance = [
             "acceptance/v1.0.4/human-probe.md",
+            "acceptance/v1.0.4/human-post-producer.json",
             "acceptance/v1.0.4/walking-skeleton.json",
             "acceptance/v1.0.4/live-paths.json",
             "acceptance/v1.0.4/public-record-disclosure.json",
@@ -1084,6 +1085,49 @@ class ReleaseSurfaceTests(unittest.TestCase):
         )[0]
         self.assertEqual(["1", "2", "3", "4", "5"], re.findall(r"^(\d)\. ", questions, re.MULTILINE))
         self.assertEqual(["1", "2", "3", "4", "5"], re.findall(r"^(\d)\. ", answers, re.MULTILINE))
+
+    def test_human_post_producer_is_connected_without_issue_requirement(self) -> None:
+        receipt = json.loads((ROOT / "acceptance" / "v1.0.4" / "human-post-producer.json").read_text(encoding="utf-8"))
+        self.assertEqual("gtp-human-post-producer-v1", receipt["schema"])
+        self.assertEqual("independent_from_gtp_source_repository", receipt["target_repository_relation"])
+        self.assertEqual((0, True, True), (
+            receipt["issue_case"]["pre_write"]["exit_code"],
+            receipt["issue_case"]["pre_write"]["valid"],
+            receipt["issue_case"]["post_write_get"]["body_match"],
+        ))
+        pr = receipt["pr_only_case"]
+        self.assertFalse(pr["issue_reference_required"])
+        self.assertFalse(pr["gtp_record_required"])
+        self.assertEqual("success", pr["head_update"])
+        self.assertEqual("success", pr["body_edit"])
+        self.assertTrue(pr["post_write_get"]["body_match"])
+        self.assertTrue(pr["post_write_get"]["head_match"])
+        self.assertTrue(pr["post_write_get"]["old_head_absent"])
+        self.assertEqual(1, pr["post_write_get"]["current_heading_count"])
+        self.assertEqual({False}, set(receipt["non_interference"].values()))
+        gtp = (ROOT / "GTP.md").read_text(encoding="utf-8")
+        self.assertIn("gtp check [--target record|issue|pr] <file>", gtp)
+        self.assertIn("problem／fix専用の見出しを必須にしない", gtp)
+        self.assertIn("Issue、GTP Contract、template、workflowの存在を要求しない", gtp)
+        issue_order = "目的 | ゴール | 現在わかっていること | 守る境界 | 決定事項 | 完了条件 | 未確認事項 | 人間に求める判断"
+        self.assertEqual(1, gtp.count(issue_order))
+        decision_block = gtp.split("`決定事項`は現在有効なmaterial decision", 1)[1].split("```", 2)[1]
+        self.assertEqual(
+            ["採用した方針", "今回は採用しない案", "見直す条件", "根拠・履歴"],
+            re.findall(r"^- ([^:]+):", decision_block, re.MULTILINE),
+        )
+        update_block = gtp.split("## Decision update", 1)[1].split("```", 1)[0]
+        self.assertEqual(
+            ["Previous", "New", "Reason", "Contract impact"],
+            re.findall(r"^- ([^:]+):", update_block, re.MULTILINE),
+        )
+        review_rule = gtp.split("`Violated basis`", 1)[1].split("\n\n", 1)[0]
+        self.assertEqual(
+            ["Purpose", "Scope / constraint", "Done Condition", "Decision record",
+             "Public contract", "Compatibility requirement",
+             "Correctness / security / privacy invariant"],
+            re.findall(r"`([^`]+)`", review_rule),
+        )
 
     def test_v104_acceptance_keeps_unobserved_facts_pending(self) -> None:
         live = json.loads(
@@ -1234,7 +1278,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
             candidate["candidate"]["line_budgets"]["production_python_blank_lines"],
         )
         self.assertEqual(
-            "https://github.com/shinya0x00/github-task-protocol/pull/141",
+            "https://github.com/shinya0x00/github-task-protocol/pull/143",
             candidate["source_pr"],
         )
         statuses = {
@@ -1245,12 +1289,10 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertNotIn("hosted_ci", candidate["candidate"])
         self.assertNotIn("review", candidate["candidate"])
         self.assertEqual(
-            {
-                "status": "success",
-                "artifact": "acceptance/v1.0.4/human-probe.md",
-                "reader": "independent_non_implementer",
-                "real_human": False,
-            },
+            {"status": "success", "artifact": "acceptance/v1.0.4/human-probe.md",
+             "reader": "fresh_url_only_non_engineer_agents", "real_human": False,
+             "external_issue": "https://github.com/agent-operated/cyan-tigers/issues/5",
+             "external_pr": "https://github.com/agent-operated/cyan-tigers/pull/6"},
             candidate["candidate"]["human_probe"],
         )
         self.assertIn("GitHub Check Runs", candidate["exact_head_owner"])
@@ -1603,6 +1645,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
                     "adr/0039-existing-instructions-and-issue-lifecycle-boundary.md",
                     "adr/0040-production-source-budget-and-formatting.md",
                     "adr/0041-readme-human-entry-budget.md",
+                    "adr/0042-human-github-body-producer-connection.md",
                 ],
                 "candidate_notes": "acceptance/release-notes-v1.0.4.md",
                 "published_history": {

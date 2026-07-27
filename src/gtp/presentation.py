@@ -2,6 +2,7 @@
 from __future__ import annotations
 from typing import Any
 from .carrier import CarrierResult
+from .human_post import HumanPostResult
 from .status import StatusResult
 AUTHORITY_NOTICE = "この出力は変更・完了・mergeの許可を与えません"
 HALT_MESSAGES = {
@@ -120,8 +121,14 @@ def _status_problem(machine: dict[str, Any]) -> tuple[str, ...] | None:
             compound_stale = any(isinstance(item, dict) and item.get("token") == "invalid_transition" for item in machine.get("diagnostics") or ())
             if compound_stale:
                 what, layer, observation, excluded, next_step = "完了条件を追加した後にPRの内容が変わり、前回のDoneでは現在の完成候補を確認できません", "前回のDone、追加後の現在の完了条件、現在のPRの最新commit、条件ごとの確認資料", "前回のDoneと確認資料は変更前のcommitを指しています。その後、完了条件が追加され、PRの最新commitも変わりました", "過去のDone、確認資料のURL、commit履歴を書き換えない。PRの内容が完了条件を満たすかをGTPだけで決めない", "最初のURLを開き、追加後の現在の完了条件、前回のDone、現在のPRの最新commit、条件ごとの確認資料をread-onlyで比べる"
-            repair = "まず現在のPRの内容が追加後の現在の完了条件を満たすか人が確認する。merge前なら必要なPR修正を行い、現在のPRの最新commitについて、すべての完了条件の確認資料をそろえてDoneを出し直す"
-            resolution = "追加後の現在の完了条件に合わせ、現在のPRの最新commitについて、すべての完了条件の確認資料をそろえたDoneを出し直すと、このhaltが消える。merge済みなら同じIssueではDoneを出し直せない"
+                repair = "まず現在のPRの内容が追加後の現在の完了条件を満たすか人が確認する。merge前なら必要なPR修正を行い、現在のPRの最新commitについて、すべての完了条件の確認資料をそろえてDoneを出し直す"
+                resolution = "追加後の現在の完了条件に合わせ、現在のPRの最新commitについて、すべての完了条件の確認資料をそろえたDoneを出し直すと、このhaltが消える。merge済みなら同じIssueではDoneを出し直せない"
+            else:
+                what, layer, observation = "PRの内容が前回のDone後に変わり、前回の確認資料では現在の完成候補を確認できません", "前回のDone、現在のPRの最新commit、条件ごとの確認資料", "前回のDoneと確認資料は変更前のcommitを指していますが、PRは新しいcommitを指しています"
+                excluded = "過去のDone、確認資料のURL、commit履歴を書き換えない。PRの内容が完了条件を満たすかをGTPだけで決めない"
+                next_step = "最初のURLを開き、現在の完了条件、前回のDone、現在のPRの最新commit、条件ごとの確認資料をread-onlyで比べる"
+                repair = "まず現在のPRの内容が現在の完了条件を満たすか人が確認する。merge前なら必要なPR修正を行い、現在のPRの最新commitについて、すべての完了条件の確認資料をそろえてDoneを出し直す"
+                resolution = "現在の完了条件に合わせ、現在のPRの最新commitについて、すべての完了条件の確認資料をそろえたDoneを出し直すと、このhaltが消える。merge済みなら同じIssueではDoneを出し直せない"
         if token == "invalid_binding":
             diagnostics = machine.get("diagnostics")
             diagnostic = (
@@ -246,25 +253,15 @@ def _record(value: dict[str, Any] | None) -> dict[str, Any] | None:
 
 
 def _content(record: dict[str, Any] | None) -> dict[str, Any]:
-    value = record.get("content") if isinstance(record, dict) else None
-    return value if isinstance(value, dict) else {}
+    return value if isinstance(value := record.get("content") if isinstance(record, dict) else None, dict) else {}
 
 
-def _task_context(
-    *,
-    issue_url: str,
-    state: str | None,
-    acquisition_complete: bool,
-    contract: dict[str, Any] | None,
-    start: dict[str, Any] | None,
-    done: dict[str, Any] | None,
-    branch: dict[str, Any] | None,
-    pr: str | None,
-    pending_evidence_urls: tuple[str, ...],
-    native_merge_observed: bool | None,
-    effective_done_conditions: dict[str, Any] | None = None,
-    protocol_version: str = "1.0",
-) -> dict[str, Any]:
+def _task_context(*, issue_url: str, state: str | None, acquisition_complete: bool,
+                  contract: dict[str, Any] | None, start: dict[str, Any] | None,
+                  done: dict[str, Any] | None, branch: dict[str, Any] | None, pr: str | None,
+                  pending_evidence_urls: tuple[str, ...], native_merge_observed: bool | None,
+                  effective_done_conditions: dict[str, Any] | None = None,
+                  protocol_version: str = "1.0") -> dict[str, Any]:
     contract_content = _content(contract)
     start_content = _content(start)
     done_content = _content(done)
@@ -279,32 +276,23 @@ def _task_context(
                 continue
             evidence_url = evidence_map.get(condition_id)
             conditions[condition_id] = {
-                "text": condition.get("text"),
-                "evidence_kind": condition.get("evidence_kind"),
+                "text": condition.get("text"), "evidence_kind": condition.get("evidence_kind"),
                 "evidence_url": evidence_url if isinstance(evidence_url, str) else None,
-                "evidence_status": (
-                    "presented" if isinstance(evidence_url, str) else "not_presented"
-                ),
-            }
+                "evidence_status": "presented" if isinstance(evidence_url, str) else "not_presented"}
     not_proven: list[str] = []
     if not acquisition_complete:
         not_proven.append("GitHub情報の取得が不完全なためtask context未確認")
     elif not contract_content:
         not_proven.append("Contract未確認")
     else:
-        missing = [
-            f"{condition_id}: Evidence未提示"
-            for condition_id, condition in conditions.items()
-            if condition["evidence_status"] == "not_presented"
-        ]
+        missing = [f"{condition_id}: Evidence未提示" for condition_id, condition in conditions.items()
+                   if condition["evidence_status"] == "not_presented"]
         not_proven.extend(missing)
         if done is None:
             not_proven.append("Done Claim未提示")
         else:
             if state in {"in_progress", "done"} and not missing:
-                not_proven.append(
-                    "Done Conditionの自然言語上の充足は自動判定していない"
-                )
+                not_proven.append("Done Conditionの自然言語上の充足は自動判定していない")
             if pending_evidence_urls:
                 not_proven.append("Check Run未完了")
                 if native_merge_observed is False:
@@ -320,39 +308,22 @@ def _task_context(
         candidate = start_content.get("branch")
         branch_name = candidate if isinstance(candidate, str) else None
     scope = contract_content.get("scope")
-    return {
-        "goal": contract_content.get("goal"),
-        "scope": scope if isinstance(scope, list) else [],
-        "handoff_url": issue_url,
-        "handoff_semantics": "Issue本文・通常commentの意味は自動判定しない",
-        "branch": branch_name,
-        "pr": pr,
-        "conditions": conditions,
-        "not_proven": not_proven,
-        "evidence_limits": list(EVIDENCE_LIMITS_11 if protocol_version == "1.1" else EVIDENCE_LIMITS),
-    }
+    return {"goal": contract_content.get("goal"), "scope": scope if isinstance(scope, list) else [],
+            "handoff_url": issue_url, "handoff_semantics": "Issue本文・通常commentの意味は自動判定しない",
+            "branch": branch_name, "pr": pr, "conditions": conditions, "not_proven": not_proven,
+            "evidence_limits": list(EVIDENCE_LIMITS_11 if protocol_version == "1.1" else EVIDENCE_LIMITS)}
 
 
 def _branch(value: dict[str, Any] | None) -> dict[str, Any] | None:
-    if value is None:
-        return None
-    observation = {"exists": value["exists"]} if "exists" in value else {}
-    return {"name": value.get("name"), "observation": observation}
+    return None if value is None else {"name": value.get("name"),
+                                       "observation": {"exists": value["exists"]} if "exists" in value else {}}
 
 
 def _next_action(result: StatusResult) -> str:
-    if result.state is None:
-        return "retry_acquisition"
-    if result.state == "unmanaged":
-        return "post_contract"
-    if result.state == "ready":
-        return "post_start"
-    if result.state == "halt":
-        return "inspect_halt"
-    if result.state == "done":
-        return "none_done"
-    if result.state == "stopped":
-        return "none_stopped"
+    fixed = {None: "retry_acquisition", "unmanaged": "post_contract", "ready": "post_start",
+             "halt": "inspect_halt", "done": "none_done", "stopped": "none_stopped"}
+    if result.state in fixed:
+        return fixed[result.state]
     if result._pending_evidence_urls:
         return "retry_acquisition"
     if result.current.get("done") is not None:
@@ -395,15 +366,8 @@ def status_projection(result: StatusResult) -> dict[str, Any]:
     branch = _branch(current.get("branch"))
     bound_pr = current.get("bound_pr")
     done_pr = _content(done).get("pr_ref")
-    pr = (
-        bound_pr
-        if isinstance(bound_pr, str)
-        else candidate
-        if isinstance(candidate, str)
-        else done_pr
-        if isinstance(done_pr, str)
-        else None
-    )
+    pr = (bound_pr if isinstance(bound_pr, str) else candidate if isinstance(candidate, str)
+          else done_pr if isinstance(done_pr, str) else None)
     machine = {
         "gtp": result.protocol_version,
         "command": "status",
@@ -425,19 +389,10 @@ def status_projection(result: StatusResult) -> dict[str, Any]:
         "diagnostics": diagnostics,
         "acquisition_errors": result.acquisition_errors,
         "task_context": _task_context(
-            issue_url=result.issue_url,
-            state=result.state,
-            acquisition_complete=not result.acquisition_errors,
-            contract=contract,
-            start=start,
-            done=done,
-            branch=branch,
-            pr=pr,
-            pending_evidence_urls=result._pending_evidence_urls,
-            native_merge_observed=result._native_merge_observed,
-            effective_done_conditions=result._effective_done_conditions,
-            protocol_version=result.protocol_version,
-        ),
+            issue_url=result.issue_url, state=result.state, acquisition_complete=not result.acquisition_errors,
+            contract=contract, start=start, done=done, branch=branch, pr=pr,
+            pending_evidence_urls=result._pending_evidence_urls, native_merge_observed=result._native_merge_observed,
+            effective_done_conditions=result._effective_done_conditions, protocol_version=result.protocol_version),
     }
     if result.protocol_version == "1.1":
         machine["amendment"] = _record(current.get("amendment"))
@@ -652,6 +607,35 @@ def present_check(result: CarrierResult) -> tuple[list[str], dict[str, Any]]:
     problem = _check_problem(result)
     if problem is not None:
         lines.extend(_problem_lines(problem))
+    return lines, machine
+
+
+def _human_post_problem(result: HumanPostResult) -> tuple[str, ...]:
+    error = result.errors[0] if result.errors else {"code": "invalid_body", "path": "$"}
+    kind = "Issue" if result.target == "issue" else "PR"
+    return (f"{kind}本文の目的と判断材料の構造を確認できません", f"投稿前の{kind}本文",
+            f"check error: {error['code']} at {error['path']}", "error pathが示すsectionの順序、一意性、本文を直す",
+            "未確認のGitHub state、既存instructions、workflow、GTP Record", "本文を直して同じtargetのgtp checkを再実行する",
+            "URLなし（投稿前入力）", "validがtrueになり、投稿後の本文を人が読んで判断できる")
+
+
+def present_human_post(result: HumanPostResult) -> tuple[list[str], dict[str, Any]]:
+    kind = "Issue" if result.target == "issue" else "PR"
+    summary = "required sectionの関係に適合しました" if result.valid else "required sectionの関係に適合しません"
+    lines = [f"検査結果: {kind}本文は{summary}",
+             "検査範囲: 本文構造だけを検査し、内容の真実性や人間の理解は判定していません",
+             f"非許可表示: {AUTHORITY_NOTICE}"]
+    if not result.valid:
+        lines.extend(_problem_lines(_human_post_problem(result)))
+    return lines, {"gtp": "1.1", "command": "check", "target": result.target,
+                   "valid": result.valid, "errors": result.errors,
+                   "contextual_checks": "not_run", "authority": "none"}
+
+
+def present_human_post_input_error(message: str, target: str) -> tuple[list[str], dict[str, Any]]:
+    result = HumanPostResult(target, False, [{"code": "input_error", "path": "$", "message": message}])
+    lines, machine = present_human_post(result)
+    machine["valid"] = None
     return lines, machine
 
 

@@ -289,13 +289,70 @@ state決定に必要なIssue comments、branch、PR、Check Run、artifact、mer
 
 Level 0はCLIなしで、clean sessionへIssue URLだけを渡し、同じbranchとPRで重複なく再開できることを実GitHubで確認する。Level 1はrelease candidate CLIを実GitHubへ接続し、原因URL付き`halt`、amendment、re-Done、Evidence付きDone、native merge後の`done`、人が日本語表示から判断できることを確認する。unit testは代わりにならない。
 
-## 16. 共通adapter文
+## 16. Issue／PR本文の任意check
+
+公開commandは引き続き`check`と`status`の2つだけである。`check`はlocal fileだけを読むoffline検査で、GitHubへのwrite、投稿intercept、authorizationを行わない。
+
+```text
+gtp check [--target record|issue|pr] <file>
+```
+
+`--target`省略時と`record`は従来のCarrier検査である。`issue`と`pr`はGTP Recordを生成せず、人間向けGitHub本文の構造だけを検査する。本文からtargetを推測せず、Issue、GTP Contract、template、workflowの存在を要求しない。
+
+`issue`は次のexact H2を各1回、この順序で持つ。
+
+```text
+目的 | ゴール | 現在わかっていること | 守る境界 | 決定事項 | 完了条件 | 未確認事項 | 人間に求める判断
+```
+
+`決定事項`は現在有効なmaterial decisionのprojectionであり、次のbulletを各1回、この順序で持つ。各値は非空とし、`根拠・履歴`は固定GitHub comment／blob permalink、複数なら読点またはcomma区切り、参照がなければexact `none`とする。
+
+```text
+- 採用した方針: ...
+- 今回は採用しない案: ...
+- 見直す条件: ...
+- 根拠・履歴: ...
+```
+
+materialかは「その判断を知らないreviewerが、別案をP1／P2として要求しそうか」で選ぶ。複数方式からの選択、通常期待される機能の意図的な非対象化、互換性／public surface／security／privacy、完了判定、明白なtrade-offを含める。関数名、局所的手順、途中の試行錯誤は要求しない。新しい設計判断がない場合も、既存の公開契約に従うこと、非採用案、見直す条件、`none`を明記する。
+
+Issue本文はcurrent decision、通常commentはappend-onlyな変更履歴、ADR／DESIGNは複数Issueへ影響する長期判断を所有する。判断を変える場合は過去を黙って書き換えず、通常commentを1件残してから本文をcurrentへ更新し、`根拠・履歴`からそのcommentを参照する。
+
+```text
+## Decision update
+- Previous: ...
+- New: ...
+- Reason: 今回確認した新事実
+- Contract impact: none
+```
+
+goal、scope、Done Conditionsが変わる場合はDecision updateではなく既存の`amendment`規則を使う。Decision updateはGTP Recordでもstate transitionでもない。
+
+`pr`は次のexact H2を各1回、この順序で持つ。problem／fix専用の見出しを必須にしない。
+
+```text
+目的 | ゴール | 変更内容 | 利用者への影響 | 現在地 | 未確認事項 | 人間に求める判断
+```
+
+最初の可視非空行は最初のrequired H2であり、各sectionは次の可視H2より前に非空本文を持つ。追加H2はrequired H2の代わりにならない。optionalなexact `## 技術詳細`はrequired H2の後、最後の可視H2として1回だけ置け、非空本文を持つ。fenced codeとHTML comment内の文字列は可視headingまたは本文に数えない。
+
+human targetのmachine JSONは`gtp: "1.1"`、`command: "check"`、`target`、`valid`、`errors`、`contextual_checks: "not_run"`、`authority: "none"`を返す。exit codeはvalid `0`、不適合`1`、input error `2`である。既存`record` targetのmachine JSONとexit codeは変更しない。
+
+`valid`が示すのはrequired sectionの順序、一意性、非空、決定事項4項目、固定参照と、技術詳細の配置だけである。決定の正しさ、理由の十分性、非採用案の網羅性、見直す条件の妥当性、言語、内容の真実性、自然さ、人間の理解、GitHub state、approval、authorizationを判定しない。
+
+このprojectionを使うreviewでP1／P2をblocking findingにする場合、`Violated basis`を`Purpose`、`Scope / constraint`、`Done Condition`、`Decision record`、`Public contract`、`Compatibility requirement`、`Correctness / security / privacy invariant`のいずれかへ結び付ける。どれにも結び付かない好みや別案はblocking findingにしない。
+
+決定自体への異議は通常findingから分け、`Contract challenge`として対象となる決定、新しく観測した事実、衝突理由、最小限必要な変更、現在のPRを止める必要を示す。`見直す条件`に該当する新事実がなければContract challengeを出さない。checkerはこのreview判断を自動化しない。
+
+producerが接続済みとClaimするには、投稿直前に明示targetのcheckを実行し、exit `0`の場合だけGitHubのbody-file相当の経路でcreateまたはeditし、投稿後GETした本文が入力と一致することを観測する。PR head更新では履歴を先頭へ積まず、同じ本文の`現在地`と技術詳細をcurrent headへ置き換える。これは任意のproducer contractであり、repository固有のIssue、template、workflow、required checkを強制しない。
+
+## 17. 共通adapter文
 
 次の1段落を`AGENTS.md`などへコピーする。これはGTP Recordの読み方だけを伝え、既存instructions全体を所有または代替しない。
 
 > このrepositoryはrootの`GTP.md`をtask protocolの唯一の正本とする。GitHub Issue URLを受け取ったら、Issue commentをServer Orderで読み、protocol versionに対応するRecord、6 state、7 halt reasonに従って既存branch・PR・次のprotocol actionを再構成する。Recordを推測、編集、独自拡張せず、矛盾時は原因URLを示して止まり、取得不能はhaltと混同しない。GTPの表示やRecordは変更・完了・mergeの権限を与えない。
 
-## 17. 公開v1に含めないもの
+## 18. 公開v1に含めないもの
 
 判断理由用Record、generic patch、Record置換、任意数leafのjoin、PR専用lifecycle、publication／deployment Record、runtime別adapter、bot、自動投稿、自動merge、mutation command、plan管理、dashboard、database、cacheは定義しない。
 

@@ -1,0 +1,91 @@
+{
+  "schema": "gtp-human-post-producer-v1",
+  "owner_issue": "https://github.com/shinya0x00/github-task-protocol/issues/142",
+  "target_repository": "https://github.com/agent-operated/cyan-tigers",
+  "target_repository_relation": "independent_from_gtp_source_repository",
+  "producer": {
+    "actor": "AO Codex Agent GitHub App",
+    "pre_write_check": "source checkout candidate passed; final installed-candidate rerun pending",
+    "transport": "GitHub body-file equivalent create/edit operations",
+    "post_write_oracle": "GET body equals pre-write body after trailing-newline normalization",
+    "authority": "none"
+  },
+  "issue_case": {
+    "url": "https://github.com/agent-operated/cyan-tigers/issues/5",
+    "title": "acceptance: human-readable Issue projection",
+    "pre_write": {
+      "target": "issue",
+      "exit_code": 0,
+      "valid": true,
+      "first_body_sha256": "247154ed98bef1873732a3b54ab6019640e9aa66580386a2e5b29ff9c9289096",
+      "final_body_sha256": "b02e2b58578c3f5a4871c712e411b545aee5a1a48f138570c8a8c975e2a1cc4c"
+    },
+    "create": "success",
+    "post_write_get": {"status": "success", "body_match": true},
+    "body_update_after_reader_finding": "success",
+    "body_update_for_decision_record": "success",
+    "reader": {
+      "status": "success",
+      "context": "fresh non-engineer role with URL only",
+      "explained": ["purpose", "current status", "completion conditions", "adopted posting approach", "non-adopted repository changes", "next judgment", "no merge or publication authority"]
+    },
+    "reader_retry": {
+      "status": "not_evaluated",
+      "reason": "fresh reader received 404 for the private repository and did not read the body",
+      "counted_as_acceptance": false
+    },
+    "cleanup": {"state": "closed", "closed_after_reader": true}
+  },
+  "pr_only_case": {
+    "url": "https://github.com/agent-operated/cyan-tigers/pull/6",
+    "title": "acceptance: verify a PR can be understood from its URL",
+    "issue_reference_required": false,
+    "gtp_record_required": false,
+    "base": {"branch": "main", "sha": "6c0e4a96de8e2c7368db9d241a293b926fc434a4"},
+    "head_branch": "acceptance/human-readable-pr-projection",
+    "first_head": "5c9a1c164542ff688517839c288e445eda743d03",
+    "current_head": "8b1656e1be34e6cdb214f530e4b507a98cf2a7a1",
+    "pre_write": {
+      "target": "pr",
+      "exit_code": 0,
+      "valid": true,
+      "first_body_sha256": "1520053418e0584c18eb0103cf5f52b763abe2bc7644be96f502c64dea2e6ca6",
+      "post_head_body_sha256": "3e5583b1d8dc7280adc50132cacc11bb24ae2120625c4fff6d20a9a948db6d2e",
+      "final_body_sha256": "ef9db16dd56e833fdb7c80f5147b53f2503440625146fa74a5eacbc50cb32e5f"
+    },
+    "create": "success",
+    "head_update": "success",
+    "body_edit": "success",
+    "post_write_get": {
+      "status": "success",
+      "body_match": true,
+      "head_match": true,
+      "old_head_absent": true,
+      "current_heading_count": 1
+    },
+    "changed_file": {
+      "path": "README.md",
+      "sha256": "8eecf23873ed632d06a903723e25dbfe6e1322fd58ecec4f08afd81ba6bb4b3d"
+    },
+    "body_updates_after_reader_findings": 2,
+    "reader": {
+      "status": "success",
+      "context": "fresh non-engineer role with URL only",
+      "explained": ["purpose", "goal", "changed README", "user impact", "current status", "unknowns", "human judgment", "no merge or publication authority"]
+    },
+    "cleanup": {"state": "closed", "merged": false, "closed_after_reader": true}
+  },
+  "non_interference": {
+    "default_branch_direct_push": false,
+    "native_merge": false,
+    "issue_or_pr_template_changed": false,
+    "workflow_changed": false,
+    "ruleset_or_required_check_changed": false,
+    "gtp_setup_performed": false
+  },
+  "limits": [
+    "Structural check success does not prove natural-language truth or reader comprehension.",
+    "GitHub create/edit success does not prove authorization beyond the observed operation.",
+    "These artifacts do not authorize merge, publication, or deployment."
+  ]
+}

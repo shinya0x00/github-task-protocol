@@ -19,27 +19,13 @@ class CarrierResult:
     errors: list[dict[str, str]]
     observed_gtp: str | None = None
 
-    def projection(self) -> dict[str, Any]:
-        result: dict[str, Any] = {
-            "recognized": self.recognized,
-            "schema_valid": self.schema_valid,
-            "contextual_checks": "not_run",
-        }
-        if self.errors:
-            result["errors"] = self.errors
-        return result
-
-
-def _blank(line: str) -> bool:
-    return not line.strip()
-
 
 def classify_carrier(body: str) -> CarrierResult:
     lines = body.split("\n")
     recognized = any(line == MARKER for line in lines)
     if not recognized:
         return CarrierResult(False, None, None, [])
-    nonblank = [index for index, line in enumerate(lines) if not _blank(line)]
+    nonblank = [index for index, line in enumerate(lines) if line.strip()]
     format_errors: list[dict[str, str]] = []
     if len(nonblank) < 7:
         format_errors.append({"code": "invalid_carrier", "path": "$"})

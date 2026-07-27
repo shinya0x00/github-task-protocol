@@ -85,9 +85,3 @@ class FoldResult:
 
 class IncompleteSnapshotError(ValueError):
     pass
-
-
-class ContextAcquisitionRequired(ValueError):
-    def __init__(self, resource: str):
-        super().__init__(resource)
-        self.resource = resource

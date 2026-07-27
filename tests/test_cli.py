@@ -393,6 +393,52 @@ class CliTests(unittest.TestCase):
         self.assertEqual(2, encoding_code)
         self.assertEqual("input_error", encoding_output["errors"][0]["code"])
 
+    def test_check_human_issue_and_pr_targets_preserve_record_default(self) -> None:
+        sections = {
+            "issue": ("目的", "ゴール", "現在わかっていること", "守る境界", "決定事項", "完了条件", "未確認事項", "人間に求める判断"),
+            "pr": ("目的", "ゴール", "変更内容", "利用者への影響", "現在地", "未確認事項", "人間に求める判断"),
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            for target, headings in sections.items():
+                path = Path(directory) / f"{target}.md"
+                contents = []
+                for heading in headings:
+                    explanation = "説明です。"
+                    if heading == "決定事項":
+                        explanation = (
+                            "- 採用した方針: 既存契約どおりに修正する。\n"
+                            "- 今回は採用しない案: none\n"
+                            "- 見直す条件: 契約との衝突を再現した場合。\n"
+                            "- 根拠・履歴: none"
+                        )
+                    contents.append(f"## {heading}\n\n{explanation}")
+                path.write_text("\n\n".join(contents), encoding="utf-8")
+                code, human, output = self.call(["check", "--target", target, str(path)])
+                self.assertEqual(0, code)
+                self.assertTrue(output["valid"])
+                self.assertEqual(target, output["target"])
+                self.assertEqual({"gtp", "command", "target", "valid", "errors", "contextual_checks", "authority"}, set(output))
+                self.assertIn("内容の真実性や人間の理解は判定していません", human[1])
+            default = self.capture(["check", str(FIXTURE)])
+            explicit = self.capture(["check", "--target", "record", str(FIXTURE)])
+        self.assertEqual(default, explicit)
+
+    def test_check_human_target_invalid_and_input_error_are_distinct(self) -> None:
+        labels = json.loads((CLI_FIXTURES / "problem-explanations.json").read_text(encoding="utf-8"))["labels"]
+        with tempfile.TemporaryDirectory() as directory:
+            invalid = Path(directory) / "invalid.md"
+            invalid.write_text("## 目的\n\n目的だけです。\n", encoding="utf-8")
+            invalid_code, invalid_human, invalid_output = self.call(["check", "--target", "pr", str(invalid)])
+            missing_code, missing_human, missing_output = self.call(["check", "--target", "issue", str(Path(directory) / "missing.md")])
+        self.assertEqual(1, invalid_code)
+        self.assertFalse(invalid_output["valid"])
+        self.assertIn("missing_section", [error["code"] for error in invalid_output["errors"]])
+        self.assertEqual(8, len(self.problem_values(invalid_human, labels)))
+        self.assertEqual(2, missing_code)
+        self.assertIsNone(missing_output["valid"])
+        self.assertEqual("input_error", missing_output["errors"][0]["code"])
+        self.assertIn("問題の整理:", missing_human)
+
     def test_only_status_and_check_are_public_commands(self) -> None:
         actions = build_parser()._subparsers._group_actions
         self.assertEqual(1, len(actions))
@@ -856,6 +902,30 @@ class CliTests(unittest.TestCase):
             "merge済みなら同じIssueではDoneを出し直せない",
             problem[7],
         )
+
+    def test_protocol_11_simple_stale_does_not_invent_amendment(self) -> None:
+        issue_url = "https://github.com/o/r/issues/1"
+        done_url = f"{issue_url}#issuecomment-3"
+        pr_url = "https://github.com/o/r/pull/7"
+        observed = StatusResult(
+            issue_url,
+            "halt",
+            [Diagnostic("stale_evidence", (done_url, pr_url))],
+            {"done": {"type": "done", "url": done_url}, "bound_pr": pr_url},
+            protocol_version="1.1",
+        )
+        with patch("gtp.cli.evaluate_issue", return_value=observed):
+            code, human, output = self.call(["status", issue_url])
+        labels = json.loads((CLI_FIXTURES / "problem-explanations.json").read_text(encoding="utf-8"))["labels"]
+        problem = self.problem_values(human, labels)
+        self.assertEqual(0, code)
+        self.assertEqual("stale_evidence", output["halt_reason"])
+        text = "\n".join(problem)
+        self.assertIn("現在のPRの最新commit", text)
+        self.assertIn("すべての完了条件", text)
+        self.assertIn("merge済みなら同じIssueではDoneを出し直せない", text)
+        self.assertNotIn("追加後", text)
+        self.assertNotIn("完了条件が追加", text)
 
     def test_protocol_11_compound_stale_http_path_explains_complete_repair_in_plain_japanese(self) -> None:
         current_head = "f" * 40

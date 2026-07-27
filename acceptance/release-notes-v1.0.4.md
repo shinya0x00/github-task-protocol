@@ -12,6 +12,10 @@
 - repository、organization、userが既に所有するinstructionは、そのownerに残る。GTPは内容を定義、検証、上書きせず、valid ContractがないIssueの詳細なlifecycleを推測しない。
 - public Recordと公開Evidenceには、再構成に必要な公開可能情報だけを残す。credential、private prompt、非公開のauthorization、内部診断の原文は転記しない。
 - protocol `1.0`だけの履歴は従来の意味を保持する。protocol `1.1`へ移行した履歴を理解できない旧CLIは、推測で成功扱いせずfail closedする。
+- `gtp check --target issue|pr`は、Issue／PR本文を目的と人間の判断から読めるrequired section関係かoffline検査する。PRをproblem/fix専用にせず、IssueやGTP Recordを必須にしない。
+- checkerはGitHubへwriteしない。明示producerだけがcheck成功後にbody-file相当の経路でcreate／editし、投稿後GET一致を確認する。head更新ではPR本文の現在地を置換し、先頭へlogを積まない。
+- Issue projectionは、採用方針、非採用／延期案、見直す条件、固定参照を示す`決定事項`を持つ。判断変更は通常の`Decision update` commentへ残し、goal、scope、Done Conditionsが変わる場合だけ既存amendmentを使う。
+- blockingなP1／P2は違反したPurpose、Scope、Done Condition、Decision record、公開契約、互換性、correctness／security／privacy invariantを明示する。見直す条件に該当する新事実のない別案はblocking findingにしない。
 
 ## packageとprotocolの境界
 
@@ -26,6 +30,7 @@
 - [`v1.0.4/live-paths.json`](v1.0.4/live-paths.json)は、merge前に観測できるrevision移行、re-Done、旧CLI fail-closedをproduction pathで検査する。native merge cutoffはunit／HTTP acceptanceで固定し、実GitHubのpost-merge観測はmergeが別途許可されるまでpendingとする。
 - [`v1.0.4/public-record-disclosure.json`](v1.0.4/public-record-disclosure.json)は、公開Record／Evidenceへ秘密情報を転載しない境界を検査する。
 - [`v1.0.4/release-candidate.json`](v1.0.4/release-candidate.json)は、source候補、line budget、build、install、test、Twine、artifact metadataを検査する。final source SHAはPR head確定後のEvidenceが所有し、この文書へ先書きしない。
+- [`v1.0.4/human-post-producer.json`](v1.0.4/human-post-producer.json)は、GTP外repositoryでIssueとIssue非依存PRのpre-write check、create／edit、post-write GETを観測する。読解結果は別のhuman probeが所有する。
 - production Python budgetは`src/gtp/*.py`のphysical nonblank lines 2500以下とし、blank-line formattingはRuff 0.12.3の`E301`、`E302`、`E305`で独立して検査する。total linesとblank linesは観測値として残すが合否には使わない。
 
 ## 配布artifactの境界

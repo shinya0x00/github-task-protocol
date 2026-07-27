@@ -51,7 +51,8 @@
       "adr/0038-protocol-1-1-revisions-and-package-versioning.md",
       "adr/0039-existing-instructions-and-issue-lifecycle-boundary.md",
       "adr/0040-production-source-budget-and-formatting.md",
-      "adr/0041-readme-human-entry-budget.md"
+      "adr/0041-readme-human-entry-budget.md",
+      "adr/0042-human-github-body-producer-connection.md"
     ],
     "candidate_notes": "acceptance/release-notes-v1.0.4.md",
     "published_history": {
@@ -62,6 +63,7 @@
   },
   "acceptance_v1_0_4": [
     "acceptance/v1.0.4/human-probe.md",
+    "acceptance/v1.0.4/human-post-producer.json",
     "acceptance/v1.0.4/walking-skeleton.json",
     "acceptance/v1.0.4/live-paths.json",
     "acceptance/v1.0.4/public-record-disclosure.json",
