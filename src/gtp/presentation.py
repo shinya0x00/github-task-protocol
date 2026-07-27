@@ -1,35 +1,99 @@
 """Plain-first Japanese and machine-exact CLI projections."""
 from __future__ import annotations
-from typing import Any
+import re
+from typing import Any, NamedTuple
 from .carrier import CarrierResult
 from .status import StatusResult
 AUTHORITY_NOTICE = "この出力は変更・完了・mergeの許可を与えません"
-HALT_MESSAGES = {
-    "invalid_record": "GTP Recordの形式、内容、編集状態のいずれかが不正です",
-    "conflicting_records": "同じ役割のRecordが競合しています",
-    "invalid_transition": "Recordの順序または参照関係が成立していません",
-    "invalid_binding": "Issue、branch、PR、scopeの束縛が一致しません",
-    "invalid_evidence": "Done Conditionに対応するEvidenceを確認できません",
-    "stale_evidence": "EvidenceがDoneのsource head SHAと一致しません",
-    "terminal_violation": "terminal stateの前後関係に違反するRecordまたはmergeがあります",
+SECTIONS = {
+    "issue": ("目的", "ゴール", "現在わかっていること", "守る境界", "決定事項", "完了条件", "未確認事項", "人間に求める判断"),
+    "pr": ("目的", "ゴール", "変更内容", "利用者への影響", "現在地", "未確認事項", "人間に求める判断"),
 }
-HALT_OBSERVATIONS = {
-    "invalid_record": "Issue commentを、変更されていない一意のGTP記録として確定できませんでした",
-    "conflicting_records": "Issueに同じ役割のGTP Recordが複数あります",
-    "invalid_transition": "GTP Recordの順序または参照先を確認できませんでした",
-    "invalid_binding": "Issueの記録が指す対象とGitHub上で確認した対象が一致しませんでした",
-    "invalid_evidence": "Done Conditionに対応するEvidence URLまたは成功状態を確認できませんでした",
-    "stale_evidence": "Evidenceが示すcommitとDoneが示すsource headが異なります",
-    "terminal_violation": "完了または停止の後に追加のGTP Recordまたはmergeが見つかりました",
-}
-EVIDENCE_LIMITS = [
-    "Check RunがDone Conditionの内容を十分に検査したこと",
-    "Artifactの内容がDone Conditionを満たすこと",
-    "Issue本文・通常commentに未解決事項がないこと",
-    "actor本人性",
-    "credential安全性",
-    "GitHub外情報を参照しなかったこと",
-]
+TECHNICAL_SECTION = "技術詳細"; DECISION_FIELDS = ("採用した方針", "今回は採用しない案", "見直す条件", "根拠・履歴")
+FIXED_REFERENCE = re.compile(r"https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/(?:(?:issues|pull)/[1-9]\d*#issuecomment-[1-9]\d*|blob/[0-9a-f]{40}/[^\s?#]+)")
+
+
+class HumanPostResult(NamedTuple): target: str; valid: bool; errors: list[dict[str, str]]
+
+
+def _comment_at(line: str) -> int:
+    index = 0
+    while index < len(line):
+        escaped = index > 0 and (len(line[:index]) - len(line[:index].rstrip("\\"))) % 2 == 1
+        if line[index] == "`" and not escaped:
+            run = len(line[index:]) - len(line[index:].lstrip("`"))
+            closing = index + run
+            while (closing := line.find("`", closing)) >= 0:
+                closing_run = len(line[closing:]) - len(line[closing:].lstrip("`"))
+                if closing_run == run: break
+                closing += closing_run
+            index = closing + run if closing >= 0 else index + run; continue
+        if not escaped and line.startswith("<!--", index): return index
+        index += 1
+    return -1
+
+
+def _visible_lines(body: str) -> list[tuple[int, str]]:
+    visible: list[tuple[int, str]] = []; fence: tuple[str, int] | None = None; comment = False; block_comment = False
+    for number, line in enumerate(body.splitlines(), start=1):
+        stripped = line.lstrip(" "); indent = len(line) - len(stripped); marker = stripped[:1]; run = len(stripped) - len(stripped.lstrip(marker)) if marker in {"`", "~"} else 0
+        if fence is not None: fence = None if marker == fence[0] and indent <= 3 and run >= fence[1] and not stripped[run:].strip() else fence; continue
+        if comment:
+            if "-->" not in line: continue
+            line = "" if block_comment else line.split("-->", 1)[1]; comment = False; block_comment = False
+            stripped = line.lstrip(" "); indent = len(line) - len(stripped); marker = stripped[:1]; run = len(stripped) - len(stripped.lstrip(marker)) if marker in {"`", "~"} else 0
+        if indent <= 3 and run >= 3: fence = marker, run; continue
+        remaining = line; kept = ""; hidden = False
+        while remaining:
+            start = _comment_at(remaining)
+            if start < 0: kept += remaining; break
+            before, after = remaining[:start], remaining[start + 4 :]; kept += before; block = not kept.strip() and len(kept) <= 3
+            if "-->" not in after: line = "" if block else kept + remaining[start:]; comment = block; block_comment = block; break
+            if block: line = ""; hidden = True; break
+            kept += " "; remaining = after.split("-->", 1)[1]
+        if not comment and not hidden: line = kept
+        stripped = line.lstrip(" "); indent = len(line) - len(stripped)
+        if line: visible.append((number, stripped if indent <= 3 else line))
+    return visible
+
+
+def validate_human_post(body: str, target: str) -> HumanPostResult:
+    required = SECTIONS.get(target)
+    if required is None: return HumanPostResult(target, False, [{"code": "invalid_target", "path": "$.target"}])
+    visible = _visible_lines(body); headings = [(index, number, line[3:]) for index, (number, line) in enumerate(visible) if line.startswith("## ") and line == f"## {line[3:].strip()}"]; errors: list[dict[str, str]] = []; nonblank = [(number, line) for number, line in visible if line.strip()]
+    if not nonblank or nonblank[0][1] != f"## {required[0]}": errors.append({"code": "invalid_first_section", "path": f"$.sections.{required[0]}"})
+    positions: list[int] = []
+    for title in required:
+        matches = [item for item in headings if item[2] == title]
+        if not matches: errors.append({"code": "missing_section", "path": f"$.sections.{title}"}); continue
+        if len(matches) > 1: errors.append({"code": "duplicate_section", "path": f"$.sections.{title}"}); continue
+        position, number, _ = matches[0]; positions.append(position); next_heading = next((item[0] for item in headings if item[0] > position), len(visible))
+        if not any(line.strip() for _, line in visible[position + 1 : next_heading]): errors.append({"code": "empty_section", "path": f"$.sections.{title}@line{number}"})
+    if len(positions) == len(required) and positions != sorted(positions): errors.append({"code": "invalid_section_order", "path": "$.sections"})
+    technical = [item for item in headings if item[2] == TECHNICAL_SECTION]
+    if len(technical) > 1: errors.append({"code": "duplicate_section", "path": f"$.sections.{TECHNICAL_SECTION}"})
+    elif technical:
+        position, number, _ = technical[0]
+        if not positions or position < max(positions) or position != headings[-1][0]: errors.append({"code": "invalid_technical_position", "path": f"$.sections.{TECHNICAL_SECTION}"})
+        elif not any(line.strip() for _, line in visible[position + 1 :]): errors.append({"code": "empty_section", "path": f"$.sections.{TECHNICAL_SECTION}@line{number}"})
+    if target == "issue":
+        decision = next((item for item in headings if item[2] == "決定事項"), None)
+        if decision is not None:
+            end = next((item[0] for item in headings if item[0] > decision[0]), len(visible))
+            lines = [line.strip() for _, line in visible[decision[0] + 1 : end] if line.strip()]; values: dict[str, str] = {}; order = [field for line in lines for field in DECISION_FIELDS if line.startswith(f"- {field}:")]
+            for field in DECISION_FIELDS:
+                prefix = f"- {field}:"; matches = [line[len(prefix):].strip() for line in lines if line.startswith(prefix)]; code = "missing_decision_field" if not matches else "duplicate_decision_field" if len(matches) > 1 else "empty_decision_field" if not matches[0] else None
+                if code: errors.append({"code": code, "path": f"$.sections.決定事項.{field}"})
+                else: values[field] = matches[0]
+            if order != list(DECISION_FIELDS): errors.append({"code": "invalid_decision_field_order", "path": "$.sections.決定事項"})
+            references = values.get("根拠・履歴"); valid_references = references == "none" or references and all(FIXED_REFERENCE.fullmatch(item.strip()) for item in re.split(r"[、,]", references))
+            if references and not valid_references: errors.append({"code": "invalid_decision_reference", "path": "$.sections.決定事項.根拠・履歴"})
+    return HumanPostResult(target, not errors, errors)
+
+
+HALT_MESSAGES = {"invalid_record": "GTP Recordの形式、内容、編集状態のいずれかが不正です", "conflicting_records": "同じ役割のRecordが競合しています", "invalid_transition": "Recordの順序または参照関係が成立していません", "invalid_binding": "Issue、branch、PR、scopeの束縛が一致しません", "invalid_evidence": "Done Conditionに対応するEvidenceを確認できません", "stale_evidence": "EvidenceがDoneのsource head SHAと一致しません", "terminal_violation": "terminal stateの前後関係に違反するRecordまたはmergeがあります"}
+HALT_OBSERVATIONS = {"invalid_record": "Issue commentを、変更されていない一意のGTP記録として確定できませんでした", "conflicting_records": "Issueに同じ役割のGTP Recordが複数あります", "invalid_transition": "GTP Recordの順序または参照先を確認できませんでした", "invalid_binding": "Issueの記録が指す対象とGitHub上で確認した対象が一致しませんでした", "invalid_evidence": "Done Conditionに対応するEvidence URLまたは成功状態を確認できませんでした", "stale_evidence": "Evidenceが示すcommitとDoneが示すsource headが異なります", "terminal_violation": "完了または停止の後に追加のGTP Recordまたはmergeが見つかりました"}
+EVIDENCE_LIMITS = ["Check RunがDone Conditionの内容を十分に検査したこと", "Artifactの内容がDone Conditionを満たすこと", "Issue本文・通常commentに未解決事項がないこと", "actor本人性", "credential安全性", "GitHub外情報を参照しなかったこと"]
 EVIDENCE_LIMITS_11 = ["Done Conditionが自然言語上・意味上満たされたこと", *EVIDENCE_LIMITS, "review・approval・authorization"]
 PROBLEM_LABELS = ("何が問題か", "どこが問題か", "なぜそう判断したか", "どこを直すか", "何を直さないか", "次の安全な一手", "最初に確認するURL", "解決したと判断する条件")
 HALT_PROBLEMS = {
@@ -51,10 +115,8 @@ SCHEMA_ERROR_CODES = {"duplicate_value", "invalid_condition_id", "invalid_type",
 
 
 def _problem_lines(values: tuple[str, ...]) -> list[str]:
-    return ["問題の整理:"] + [
-        f"  {index}. {label}: {value}"
-        for index, (label, value) in enumerate(zip(PROBLEM_LABELS, values), start=1)
-    ]
+    return ["問題の整理:"] + [f"  {index}. {label}: {value}"
+                           for index, (label, value) in enumerate(zip(PROBLEM_LABELS, values), start=1)]
 
 
 def _halt_observation(machine: dict[str, Any], token: str) -> str:
@@ -120,8 +182,14 @@ def _status_problem(machine: dict[str, Any]) -> tuple[str, ...] | None:
             compound_stale = any(isinstance(item, dict) and item.get("token") == "invalid_transition" for item in machine.get("diagnostics") or ())
             if compound_stale:
                 what, layer, observation, excluded, next_step = "完了条件を追加した後にPRの内容が変わり、前回のDoneでは現在の完成候補を確認できません", "前回のDone、追加後の現在の完了条件、現在のPRの最新commit、条件ごとの確認資料", "前回のDoneと確認資料は変更前のcommitを指しています。その後、完了条件が追加され、PRの最新commitも変わりました", "過去のDone、確認資料のURL、commit履歴を書き換えない。PRの内容が完了条件を満たすかをGTPだけで決めない", "最初のURLを開き、追加後の現在の完了条件、前回のDone、現在のPRの最新commit、条件ごとの確認資料をread-onlyで比べる"
-            repair = "まず現在のPRの内容が追加後の現在の完了条件を満たすか人が確認する。merge前なら必要なPR修正を行い、現在のPRの最新commitについて、すべての完了条件の確認資料をそろえてDoneを出し直す"
-            resolution = "追加後の現在の完了条件に合わせ、現在のPRの最新commitについて、すべての完了条件の確認資料をそろえたDoneを出し直すと、このhaltが消える。merge済みなら同じIssueではDoneを出し直せない"
+                repair = "まず現在のPRの内容が追加後の現在の完了条件を満たすか人が確認する。merge前なら必要なPR修正を行い、現在のPRの最新commitについて、すべての完了条件の確認資料をそろえてDoneを出し直す"
+                resolution = "追加後の現在の完了条件に合わせ、現在のPRの最新commitについて、すべての完了条件の確認資料をそろえたDoneを出し直すと、このhaltが消える。merge済みなら同じIssueではDoneを出し直せない"
+            else:
+                what, layer, observation = "PRの内容が前回のDone後に変わり、前回の確認資料では現在の完成候補を確認できません", "前回のDone、現在のPRの最新commit、条件ごとの確認資料", "前回のDoneと確認資料は変更前のcommitを指していますが、PRは新しいcommitを指しています"
+                excluded = "過去のDone、確認資料のURL、commit履歴を書き換えない。PRの内容が完了条件を満たすかをGTPだけで決めない"
+                next_step = "最初のURLを開き、現在の完了条件、前回のDone、現在のPRの最新commit、条件ごとの確認資料をread-onlyで比べる"
+                repair = "まず現在のPRの内容が現在の完了条件を満たすか人が確認する。merge前なら必要なPR修正を行い、現在のPRの最新commitについて、すべての完了条件の確認資料をそろえてDoneを出し直す"
+                resolution = "現在の完了条件に合わせ、現在のPRの最新commitについて、すべての完了条件の確認資料をそろえたDoneを出し直すと、このhaltが消える。merge済みなら同じIssueではDoneを出し直せない"
         if token == "invalid_binding":
             diagnostics = machine.get("diagnostics")
             diagnostic = (
@@ -215,16 +283,10 @@ def _check_problem(result: CarrierResult) -> tuple[str, ...] | None:
 
 
 def _input_error_problem() -> tuple[str, ...]:
-    return (
-        "入力fileをUTF-8のMarkdown commentとして取得できません",
-        "投稿前入力の取得経路",
-        "input_errorを観測しました",
-        "入力fileの存在、読取権限、UTF-8 encoding（修正候補。根本的な修正責任は未確定）",
-        "未確認のIssue、branch、PR、GTP Record",
-        "入力fileを読める状態にしてgtp checkを再実行する",
-        "URLなし（投稿前入力）",
-        "input_errorがなくなりCarrier検査結果を取得できる",
-    )
+    return ("入力fileをUTF-8のMarkdown commentとして取得できません", "投稿前入力の取得経路",
+            "input_errorを観測しました", "入力fileの存在、読取権限、UTF-8 encoding（修正候補。根本的な修正責任は未確定）",
+            "未確認のIssue、branch、PR、GTP Record", "入力fileを読める状態にしてgtp checkを再実行する",
+            "URLなし（投稿前入力）", "input_errorがなくなりCarrier検査結果を取得できる")
 
 
 def _record(value: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -246,25 +308,15 @@ def _record(value: dict[str, Any] | None) -> dict[str, Any] | None:
 
 
 def _content(record: dict[str, Any] | None) -> dict[str, Any]:
-    value = record.get("content") if isinstance(record, dict) else None
-    return value if isinstance(value, dict) else {}
+    return value if isinstance(value := record.get("content") if isinstance(record, dict) else None, dict) else {}
 
 
-def _task_context(
-    *,
-    issue_url: str,
-    state: str | None,
-    acquisition_complete: bool,
-    contract: dict[str, Any] | None,
-    start: dict[str, Any] | None,
-    done: dict[str, Any] | None,
-    branch: dict[str, Any] | None,
-    pr: str | None,
-    pending_evidence_urls: tuple[str, ...],
-    native_merge_observed: bool | None,
-    effective_done_conditions: dict[str, Any] | None = None,
-    protocol_version: str = "1.0",
-) -> dict[str, Any]:
+def _task_context(*, issue_url: str, state: str | None, acquisition_complete: bool,
+                  contract: dict[str, Any] | None, start: dict[str, Any] | None,
+                  done: dict[str, Any] | None, branch: dict[str, Any] | None, pr: str | None,
+                  pending_evidence_urls: tuple[str, ...], native_merge_observed: bool | None,
+                  effective_done_conditions: dict[str, Any] | None = None,
+                  protocol_version: str = "1.0") -> dict[str, Any]:
     contract_content = _content(contract)
     start_content = _content(start)
     done_content = _content(done)
@@ -279,32 +331,23 @@ def _task_context(
                 continue
             evidence_url = evidence_map.get(condition_id)
             conditions[condition_id] = {
-                "text": condition.get("text"),
-                "evidence_kind": condition.get("evidence_kind"),
+                "text": condition.get("text"), "evidence_kind": condition.get("evidence_kind"),
                 "evidence_url": evidence_url if isinstance(evidence_url, str) else None,
-                "evidence_status": (
-                    "presented" if isinstance(evidence_url, str) else "not_presented"
-                ),
-            }
+                "evidence_status": "presented" if isinstance(evidence_url, str) else "not_presented"}
     not_proven: list[str] = []
     if not acquisition_complete:
         not_proven.append("GitHub情報の取得が不完全なためtask context未確認")
     elif not contract_content:
         not_proven.append("Contract未確認")
     else:
-        missing = [
-            f"{condition_id}: Evidence未提示"
-            for condition_id, condition in conditions.items()
-            if condition["evidence_status"] == "not_presented"
-        ]
+        missing = [f"{condition_id}: Evidence未提示" for condition_id, condition in conditions.items()
+                   if condition["evidence_status"] == "not_presented"]
         not_proven.extend(missing)
         if done is None:
             not_proven.append("Done Claim未提示")
         else:
             if state in {"in_progress", "done"} and not missing:
-                not_proven.append(
-                    "Done Conditionの自然言語上の充足は自動判定していない"
-                )
+                not_proven.append("Done Conditionの自然言語上の充足は自動判定していない")
             if pending_evidence_urls:
                 not_proven.append("Check Run未完了")
                 if native_merge_observed is False:
@@ -320,39 +363,22 @@ def _task_context(
         candidate = start_content.get("branch")
         branch_name = candidate if isinstance(candidate, str) else None
     scope = contract_content.get("scope")
-    return {
-        "goal": contract_content.get("goal"),
-        "scope": scope if isinstance(scope, list) else [],
-        "handoff_url": issue_url,
-        "handoff_semantics": "Issue本文・通常commentの意味は自動判定しない",
-        "branch": branch_name,
-        "pr": pr,
-        "conditions": conditions,
-        "not_proven": not_proven,
-        "evidence_limits": list(EVIDENCE_LIMITS_11 if protocol_version == "1.1" else EVIDENCE_LIMITS),
-    }
+    return {"goal": contract_content.get("goal"), "scope": scope if isinstance(scope, list) else [],
+            "handoff_url": issue_url, "handoff_semantics": "Issue本文・通常commentの意味は自動判定しない",
+            "branch": branch_name, "pr": pr, "conditions": conditions, "not_proven": not_proven,
+            "evidence_limits": list(EVIDENCE_LIMITS_11 if protocol_version == "1.1" else EVIDENCE_LIMITS)}
 
 
 def _branch(value: dict[str, Any] | None) -> dict[str, Any] | None:
-    if value is None:
-        return None
-    observation = {"exists": value["exists"]} if "exists" in value else {}
-    return {"name": value.get("name"), "observation": observation}
+    return None if value is None else {"name": value.get("name"),
+                                       "observation": {"exists": value["exists"]} if "exists" in value else {}}
 
 
 def _next_action(result: StatusResult) -> str:
-    if result.state is None:
-        return "retry_acquisition"
-    if result.state == "unmanaged":
-        return "post_contract"
-    if result.state == "ready":
-        return "post_start"
-    if result.state == "halt":
-        return "inspect_halt"
-    if result.state == "done":
-        return "none_done"
-    if result.state == "stopped":
-        return "none_stopped"
+    fixed = {None: "retry_acquisition", "unmanaged": "post_contract", "ready": "post_start",
+             "halt": "inspect_halt", "done": "none_done", "stopped": "none_stopped"}
+    if result.state in fixed:
+        return fixed[result.state]
     if result._pending_evidence_urls:
         return "retry_acquisition"
     if result.current.get("done") is not None:
@@ -395,15 +421,8 @@ def status_projection(result: StatusResult) -> dict[str, Any]:
     branch = _branch(current.get("branch"))
     bound_pr = current.get("bound_pr")
     done_pr = _content(done).get("pr_ref")
-    pr = (
-        bound_pr
-        if isinstance(bound_pr, str)
-        else candidate
-        if isinstance(candidate, str)
-        else done_pr
-        if isinstance(done_pr, str)
-        else None
-    )
+    pr = (bound_pr if isinstance(bound_pr, str) else candidate if isinstance(candidate, str)
+          else done_pr if isinstance(done_pr, str) else None)
     machine = {
         "gtp": result.protocol_version,
         "command": "status",
@@ -425,19 +444,10 @@ def status_projection(result: StatusResult) -> dict[str, Any]:
         "diagnostics": diagnostics,
         "acquisition_errors": result.acquisition_errors,
         "task_context": _task_context(
-            issue_url=result.issue_url,
-            state=result.state,
-            acquisition_complete=not result.acquisition_errors,
-            contract=contract,
-            start=start,
-            done=done,
-            branch=branch,
-            pr=pr,
-            pending_evidence_urls=result._pending_evidence_urls,
-            native_merge_observed=result._native_merge_observed,
-            effective_done_conditions=result._effective_done_conditions,
-            protocol_version=result.protocol_version,
-        ),
+            issue_url=result.issue_url, state=result.state, acquisition_complete=not result.acquisition_errors,
+            contract=contract, start=start, done=done, branch=branch, pr=pr,
+            pending_evidence_urls=result._pending_evidence_urls, native_merge_observed=result._native_merge_observed,
+            effective_done_conditions=result._effective_done_conditions, protocol_version=result.protocol_version),
     }
     if result.protocol_version == "1.1":
         machine["amendment"] = _record(current.get("amendment"))
@@ -621,29 +631,18 @@ def present_status(result: StatusResult) -> tuple[list[str], dict[str, Any]]:
 
 def check_projection(result: CarrierResult) -> dict[str, Any]:
     record = None
-    if result.record is not None:
-        record = {"type": result.record["type"], "id": result.record["id"]}
-    return {
-        "gtp": result.observed_gtp if result.observed_gtp in {"1.0", "1.1"} else "1.0",
-        "command": "check",
-        "recognized": result.recognized,
-        "schema_valid": result.schema_valid,
-        "contextual_checks": "not_run",
-        "projected_state": None,
-        "record": record,
-        "errors": result.errors,
-        "authority": "none",
-    }
+    if result.record is not None: record = {"type": result.record["type"], "id": result.record["id"]}
+    return {"gtp": result.observed_gtp if result.observed_gtp in {"1.0", "1.1"} else "1.0",
+            "command": "check", "recognized": result.recognized, "schema_valid": result.schema_valid,
+            "contextual_checks": "not_run", "projected_state": None, "record": record,
+            "errors": result.errors, "authority": "none"}
 
 
 def present_check(result: CarrierResult) -> tuple[list[str], dict[str, Any]]:
     machine = check_projection(result)
-    if not result.recognized:
-        summary = "通常commentであり、GTP Carrierではありません"
-    elif result.schema_valid:
-        summary = "GTP Carrierとして認識し、offline schemaに適合しました"
-    else:
-        summary = "GTP Carrierとして認識しましたが、形式・JSON・schemaに適合しません"
+    if not result.recognized: summary = "通常commentであり、GTP Carrierではありません"
+    elif result.schema_valid: summary = "GTP Carrierとして認識し、offline schemaに適合しました"
+    else: summary = "GTP Carrierとして認識しましたが、形式・JSON・schemaに適合しません"
     lines = [
         f"検査結果: {summary}",
         "contextual checks: Issue上の参照関係とstateは検査していません",
@@ -655,21 +654,32 @@ def present_check(result: CarrierResult) -> tuple[list[str], dict[str, Any]]:
     return lines, machine
 
 
+def _human_post_problem(result: HumanPostResult) -> tuple[str, ...]:
+    error = result.errors[0] if result.errors else {"code": "invalid_body", "path": "$"}; kind = "Issue" if result.target == "issue" else "PR"
+    return (f"{kind}本文の目的と判断材料の構造を確認できません", f"投稿前の{kind}本文",
+            f"check error: {error['code']} at {error['path']}", "error pathが示すsectionの順序、一意性、本文を直す",
+            "未確認のGitHub state、既存instructions、workflow、GTP Record", "本文を直して同じtargetのgtp checkを再実行する", "URLなし（投稿前入力）", "validがtrueになり、投稿後の本文を人が読んで判断できる")
+
+
+def present_human_post(result: HumanPostResult) -> tuple[list[str], dict[str, Any]]:
+    kind = "Issue" if result.target == "issue" else "PR"; summary = "required sectionの関係に適合しました" if result.valid else "required sectionの関係に適合しません"
+    lines = [f"検査結果: {kind}本文は{summary}",
+             "検査範囲: 本文構造だけを検査し、内容の真実性や人間の理解は判定していません",
+             f"非許可表示: {AUTHORITY_NOTICE}"]
+    if not result.valid: lines.extend(_problem_lines(_human_post_problem(result)))
+    return lines, {"gtp": "1.1", "command": "check", "target": result.target, "valid": result.valid,
+                   "errors": result.errors, "contextual_checks": "not_run", "authority": "none"}
+
+
+def present_human_post_input_error(message: str, target: str) -> tuple[list[str], dict[str, Any]]:
+    result = HumanPostResult(target, False, [{"code": "input_error", "path": "$", "message": message}]); lines, machine = present_human_post(result); machine["valid"] = None
+    return lines, machine
+
+
 def present_input_error(message: str) -> tuple[list[str], dict[str, Any]]:
-    lines = [
-        "検査結果: 入力ファイルをUTF-8のMarkdown commentとして読めません",
-        "contextual checks: 実行していません",
-        f"非許可表示: {AUTHORITY_NOTICE}",
-    ]
+    lines = ["検査結果: 入力ファイルをUTF-8のMarkdown commentとして読めません",
+             "contextual checks: 実行していません", f"非許可表示: {AUTHORITY_NOTICE}"]
     lines.extend(_problem_lines(_input_error_problem()))
-    return lines, {
-        "gtp": "1.0",
-        "command": "check",
-        "recognized": None,
-        "schema_valid": None,
-        "contextual_checks": "not_run",
-        "projected_state": None,
-        "record": None,
-        "errors": [{"code": "input_error", "message": message}],
-        "authority": "none",
-    }
+    return lines, {"gtp": "1.0", "command": "check", "recognized": None, "schema_valid": None,
+                   "contextual_checks": "not_run", "projected_state": None, "record": None,
+                   "errors": [{"code": "input_error", "message": message}], "authority": "none"}

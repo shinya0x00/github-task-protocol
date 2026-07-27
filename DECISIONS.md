@@ -6,9 +6,17 @@
 
 ## 現在の判断を読む順序
 
-1. ADR-027: `GTP.md`を唯一の公開正本とし、4 Record・6 state・7 halt reasonへ限定した理由。
-2. ADR-028: Exact Carrier、closed schema、pure reducerを中間不整合なく切り替えた理由。
-3. ADR-029: GitHub live bindingをGET-onlyとし、Acquisition Errorをhaltから分離した理由。
+1. [ADR-041](adr/0041-readme-human-entry-budget.md): READMEのplain-first入口を150行圧縮より優先し、180行上限へ変更した理由。
+2. [ADR-040](adr/0040-production-source-budget-and-formatting.md): production budgetをnonblank行で測り、blank-line品質をRuffへ分離した理由。
+3. [ADR-039](adr/0039-existing-instructions-and-issue-lifecycle-boundary.md): GTPと既存instructionsを分離し、valid Contractだけをlifecycle開始条件にした理由。
+4. [ADR-038](adr/0038-protocol-1-1-revisions-and-package-versioning.md): amendment、re-Done、package／protocol version分離を採用した理由。
+5. [ADR-037](adr/0037-separate-private-instructions-from-public-records.md): private instructionとpublic Recordを分離した理由。
+6. [ADR-036](adr/0036-reproducible-release-artifacts.md): release artifactをexact sourceと再現buildへ束縛した理由。
+7. [ADR-035](adr/0035-human-actionable-problem-explanations.md): blockerを人間が判断できる8項目へ投影する理由。
+
+8. ADR-027: `GTP.md`を唯一の公開正本とし、4 Record・6 state・7 halt reasonへ限定した理由。
+9. ADR-028: Exact Carrier、closed schema、pure reducerを中間不整合なく切り替えた理由。
+10. ADR-029: GitHub live bindingをGET-onlyとし、Acquisition Errorをhaltから分離した理由。
 
 ADR-001〜ADR-026は設計履歴として残す。現行`GTP.md`と矛盾する旧語彙や修復機構を、現在の公開仕様として使用しない。
 

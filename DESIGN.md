@@ -11,7 +11,7 @@ pull requestのsource headにある文書は正準候補である。そのhead�
 | `GTP.md` | version別Record、state、transition、Evidence、native merge、Acquisition Error | implementation内部構成、個別Operationの手順 |
 | `DESIGN.md` | reader、presentation、setup、配布、外部Operation境界のcurrent architecture | 公開protocolの新しい意味、過去判断の理由 |
 | `adr/` | materialな判断、理由、trade-off、supersession | current architecture全体、task進行 |
-| task Issue | 実行Contract、scope、進行、Evidenceへのreference | merge後の設計正本 |
+| task Issue | 実行Contract、scope、current material decision、進行、Evidenceへのreference | merge後の設計正本 |
 
 衝突時は、公開protocolについて`GTP.md`、current implementationについて`DESIGN.md`、判断理由について未supersedeのADRを優先する。IssueとREADMEはprojectionであり、独立した意味を作らない。
 
@@ -26,6 +26,7 @@ pull requestのsource headにある文書は正準候補である。そのhead�
 - current Done、exact source head、Evidence、native mergeから導出する6 state
 - 1.0-only machine projectionの互換性と、1.1 projectionのversioned extension
 - setup時の既存instructions非干渉、public Record disclosure、source／外部Operation分離
+- Issue／PR本文の任意offline checkと、明示producerのpre-write／post-write接続
 
 package `1.0.4`はこのsourceを識別するPython distribution versionであり、protocol `1.1`とは別である。mainへのmerge、tag、GitHub Release、PyPI uploadはこのsource candidateの実装factではない。
 
@@ -53,6 +54,21 @@ GitHub Issue comments
           +--------+---------+
           v                  v
  machine projection    human presentation
+```
+
+Issue／PR本文はstate readerと別のread-only pathを通る。
+
+```text
+local Markdown + explicit target
+              |
+              v
+       human body validator
+              |
+              v
+   human + machine check result
+              |
+       explicit producer only
+     pre-write -> create/edit -> GET
 ```
 
 parser、schema、reducerはGitHub mutationを行わない。live readerはGitHub resourceをGET-onlyで取得し、取得前後のsnapshotを比較する。取得不完全やsnapshot変化を`halt`へ推測せずAcquisition Errorとして分離する。
@@ -118,6 +134,18 @@ repository、organization、ユーザーが所有するinstructions、rules、au
 setup preflightはtarget file、branch、Issue、PRを変更する前に、既存instructionsと必要なdependencyをread-onlyで取得する。既存内容を保持してGTP adapterだけを追加できる場合に続行する。取得不能、外部dependency未接続、明白な意味／authority衝突では、自動統合や上書きをせずownerへ判断を戻す。
 
 GTP adapterはGTP Recordの読み方だけを伝えるProjectionであり、既存instructions全体のProjectionや第二の規則体系ではない。Issue／PR／通常taskの入口にかかわらず、valid Contractがあれば既存historyを再構成し、なければCarrierを自動投稿しない。GTP stateから既存instructionsの適用状態を推測しない。
+
+## Issue／PR body checkとproducer境界
+
+`gtp check` dispatcherは明示`--target record|issue|pr`だけでpathを選び、本文からtargetを推測しない。target省略は既存`record` behaviorである。human body validatorはrequired H2の順序、一意性、非空、optional technical sectionの後置をpure offlineで検査し、Carrier parser、Record schema、state reducerへ入力を渡さない。
+
+`issue`は目的、ゴール、現在の観測、境界、現在有効な決定事項、完了条件、unknown、人間判断を持つ。決定事項は採用方針、非採用／延期案、見直す条件、固定参照の4項目であり、checkerは存在、非空、一意性、参照形式だけを判定する。`pr`はproblem/fixに限定せず、目的、ゴール、変更、利用者影響、現在地、unknown、人間判断を持つ。言語や内容の意味を判定しないため、repository固有のinstructionsとlocaleを上書きしない。
+
+Issue本文はcurrent decisionのprojection、通常の`Decision update` commentは変更履歴、ADR／DESIGNは複数Issueへ及ぶ長期判断を所有する。Decision updateはRecord chainへ入らず、goal、scope、Done Conditionsが変わる場合だけ既存amendmentを使う。reviewのP1／P2は違反した契約basisを示し、決定への異議はreopen conditionに該当する新事実を持つ`Contract challenge`へ分離する。この内容判断はcheckerではなく人間が所有する。
+
+checkerはGitHub writeを行わない。接続済みproducerは投稿直前のcheck成功、GitHub標準のbody-file相当create／edit、投稿後GET一致を一つのOperationとして観測する。PR head更新ではbody先頭へlogを追記せず、`現在地`と後半の技術詳細を置換する。Issueの存在、Issue Form、PR template、workflow、ruleset、required checkはattachment pointではなく、既存repositoryのownerに残る。
+
+この接続はhuman-readable artifactが存在することを検査するが、文章の真実性、理解、review、approval、authorizationを証明しない。外部URLだけを読む独立readerが目的と判断境界を説明できるかは、machine checkとは別のacceptanceで観測する。公開契約は`GTP.md` §16、このarchitectureと境界は本sectionが所有する。
 
 ## Public Record disclosure
 

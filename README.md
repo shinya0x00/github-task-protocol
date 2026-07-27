@@ -15,6 +15,7 @@ GTPは仕事の進め方を決めません。既存のinstructionsやrulesを定
 - PRを直したあと、新しい内容について確認資料を出し直す
 - 記録や確認資料が古い、足りない、矛盾しているときに成功扱いしない
 - 最初に確認するURLと、直す場所・直さない場所を人向けに示す
+- Issue／PR本文を、目的と人間の判断から読める構造か投稿前に検査する
 
 RecordがないIssueでは、詳しい作業履歴を推測せずGTP上の管理対象外とします。この正式なstate名が`unmanaged`です。Recordがある場合だけ、そのIssueのGTP上の現在地を再構成します。どちらの場合も、既存のinstructionsやrulesの効力は変えません。
 
@@ -71,6 +72,25 @@ GTPはRecordとGitHub上の事実の対応を確認しますが、次は人が�
 - review、merge、公開を実行してよいか
 
 表示に問題があれば、まず`最初のURL`を開きます。正式なRecord形式とstate規則は[`GTP.md`](GTP.md)、現在の実装構成は[`DESIGN.md`](DESIGN.md)、判断理由は[`adr/`](adr/)で確認できます。
+
+## Issue／PR本文の任意check
+
+GTPを使うためにIssueや特定のPR templateは必須ではありません。既存のinstructionsやworkflowを変えず、投稿する側が明示的に選んだ本文だけをoffline検査できます。
+
+```console
+gtp check --target issue <issue-body.md>
+gtp check --target pr <pr-body.md>
+```
+
+Issue本文は目的、ゴール、現在わかっていること、守る境界、決定事項、完了条件、未確認事項、人間の判断を順に置きます。PR本文は問題修正専用にせず、目的、ゴール、変更内容、利用者への影響、現在地、未確認事項、人間の判断を置きます。SHA、test、artifactなどの任意の技術詳細は最後に分けます。
+
+`決定事項`には、採用した方針、今回は採用しない案、見直す条件、根拠・履歴を短く書きます。対象は「その判断を知らないreviewerが、別案をP1／P2として要求しそうか」で選びます。関数名や途中の試行錯誤をすべて残す欄ではありません。新しい設計判断がない場合も、既存の公開契約に従うことを明記します。
+
+Issue本文は現在有効な判断、通常commentの`Decision update`は判断変更の履歴、ADR／DESIGNは複数Issueへ影響する長期判断を持ちます。目的、scope、Done Conditionsを変える場合は通常commentではなく既存の`amendment`規則に従います。
+
+blockingなP1／P2は、目的、scope、Done Condition、決定事項、公開契約、互換性、correctness／security／privacyのどれへの違反かを示す必要があります。単なる別案はblocking findingにせず、`見直す条件`に該当する新事実がある場合だけ契約への異議として分けます。
+
+このcheckは本文構造の下限だけを確認します。内容が正しいこと、読み手が理解したこと、mergeや公開を許可することは証明しません。GitHubへも書き込みません。接続したproducerだけが、check成功後に本文を投稿し、投稿後に同じ本文を再取得して確認します。
 
 ## 正式なRecordとstate
 

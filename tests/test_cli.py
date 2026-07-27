@@ -15,12 +15,30 @@ from unittest.mock import MagicMock, patch
 import gtp
 from gtp.cli import build_parser, main
 from gtp.model import Diagnostic
+from gtp.presentation import SECTIONS, validate_human_post
 from gtp.status import StatusResult
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "carriers" / "contract-valid.md"
 HTTP_FIXTURES = Path(__file__).parent / "fixtures" / "http"
 CLI_FIXTURES = Path(__file__).parent / "fixtures" / "cli"
+
+
+def human_body(target: str, *, technical: bool = False) -> str:
+    parts = []
+    for title in SECTIONS[target]:
+        content = f"{title}について人が判断できる説明です。"
+        if title == "決定事項":
+            content = (
+                "- 採用した方針: 既存の公開契約どおりに修正する。新しい設計判断は行わない。\n"
+                "- 今回は採用しない案: none\n"
+                "- 見直す条件: 既存契約と実際のbehaviorが衝突していることを再現した場合。\n"
+                "- 根拠・履歴: none"
+            )
+        parts.append(f"## {title}\n\n{content}")
+    if technical:
+        parts.append("## 技術詳細\n\ncommitやtestの詳細です。")
+    return "\n\n".join(parts) + "\n"
 
 
 class CliTests(unittest.TestCase):
@@ -392,6 +410,52 @@ class CliTests(unittest.TestCase):
         self.assertIn("読めません", missing_human[0])
         self.assertEqual(2, encoding_code)
         self.assertEqual("input_error", encoding_output["errors"][0]["code"])
+
+    def test_check_human_issue_and_pr_targets_preserve_record_default(self) -> None:
+        sections = {
+            "issue": ("目的", "ゴール", "現在わかっていること", "守る境界", "決定事項", "完了条件", "未確認事項", "人間に求める判断"),
+            "pr": ("目的", "ゴール", "変更内容", "利用者への影響", "現在地", "未確認事項", "人間に求める判断"),
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            for target, headings in sections.items():
+                path = Path(directory) / f"{target}.md"
+                contents = []
+                for heading in headings:
+                    explanation = "説明です。"
+                    if heading == "決定事項":
+                        explanation = (
+                            "- 採用した方針: 既存契約どおりに修正する。\n"
+                            "- 今回は採用しない案: none\n"
+                            "- 見直す条件: 契約との衝突を再現した場合。\n"
+                            "- 根拠・履歴: none"
+                        )
+                    contents.append(f"## {heading}\n\n{explanation}")
+                path.write_text("\n\n".join(contents), encoding="utf-8")
+                code, human, output = self.call(["check", "--target", target, str(path)])
+                self.assertEqual(0, code)
+                self.assertTrue(output["valid"])
+                self.assertEqual(target, output["target"])
+                self.assertEqual({"gtp", "command", "target", "valid", "errors", "contextual_checks", "authority"}, set(output))
+                self.assertIn("内容の真実性や人間の理解は判定していません", human[1])
+            default = self.capture(["check", str(FIXTURE)])
+            explicit = self.capture(["check", "--target", "record", str(FIXTURE)])
+        self.assertEqual(default, explicit)
+
+    def test_check_human_target_invalid_and_input_error_are_distinct(self) -> None:
+        labels = json.loads((CLI_FIXTURES / "problem-explanations.json").read_text(encoding="utf-8"))["labels"]
+        with tempfile.TemporaryDirectory() as directory:
+            invalid = Path(directory) / "invalid.md"
+            invalid.write_text("## 目的\n\n目的だけです。\n", encoding="utf-8")
+            invalid_code, invalid_human, invalid_output = self.call(["check", "--target", "pr", str(invalid)])
+            missing_code, missing_human, missing_output = self.call(["check", "--target", "issue", str(Path(directory) / "missing.md")])
+        self.assertEqual(1, invalid_code)
+        self.assertFalse(invalid_output["valid"])
+        self.assertIn("missing_section", [error["code"] for error in invalid_output["errors"]])
+        self.assertEqual(8, len(self.problem_values(invalid_human, labels)))
+        self.assertEqual(2, missing_code)
+        self.assertIsNone(missing_output["valid"])
+        self.assertEqual("input_error", missing_output["errors"][0]["code"])
+        self.assertIn("問題の整理:", missing_human)
 
     def test_only_status_and_check_are_public_commands(self) -> None:
         actions = build_parser()._subparsers._group_actions
@@ -857,6 +921,30 @@ class CliTests(unittest.TestCase):
             problem[7],
         )
 
+    def test_protocol_11_simple_stale_does_not_invent_amendment(self) -> None:
+        issue_url = "https://github.com/o/r/issues/1"
+        done_url = f"{issue_url}#issuecomment-3"
+        pr_url = "https://github.com/o/r/pull/7"
+        observed = StatusResult(
+            issue_url,
+            "halt",
+            [Diagnostic("stale_evidence", (done_url, pr_url))],
+            {"done": {"type": "done", "url": done_url}, "bound_pr": pr_url},
+            protocol_version="1.1",
+        )
+        with patch("gtp.cli.evaluate_issue", return_value=observed):
+            code, human, output = self.call(["status", issue_url])
+        labels = json.loads((CLI_FIXTURES / "problem-explanations.json").read_text(encoding="utf-8"))["labels"]
+        problem = self.problem_values(human, labels)
+        self.assertEqual(0, code)
+        self.assertEqual("stale_evidence", output["halt_reason"])
+        text = "\n".join(problem)
+        self.assertIn("現在のPRの最新commit", text)
+        self.assertIn("すべての完了条件", text)
+        self.assertIn("merge済みなら同じIssueではDoneを出し直せない", text)
+        self.assertNotIn("追加後", text)
+        self.assertNotIn("完了条件が追加", text)
+
     def test_protocol_11_compound_stale_http_path_explains_complete_repair_in_plain_japanese(self) -> None:
         current_head = "f" * 40
         code, human, output = self.call_http_matrix_case({
@@ -1164,6 +1252,124 @@ class CliTests(unittest.TestCase):
                     )
                     self.assertEqual("incomplete", output["acquisition"])
                     self.assertEqual(2, code)
+
+
+class HumanPostTests(unittest.TestCase):
+    def assert_error(self, source: str, target: str, code: str) -> None:
+        result = validate_human_post(source, target)
+        self.assertFalse(result.valid)
+        self.assertIn(code, [error["code"] for error in result.errors])
+
+    def test_issue_and_pr_contracts_are_distinct_and_valid(self) -> None:
+        for target in ("issue", "pr"):
+            with self.subTest(target=target):
+                result = validate_human_post(human_body(target, technical=True), target)
+                self.assertTrue(result.valid, result.errors)
+        self.assertIn("現在わかっていること", SECTIONS["issue"])
+        self.assertIn("変更内容", SECTIONS["pr"])
+        self.assertIn("利用者への影響", SECTIONS["pr"])
+        self.assertNotIn("何が問題か", SECTIONS["pr"])
+
+    def test_required_relationship_rejects_missing_duplicate_order_and_empty(self) -> None:
+        valid = human_body("pr")
+        self.assert_error(valid.replace("## ゴール\n\nゴールについて人が判断できる説明です。\n\n", ""), "pr", "missing_section")
+        self.assert_error(valid + "\n## 目的\n\n重複です。\n", "pr", "duplicate_section")
+        swapped = valid.replace("## 目的", "## TEMP", 1).replace("## ゴール", "## 目的", 1).replace("## TEMP", "## ゴール", 1)
+        self.assert_error(swapped, "pr", "invalid_first_section")
+        self.assert_error(valid.replace("## 現在地\n\n現在地について人が判断できる説明です。", "## 現在地"), "pr", "empty_section")
+
+    def test_technical_details_are_optional_but_last(self) -> None:
+        valid = human_body("issue")
+        self.assertTrue(validate_human_post(valid, "issue").valid)
+        misplaced = valid.replace("## ゴール", "## 技術詳細\n\n先行した技術情報です。\n\n## ゴール", 1)
+        self.assert_error(misplaced, "issue", "invalid_technical_position")
+        self.assert_error(valid + "\n## 技術詳細\n", "issue", "empty_section")
+
+    def test_decision_record_requires_four_nonempty_unique_ordered_fields(self) -> None:
+        valid = human_body("issue")
+        for field in ("採用した方針", "今回は採用しない案", "見直す条件", "根拠・履歴"):
+            with self.subTest(field=field):
+                line = next(line for line in valid.splitlines() if line.startswith(f"- {field}:"))
+                self.assert_error(valid.replace(line + "\n", ""), "issue", "missing_decision_field")
+                self.assert_error(valid.replace(line, f"- {field}:"), "issue", "empty_decision_field")
+                self.assert_error(valid.replace(line, f"{line}\n{line}"), "issue", "duplicate_decision_field")
+        expected = (
+            "- 採用した方針: 既存の公開契約どおりに修正する。新しい設計判断は行わない。\n"
+            "- 今回は採用しない案: none\n"
+            "- 見直す条件: 既存契約と実際のbehaviorが衝突していることを再現した場合。\n"
+            "- 根拠・履歴: none"
+        )
+        self.assert_error(valid.replace(expected, "\n".join(reversed(expected.splitlines()))), "issue", "invalid_decision_field_order")
+
+    def test_decision_reference_is_none_or_fixed_github_permalink(self) -> None:
+        valid = human_body("issue")
+        none = "- 根拠・履歴: none"
+        comment = "https://github.com/example/project/issues/7#issuecomment-123"
+        blob = "https://github.com/example/project/blob/0123456789abcdef0123456789abcdef01234567/DESIGN.md"
+        for references in (comment, blob, f"{comment}、{blob}"):
+            with self.subTest(references=references):
+                result = validate_human_post(valid.replace(none, f"- 根拠・履歴: {references}"), "issue")
+                self.assertTrue(result.valid, result.errors)
+        self.assert_error(valid.replace(none, "- 根拠・履歴: https://github.com/example/project/issues/7"), "issue", "invalid_decision_reference")
+        self.assert_error(valid.replace(none, f"- 根拠・履歴: {blob}?raw=1"), "issue", "invalid_decision_reference")
+
+    def test_decision_record_allows_explanation_without_judging_quality(self) -> None:
+        source = human_body("issue").replace("- 採用した方針:", "判断の背景です。\n\n- 採用した方針:")
+        result = validate_human_post(source, "issue")
+        self.assertTrue(result.valid, result.errors)
+
+    def test_fenced_and_commented_headings_cannot_satisfy_contract(self) -> None:
+        source = "```markdown\n" + human_body("issue") + "```\n<!--\n" + human_body("issue") + "-->\n"
+        result = validate_human_post(source, "issue")
+        self.assertFalse(result.valid)
+        self.assertEqual("invalid_first_section", result.errors[0]["code"])
+        self.assertIn("missing_section", [error["code"] for error in result.errors])
+        self.assert_error("<!--\n" + human_body("issue"), "issue", "invalid_first_section")
+        fenced_comment = human_body("pr").replace("## ゴール", "```html\n<!--\n```\n\n## ゴール", 1)
+        result = validate_human_post(fenced_comment, "pr")
+        self.assertTrue(result.valid, result.errors)
+        commented_fence = human_body("pr").replace("## ゴール", "<!--\n```text\n-->\n## ゴール", 1)
+        result = validate_human_post(commented_fence, "pr")
+        self.assertTrue(result.valid, result.errors)
+        closing_fence = human_body("pr").replace("## ゴール", "<!--\n``` -->\n## ゴール", 1)
+        result = validate_human_post(closing_fence, "pr")
+        self.assertTrue(result.valid, result.errors)
+        for literal in ("`<!--`", "``<!--``", "\\<!--"):
+            with self.subTest(literal=literal):
+                source = human_body("pr").replace("目的について人が判断できる説明です。", f"literal {literal} を説明します。")
+                result = validate_human_post(source, "pr")
+                self.assertTrue(result.valid, result.errors)
+        synthesized = human_body("pr").replace("## 目的", "<!-- instruction -->## 目的", 1)
+        self.assert_error(synthesized, "pr", "invalid_first_section")
+        repeated = human_body("pr").replace("目的について人が判断できる説明です。", "visible <!-- closed --> <!--")
+        result = validate_human_post(repeated, "pr")
+        self.assertTrue(result.valid, result.errors)
+        for prefix in ("unmatched ` ", "escaped \\` "):
+            with self.subTest(prefix=prefix):
+                source = human_body("pr").replace("目的について人が判断できる説明です。", prefix + "<!--")
+                result = validate_human_post(source, "pr")
+                self.assertTrue(result.valid, result.errors)
+        for mismatched in ("`<!--``", "``<!--`"):
+            with self.subTest(mismatched=mismatched):
+                source = human_body("pr").replace("目的について人が判断できる説明です。", mismatched)
+                result = validate_human_post(source, "pr")
+                self.assertTrue(result.valid, result.errors)
+
+    def test_commonmark_heading_indentation_obeys_visible_boundaries(self) -> None:
+        indented = human_body("pr").replace("## ", "   ## ")
+        result = validate_human_post(indented, "pr")
+        self.assertTrue(result.valid, result.errors)
+        self.assert_error(human_body("pr").replace("## ", "    ## "), "pr", "invalid_first_section")
+        self.assert_error(human_body("pr", technical=True) + "\n  ## Appendix\n\nvisible\n", "pr", "invalid_technical_position")
+        empty = human_body("pr").replace("## 現在地\n\n現在地について人が判断できる説明です。", "## 現在地\n\n  ## Appendix\n\nvisible")
+        self.assert_error(empty, "pr", "empty_section")
+
+    def test_contract_does_not_require_language_issue_or_gtp_record(self) -> None:
+        source = human_body("pr").replace("について人が判断できる説明です。", " section is complete.")
+        result = validate_human_post(source, "pr")
+        self.assertTrue(result.valid, result.errors)
+        self.assertNotIn("Issue", source)
+        self.assertNotIn("gtp-record", source)
 
 
 if __name__ == "__main__":
