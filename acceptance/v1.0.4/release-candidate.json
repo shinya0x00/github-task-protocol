@@ -23,8 +23,8 @@
       "status": "success",
       "GTP.md": 359,
       "README.md": 158,
-      "production_python_nonblank_lines": 2492,
-      "production_python_physical_lines": 2745,
+      "production_python_nonblank_lines": 2499,
+      "production_python_physical_lines": 2752,
       "production_python_blank_lines": 253
     },
     "sdist_tests": {

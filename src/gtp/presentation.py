@@ -16,36 +16,43 @@ FIXED_REFERENCE = re.compile(r"https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-
 class HumanPostResult(NamedTuple): target: str; valid: bool; errors: list[dict[str, str]]
 
 
-def _comment_at(line: str, span: int) -> tuple[int, int]:
+def _comment_at(line: str) -> int:
     index = 0
     while index < len(line):
-        if line[index] == "`":
-            run = len(line[index:]) - len(line[index:].lstrip("`"))
-            if not span or run == span: span = run if not span else 0
-            index += run; continue
         escaped = index > 0 and (len(line[:index]) - len(line[:index].rstrip("\\"))) % 2 == 1
-        if not span and not escaped and line.startswith("<!--", index): return index, span
+        if line[index] == "`" and not escaped:
+            run = len(line[index:]) - len(line[index:].lstrip("`"))
+            closing = index + run
+            while (closing := line.find("`", closing)) >= 0:
+                closing_run = len(line[closing:]) - len(line[closing:].lstrip("`"))
+                if closing_run == run: break
+                closing += closing_run
+            index = closing + run if closing >= 0 else index + run; continue
+        if not escaped and line.startswith("<!--", index): return index
         index += 1
-    return -1, span
+    return -1
 
 
 def _visible_lines(body: str) -> list[tuple[int, str]]:
-    visible: list[tuple[int, str]] = []; fence: tuple[str, int] | None = None; comment = False; block_comment = False; span = 0
+    visible: list[tuple[int, str]] = []; fence: tuple[str, int] | None = None; comment = False; block_comment = False
     for number, line in enumerate(body.splitlines(), start=1):
         stripped = line.lstrip(" "); indent = len(line) - len(stripped); marker = stripped[:1]; run = len(stripped) - len(stripped.lstrip(marker)) if marker in {"`", "~"} else 0
         if fence is not None: fence = None if marker == fence[0] and indent <= 3 and run >= fence[1] and not stripped[run:].strip() else fence; continue
         if comment:
             if "-->" not in line: continue
             line = "" if block_comment else line.split("-->", 1)[1]; comment = False; block_comment = False
-        if not span and indent <= 3 and run >= 3: fence = marker, run; continue
-        prior_span = span; start, span = _comment_at(line, span)
-        if start >= 0:
-            before, after = line[:start], line[start + 4 :]; block = not before.strip() and len(before) <= 3
-            if "-->" not in after: line = before; comment = True; block_comment = block
-            elif block: line = ""
-            else: line = before + after.split("-->", 1)[1]
+        if indent <= 3 and run >= 3: fence = marker, run; continue
+        remaining = line; kept = ""; hidden = False
+        while remaining:
+            start = _comment_at(remaining)
+            if start < 0: kept += remaining; break
+            before, after = remaining[:start], remaining[start + 4 :]; kept += before; block = not kept.strip() and len(kept) <= 3
+            if "-->" not in after: line = "" if block else kept; comment = True; block_comment = block; break
+            if block: line = ""; hidden = True; break
+            kept += " "; remaining = after.split("-->", 1)[1]
+        if not comment and not hidden: line = kept
         stripped = line.lstrip(" "); indent = len(line) - len(stripped)
-        if line: visible.append((number, "    " + line if prior_span else stripped if indent <= 3 else line))
+        if line: visible.append((number, stripped if indent <= 3 else line))
     return visible
 
 
