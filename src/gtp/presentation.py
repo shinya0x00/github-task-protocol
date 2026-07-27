@@ -17,14 +17,21 @@ class HumanPostResult(NamedTuple): target: str; valid: bool; errors: list[dict[s
 
 
 def _visible_lines(body: str) -> list[tuple[int, str]]:
-    body = re.sub(r"<!--.*?(?:-->|$)", "", body, flags=re.DOTALL); visible: list[tuple[int, str]] = []; fence: tuple[str, int] | None = None
+    visible: list[tuple[int, str]] = []; fence: tuple[str, int] | None = None; comment = False
     for number, line in enumerate(body.splitlines(), start=1):
         stripped = line.lstrip(" "); indent = len(line) - len(stripped); marker = stripped[:1]; run = len(stripped) - len(stripped.lstrip(marker)) if marker in {"`", "~"} else 0
-        if indent <= 3 and run >= 3:
-            if fence is None: fence = marker, run
-            elif marker == fence[0] and run >= fence[1] and not stripped[run:].strip(): fence = None
-            continue
-        if fence is None: visible.append((number, stripped if indent <= 3 else line))
+        if fence is not None: fence = None if marker == fence[0] and indent <= 3 and run >= fence[1] and not stripped[run:].strip() else fence; continue
+        if indent <= 3 and run >= 3: fence = marker, run; continue
+        while comment or "<!--" in line:
+            if comment and "-->" not in line: line = ""; break
+            if comment:
+                line = line.split("-->", 1)[1]; comment = False
+            else:
+                before, after = line.split("<!--", 1)
+                if "-->" not in after: line = before; comment = True; break
+                line = before + after.split("-->", 1)[1]
+        stripped = line.lstrip(" "); indent = len(line) - len(stripped)
+        if line: visible.append((number, stripped if indent <= 3 else line))
     return visible
 
 
@@ -86,10 +93,8 @@ SCHEMA_ERROR_CODES = {"duplicate_value", "invalid_condition_id", "invalid_type",
 
 
 def _problem_lines(values: tuple[str, ...]) -> list[str]:
-    return ["問題の整理:"] + [
-        f"  {index}. {label}: {value}"
-        for index, (label, value) in enumerate(zip(PROBLEM_LABELS, values), start=1)
-    ]
+    return ["問題の整理:"] + [f"  {index}. {label}: {value}"
+                           for index, (label, value) in enumerate(zip(PROBLEM_LABELS, values), start=1)]
 
 
 def _halt_observation(machine: dict[str, Any], token: str) -> str:
@@ -643,22 +648,18 @@ def _human_post_problem(result: HumanPostResult) -> tuple[str, ...]:
 
 
 def present_human_post(result: HumanPostResult) -> tuple[list[str], dict[str, Any]]:
-    kind = "Issue" if result.target == "issue" else "PR"
-    summary = "required sectionの関係に適合しました" if result.valid else "required sectionの関係に適合しません"
+    kind = "Issue" if result.target == "issue" else "PR"; summary = "required sectionの関係に適合しました" if result.valid else "required sectionの関係に適合しません"
     lines = [f"検査結果: {kind}本文は{summary}",
              "検査範囲: 本文構造だけを検査し、内容の真実性や人間の理解は判定していません",
              f"非許可表示: {AUTHORITY_NOTICE}"]
-    if not result.valid:
-        lines.extend(_problem_lines(_human_post_problem(result)))
+    if not result.valid: lines.extend(_problem_lines(_human_post_problem(result)))
     return lines, {"gtp": "1.1", "command": "check", "target": result.target,
                    "valid": result.valid, "errors": result.errors,
                    "contextual_checks": "not_run", "authority": "none"}
 
 
 def present_human_post_input_error(message: str, target: str) -> tuple[list[str], dict[str, Any]]:
-    result = HumanPostResult(target, False, [{"code": "input_error", "path": "$", "message": message}])
-    lines, machine = present_human_post(result)
-    machine["valid"] = None
+    result = HumanPostResult(target, False, [{"code": "input_error", "path": "$", "message": message}]); lines, machine = present_human_post(result); machine["valid"] = None
     return lines, machine
 
 

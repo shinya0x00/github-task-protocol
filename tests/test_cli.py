@@ -1325,6 +1325,9 @@ class HumanPostTests(unittest.TestCase):
         self.assertEqual("invalid_first_section", result.errors[0]["code"])
         self.assertIn("missing_section", [error["code"] for error in result.errors])
         self.assert_error("<!--\n" + human_body("issue"), "issue", "invalid_first_section")
+        fenced_comment = human_body("pr").replace("## ゴール", "```html\n<!--\n```\n\n## ゴール", 1)
+        result = validate_human_post(fenced_comment, "pr")
+        self.assertTrue(result.valid, result.errors)
 
     def test_commonmark_heading_indentation_obeys_visible_boundaries(self) -> None:
         indented = human_body("pr").replace("## ", "   ## ")
