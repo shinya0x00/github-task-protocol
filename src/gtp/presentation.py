@@ -16,22 +16,36 @@ FIXED_REFERENCE = re.compile(r"https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-
 class HumanPostResult(NamedTuple): target: str; valid: bool; errors: list[dict[str, str]]
 
 
+def _comment_at(line: str, span: int) -> tuple[int, int]:
+    index = 0
+    while index < len(line):
+        if line[index] == "`":
+            run = len(line[index:]) - len(line[index:].lstrip("`"))
+            if not span or run == span: span = run if not span else 0
+            index += run; continue
+        escaped = index > 0 and (len(line[:index]) - len(line[:index].rstrip("\\"))) % 2 == 1
+        if not span and not escaped and line.startswith("<!--", index): return index, span
+        index += 1
+    return -1, span
+
+
 def _visible_lines(body: str) -> list[tuple[int, str]]:
-    visible: list[tuple[int, str]] = []; fence: tuple[str, int] | None = None; comment = False
+    visible: list[tuple[int, str]] = []; fence: tuple[str, int] | None = None; comment = False; block_comment = False; span = 0
     for number, line in enumerate(body.splitlines(), start=1):
         stripped = line.lstrip(" "); indent = len(line) - len(stripped); marker = stripped[:1]; run = len(stripped) - len(stripped.lstrip(marker)) if marker in {"`", "~"} else 0
         if fence is not None: fence = None if marker == fence[0] and indent <= 3 and run >= fence[1] and not stripped[run:].strip() else fence; continue
-        if not comment and indent <= 3 and run >= 3: fence = marker, run; continue
-        while comment or "<!--" in line:
-            if comment and "-->" not in line: line = ""; break
-            if comment:
-                line = line.split("-->", 1)[1]; comment = False
-            else:
-                before, after = line.split("<!--", 1)
-                if "-->" not in after: line = before; comment = True; break
-                line = before + after.split("-->", 1)[1]
+        if comment:
+            if "-->" not in line: continue
+            line = "" if block_comment else line.split("-->", 1)[1]; comment = False; block_comment = False
+        if not span and indent <= 3 and run >= 3: fence = marker, run; continue
+        prior_span = span; start, span = _comment_at(line, span)
+        if start >= 0:
+            before, after = line[:start], line[start + 4 :]; block = not before.strip() and len(before) <= 3
+            if "-->" not in after: line = before; comment = True; block_comment = block
+            elif block: line = ""
+            else: line = before + after.split("-->", 1)[1]
         stripped = line.lstrip(" "); indent = len(line) - len(stripped)
-        if line: visible.append((number, stripped if indent <= 3 else line))
+        if line: visible.append((number, "    " + line if prior_span else stripped if indent <= 3 else line))
     return visible
 
 
@@ -261,16 +275,10 @@ def _check_problem(result: CarrierResult) -> tuple[str, ...] | None:
 
 
 def _input_error_problem() -> tuple[str, ...]:
-    return (
-        "入力fileをUTF-8のMarkdown commentとして取得できません",
-        "投稿前入力の取得経路",
-        "input_errorを観測しました",
-        "入力fileの存在、読取権限、UTF-8 encoding（修正候補。根本的な修正責任は未確定）",
-        "未確認のIssue、branch、PR、GTP Record",
-        "入力fileを読める状態にしてgtp checkを再実行する",
-        "URLなし（投稿前入力）",
-        "input_errorがなくなりCarrier検査結果を取得できる",
-    )
+    return ("入力fileをUTF-8のMarkdown commentとして取得できません", "投稿前入力の取得経路",
+            "input_errorを観測しました", "入力fileの存在、読取権限、UTF-8 encoding（修正候補。根本的な修正責任は未確定）",
+            "未確認のIssue、branch、PR、GTP Record", "入力fileを読める状態にしてgtp checkを再実行する",
+            "URLなし（投稿前入力）", "input_errorがなくなりCarrier検査結果を取得できる")
 
 
 def _record(value: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -639,12 +647,10 @@ def present_check(result: CarrierResult) -> tuple[list[str], dict[str, Any]]:
 
 
 def _human_post_problem(result: HumanPostResult) -> tuple[str, ...]:
-    error = result.errors[0] if result.errors else {"code": "invalid_body", "path": "$"}
-    kind = "Issue" if result.target == "issue" else "PR"
+    error = result.errors[0] if result.errors else {"code": "invalid_body", "path": "$"}; kind = "Issue" if result.target == "issue" else "PR"
     return (f"{kind}本文の目的と判断材料の構造を確認できません", f"投稿前の{kind}本文",
             f"check error: {error['code']} at {error['path']}", "error pathが示すsectionの順序、一意性、本文を直す",
-            "未確認のGitHub state、既存instructions、workflow、GTP Record", "本文を直して同じtargetのgtp checkを再実行する",
-            "URLなし（投稿前入力）", "validがtrueになり、投稿後の本文を人が読んで判断できる")
+            "未確認のGitHub state、既存instructions、workflow、GTP Record", "本文を直して同じtargetのgtp checkを再実行する", "URLなし（投稿前入力）", "validがtrueになり、投稿後の本文を人が読んで判断できる")
 
 
 def present_human_post(result: HumanPostResult) -> tuple[list[str], dict[str, Any]]:
@@ -653,9 +659,8 @@ def present_human_post(result: HumanPostResult) -> tuple[list[str], dict[str, An
              "検査範囲: 本文構造だけを検査し、内容の真実性や人間の理解は判定していません",
              f"非許可表示: {AUTHORITY_NOTICE}"]
     if not result.valid: lines.extend(_problem_lines(_human_post_problem(result)))
-    return lines, {"gtp": "1.1", "command": "check", "target": result.target,
-                   "valid": result.valid, "errors": result.errors,
-                   "contextual_checks": "not_run", "authority": "none"}
+    return lines, {"gtp": "1.1", "command": "check", "target": result.target, "valid": result.valid,
+                   "errors": result.errors, "contextual_checks": "not_run", "authority": "none"}
 
 
 def present_human_post_input_error(message: str, target: str) -> tuple[list[str], dict[str, Any]]:
@@ -664,20 +669,9 @@ def present_human_post_input_error(message: str, target: str) -> tuple[list[str]
 
 
 def present_input_error(message: str) -> tuple[list[str], dict[str, Any]]:
-    lines = [
-        "検査結果: 入力ファイルをUTF-8のMarkdown commentとして読めません",
-        "contextual checks: 実行していません",
-        f"非許可表示: {AUTHORITY_NOTICE}",
-    ]
+    lines = ["検査結果: 入力ファイルをUTF-8のMarkdown commentとして読めません",
+             "contextual checks: 実行していません", f"非許可表示: {AUTHORITY_NOTICE}"]
     lines.extend(_problem_lines(_input_error_problem()))
-    return lines, {
-        "gtp": "1.0",
-        "command": "check",
-        "recognized": None,
-        "schema_valid": None,
-        "contextual_checks": "not_run",
-        "projected_state": None,
-        "record": None,
-        "errors": [{"code": "input_error", "message": message}],
-        "authority": "none",
-    }
+    return lines, {"gtp": "1.0", "command": "check", "recognized": None, "schema_valid": None,
+                   "contextual_checks": "not_run", "projected_state": None, "record": None,
+                   "errors": [{"code": "input_error", "message": message}], "authority": "none"}

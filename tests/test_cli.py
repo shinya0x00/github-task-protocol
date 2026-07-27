@@ -1331,6 +1331,16 @@ class HumanPostTests(unittest.TestCase):
         commented_fence = human_body("pr").replace("## ゴール", "<!--\n```text\n-->\n## ゴール", 1)
         result = validate_human_post(commented_fence, "pr")
         self.assertTrue(result.valid, result.errors)
+        for literal in ("`<!--`", "\\<!--"):
+            with self.subTest(literal=literal):
+                source = human_body("pr").replace("目的について人が判断できる説明です。", f"literal {literal} を説明します。")
+                result = validate_human_post(source, "pr")
+                self.assertTrue(result.valid, result.errors)
+        multiline_code = human_body("pr").replace("## ゴール", "`open\n## ゴール\nclose`\n\n## ゴール", 1)
+        result = validate_human_post(multiline_code, "pr")
+        self.assertTrue(result.valid, result.errors)
+        synthesized = human_body("pr").replace("## 目的", "<!-- instruction -->## 目的", 1)
+        self.assert_error(synthesized, "pr", "invalid_first_section")
 
     def test_commonmark_heading_indentation_obeys_visible_boundaries(self) -> None:
         indented = human_body("pr").replace("## ", "   ## ")
