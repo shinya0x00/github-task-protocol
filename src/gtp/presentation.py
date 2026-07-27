@@ -41,13 +41,14 @@ def _visible_lines(body: str) -> list[tuple[int, str]]:
         if comment:
             if "-->" not in line: continue
             line = "" if block_comment else line.split("-->", 1)[1]; comment = False; block_comment = False
+            stripped = line.lstrip(" "); indent = len(line) - len(stripped); marker = stripped[:1]; run = len(stripped) - len(stripped.lstrip(marker)) if marker in {"`", "~"} else 0
         if indent <= 3 and run >= 3: fence = marker, run; continue
         remaining = line; kept = ""; hidden = False
         while remaining:
             start = _comment_at(remaining)
             if start < 0: kept += remaining; break
             before, after = remaining[:start], remaining[start + 4 :]; kept += before; block = not kept.strip() and len(kept) <= 3
-            if "-->" not in after: line = "" if block else kept; comment = True; block_comment = block; break
+            if "-->" not in after: line = "" if block else kept + remaining[start:]; comment = block; block_comment = block; break
             if block: line = ""; hidden = True; break
             kept += " "; remaining = after.split("-->", 1)[1]
         if not comment and not hidden: line = kept
