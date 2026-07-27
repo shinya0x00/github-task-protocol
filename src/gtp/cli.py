@@ -7,8 +7,7 @@ import sys
 from . import __version__
 from .carrier import classify_carrier
 from .github import GitHubClient
-from .human_post import validate_human_post
-from .presentation import present_check, present_human_post, present_human_post_input_error, present_input_error, present_status
+from .presentation import present_check, present_human_post, present_human_post_input_error, present_input_error, present_status, validate_human_post
 from .status import evaluate_issue
 
 

@@ -2,7 +2,9 @@
 
 Status: accepted
 
-Candidate: package `1.0.4` / protocol `1.1` / [PR #141](https://github.com/shinya0x00/github-task-protocol/pull/141)
+Candidate: package `1.0.4` / protocol `1.1` / [PR #143](https://github.com/shinya0x00/github-task-protocol/pull/143)
+
+Prior halt-presentation repair: [PR #141](https://github.com/shinya0x00/github-task-protocol/pull/141)
 
 Reader boundary: 実装と文言作成に参加せず、README、GitHub上のPR本文、提示された複合halt出力だけを読んだ新規contextの独立Agentが回答した。実在の人間による調査ではない。
 
@@ -55,6 +57,13 @@ Targets:
 - Issue: https://github.com/agent-operated/cyan-tigers/issues/5
 - PR-only: https://github.com/agent-operated/cyan-tigers/pull/6
 
+Producer observations:
+
+- Target repository: GTP source repositoryとは独立した`agent-operated/cyan-tigers`
+- Issue: installed target check exit `0`、create／edit成功、post-write GET本文一致、final body SHA-256 `b02e2b58578c3f5a4871c712e411b545aee5a1a48f138570c8a8c975e2a1cc4c`、closed
+- PR-only: Issue referenceとGTP Recordは不要、create／head update／body edit成功、current head `8b1656e1be34e6cdb214f530e4b507a98cf2a7a1`、post-write GET本文・head一致、old head不在、`現在地`見出し1件、closed without merge
+- Non-interference: default branch direct push、template、workflow、ruleset、required check、GTP setupの変更なし
+
 Reader boundary: 各artifactごとに`fork_turns: none`のfresh sub-agentを起動した。与えたのは「非エンジニアとして、理解したことと分からなかった点を説明する」というroleとURL 1件だけである。期待回答、確認項目、GTPの説明、実装contextは与えていない。
 
 ## Issue
@@ -69,7 +78,7 @@ Reader boundary: 各artifactごとに`fork_turns: none`のfresh sub-agentを起�
 - 読解後にIssueをcloseしてURLを残す。
 - この結果は作業、merge、公開を禁止も許可もしない。
 
-Decision record追加後も、同じclosed Issueの本文を投稿前checkし、GitHubへeditした後に再取得した。入力と再取得本文のSHA-256はともに`b02e2b58578c3f5a4871c712e411b545aee5a1a48f138570c8a8c975e2a1cc4c`だった。fresh readerはURLだけから、通常の投稿経路を使って本文一致を確認する方針、template／workflow／required check／常駐botを導入しない境界、このIssueがmergeや公開を決めないことを説明できた。検査の内部手順や根拠を同じURLだけで独立検証できないことはunknownとして残した。
+Decision record追加後も、同じclosed Issueの本文を投稿前checkし、GitHubへeditした後に再取得した。入力と再取得本文のSHA-256は上記のとおり一致した。fresh readerはURLだけから、通常の投稿経路を使って本文一致を確認する方針、template／workflow／required check／常駐botを導入しない境界、このIssueがmergeや公開を決めないことを説明できた。検査の内部手順や根拠を同じURLだけで独立検証できないことはunknownとして残した。
 
 ## PR-only
 

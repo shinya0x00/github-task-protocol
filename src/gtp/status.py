@@ -13,7 +13,7 @@ from .model import (
     RecordObservation,
     SuccessorFact,
 )
-from .reducer import conditions_at_revision, current_done, effective_conditions, effective_revision, fold_comments, historical_state
+from .reducer import conditions_at_revision, current_done, effective_conditions, effective_revision, fold_comments, historical_state, revision_for_done
 from .urls import parse_github_url
 
 
@@ -30,10 +30,16 @@ class StatusResult:
     protocol_version: str = field(default="1.0", kw_only=True)
 
     def projection(self) -> dict[str, Any]:
-        return {"issue_url": self.issue_url, "state": self.state,
-                "diagnostics": [item.projection() for item in self.diagnostics],
-                "current": self.current,
-                "acquisition": {"complete": not self.acquisition_errors, "errors": self.acquisition_errors}}
+        return {
+            "issue_url": self.issue_url,
+            "state": self.state,
+            "diagnostics": [item.projection() for item in self.diagnostics],
+            "current": self.current,
+            "acquisition": {
+                "complete": not self.acquisition_errors,
+                "errors": self.acquisition_errors,
+            },
+        }
 
 
 @dataclass
@@ -57,10 +63,17 @@ def _record_projection(observation: RecordObservation | None) -> dict[str, Any] 
         "done": (("revision_ref", "previous_done_ref") if observation.record["gtp"] == "1.1" else ()) + ("pr_ref", "head_sha", "evidence"),
         "stop": ("reason", "successor_ref"),
     }
-    return {"id": observation.id, "type": observation.type,
-            "url": observation.comment.url, "aliases": list(observation.alias_urls),
-            "comment_id": observation.comment.id,
-            "content": {key: observation.record[key] for key in content_fields[observation.type]}}
+    return {
+        "id": observation.id,
+        "type": observation.type,
+        "url": observation.comment.url,
+        "aliases": list(observation.alias_urls),
+        "comment_id": observation.comment.id,
+        "content": {
+            key: observation.record[key]
+            for key in content_fields[observation.type]
+        },
+    }
 
 
 def _diagnostic(token: str, *urls: str, **detail: Any) -> Diagnostic:
@@ -90,8 +103,10 @@ def _pr_matches(pr: dict[str, Any], repo_id: int, branch: str) -> bool:
     )
 
 
-def _branch_snapshot_key(branch: dict[str, Any] | None,
-                         resource: str) -> tuple[str, str] | None:
+def _branch_snapshot_key(
+    branch: dict[str, Any] | None,
+    resource: str,
+) -> tuple[str, str] | None:
     if branch is None:
         return None
     name = branch.get("name")
@@ -115,20 +130,42 @@ def _pr_snapshot_key(pr: dict[str, Any], resource: str) -> tuple[Any, ...]:
     state, created_at = pr.get("state"), pr.get("created_at")
     merged_at = pr.get("merged_at")
     changed_files = pr.get("changed_files")
-    strings = (url, base_ref, base_sha, head_ref, head_sha, state, created_at)
-    if (not isinstance(number, int) or not isinstance(base_repo_id, int)
-            or not isinstance(head_repo_id, int)
-            or any(not isinstance(value, str) for value in strings)
-            or (merged_at is not None and not isinstance(merged_at, str))
-            or (changed_files is not None
-                and (not isinstance(changed_files, int) or changed_files < 0))):
+    if (
+        not isinstance(number, int)
+        or not isinstance(url, str)
+        or not isinstance(base_repo_id, int)
+        or not isinstance(base_ref, str)
+        or not isinstance(base_sha, str)
+        or not isinstance(head_repo_id, int)
+        or not isinstance(head_ref, str)
+        or not isinstance(head_sha, str)
+        or not isinstance(state, str)
+        or not isinstance(created_at, str)
+        or (merged_at is not None and not isinstance(merged_at, str))
+        or (
+            changed_files is not None
+            and (not isinstance(changed_files, int) or changed_files < 0)
+        )
+    ):
         raise AcquisitionError(resource, "pull request snapshot fields missing")
-    return (number, url, base_repo_id, base_ref, base_sha, head_repo_id,
-            head_ref, head_sha, state, created_at, merged_at, changed_files)
+    return (
+        number,
+        url,
+        base_repo_id,
+        base_ref,
+        base_sha,
+        head_repo_id,
+        head_ref,
+        head_sha,
+        state, created_at, merged_at,
+        changed_files,
+    )
 
 
-def _pr_collection_snapshot(prs: list[dict[str, Any]],
-                            resource: str) -> tuple[tuple[Any, ...], ...]:
+def _pr_collection_snapshot(
+    prs: list[dict[str, Any]],
+    resource: str,
+) -> tuple[tuple[Any, ...], ...]:
     return tuple(sorted(_pr_snapshot_key(pr, resource) for pr in prs))
 
 
@@ -604,8 +641,7 @@ def _evaluate_acquired(
     )
     active_done = current_done(fold)
     terminal_done = active_done if fold.protocol_11_seen else fold.active["done"][0] if fold.active["done"] else None
-    done_revision = (fold.bound_contract if terminal_done and terminal_done.record["gtp"] == "1.0"
-                     else fold.observations_by_url.get(terminal_done.record["revision_ref"]) if terminal_done else None)
+    done_revision = revision_for_done(fold, terminal_done) if terminal_done else None
     done_conditions = conditions_at_revision(fold, done_revision)
     revision_mismatch = terminal_done is not None and done_revision is not effective_revision(fold)
     current: dict[str, Any] = {

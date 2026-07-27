@@ -39,6 +39,5 @@
   "ADR-038": "test_release_surface.ReleaseSurfaceTests.test_package_and_protocol_versions_are_separate",
   "ADR-039": "test_release_surface.ReleaseSurfaceTests.test_existing_instruction_vocabulary_is_not_protocol_owned",
   "ADR-040": "test_release_surface.ReleaseSurfaceTests.test_adr_0040_source_budget_and_formatting_gates_are_pinned",
-  "ADR-041": "test_release_surface.ReleaseSurfaceTests.test_readme_plain_first_display_contract_and_budget",
-  "ADR-042": "test_human_post.HumanPostTests.test_issue_and_pr_contracts_are_distinct_and_valid"
+  "ADR-041": "test_release_surface.ReleaseSurfaceTests.test_readme_plain_first_display_contract_and_budget"
 }

@@ -30,7 +30,7 @@
 - [`v1.0.4/live-paths.json`](v1.0.4/live-paths.json)は、merge前に観測できるrevision移行、re-Done、旧CLI fail-closedをproduction pathで検査する。native merge cutoffはunit／HTTP acceptanceで固定し、実GitHubのpost-merge観測はmergeが別途許可されるまでpendingとする。
 - [`v1.0.4/public-record-disclosure.json`](v1.0.4/public-record-disclosure.json)は、公開Record／Evidenceへ秘密情報を転載しない境界を検査する。
 - [`v1.0.4/release-candidate.json`](v1.0.4/release-candidate.json)は、source候補、line budget、build、install、test、Twine、artifact metadataを検査する。final source SHAはPR head確定後のEvidenceが所有し、この文書へ先書きしない。
-- [`v1.0.4/human-post-producer.json`](v1.0.4/human-post-producer.json)は、GTP外repositoryでIssueとIssue非依存PRのpre-write check、create／edit、post-write GETを観測する。読解結果は別のhuman probeが所有する。
+- [`v1.0.4/human-probe.md`](v1.0.4/human-probe.md)は、GTP外repositoryでIssueとIssue非依存PRのpre-write check、create／edit、post-write GETとfresh readerの読解結果を記録する。
 - production Python budgetは`src/gtp/*.py`のphysical nonblank lines 2500以下とし、blank-line formattingはRuff 0.12.3の`E301`、`E302`、`E305`で独立して検査する。total linesとblank linesは観測値として残すが合否には使わない。
 
 ## 配布artifactの境界

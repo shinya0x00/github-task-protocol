@@ -7,7 +7,7 @@
   "versions": {"package": "1.0.4", "protocol": "1.1"},
   "baseline": {"unit_tests": 162, "GTP.md_lines": 368, "README.md_lines": 131, "production_python_nonblank_lines": 2229, "production_python_physical_lines": 2500, "production_python_blank_lines": 271},
   "candidate": {
-    "unit_tests": {"status": "success", "count": 234},
+    "unit_tests": {"status": "success", "count": 235},
     "human_probe": {"status": "success", "artifact": "acceptance/v1.0.4/human-probe.md", "reader": "fresh_url_only_non_engineer_agents", "real_human": false, "external_issue": "https://github.com/agent-operated/cyan-tigers/issues/5", "external_pr": "https://github.com/agent-operated/cyan-tigers/pull/6"},
     "build": {
       "status": "success",
@@ -23,9 +23,9 @@
       "status": "success",
       "GTP.md": 359,
       "README.md": 158,
-      "production_python_nonblank_lines": 2500,
-      "production_python_physical_lines": 2742,
-      "production_python_blank_lines": 242
+      "production_python_nonblank_lines": 2499,
+      "production_python_physical_lines": 2750,
+      "production_python_blank_lines": 251
     },
     "sdist_tests": {
       "status": "success",

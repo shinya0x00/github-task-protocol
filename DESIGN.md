@@ -145,7 +145,7 @@ Issue本文はcurrent decisionのprojection、通常の`Decision update` comment
 
 checkerはGitHub writeを行わない。接続済みproducerは投稿直前のcheck成功、GitHub標準のbody-file相当create／edit、投稿後GET一致を一つのOperationとして観測する。PR head更新ではbody先頭へlogを追記せず、`現在地`と後半の技術詳細を置換する。Issueの存在、Issue Form、PR template、workflow、ruleset、required checkはattachment pointではなく、既存repositoryのownerに残る。
 
-この接続はhuman-readable artifactが存在することを検査するが、文章の真実性、理解、review、approval、authorizationを証明しない。外部URLだけを読む独立readerが目的と判断境界を説明できるかは、machine checkとは別のacceptanceで観測する。詳細な判断理由は[ADR-042](adr/0042-human-github-body-producer-connection.md)が所有する。
+この接続はhuman-readable artifactが存在することを検査するが、文章の真実性、理解、review、approval、authorizationを証明しない。外部URLだけを読む独立readerが目的と判断境界を説明できるかは、machine checkとは別のacceptanceで観測する。公開契約は`GTP.md` §16、このarchitectureと境界は本sectionが所有する。
 
 ## Public Record disclosure
 

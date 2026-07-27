@@ -57,6 +57,12 @@ def current_done(result: FoldResult) -> RecordObservation | None:
     return done[-1] if result.protocol_11_seen and done else done[0] if len(done) == 1 else None
 
 
+def revision_for_done(result: FoldResult, done: RecordObservation) -> RecordObservation | None:
+    if done.record["gtp"] == "1.0":
+        return result.bound_contract
+    return result.observations_by_url.get(done.record["revision_ref"])
+
+
 def _expect_ref(result: FoldResult, observation: RecordObservation, field: str,
                 expected: RecordObservation) -> bool:
     ref = observation.record[field]
@@ -182,6 +188,18 @@ def _accept_context(result: FoldResult, observation: RecordObservation) -> None:
     if record_type == "stop":
         result.active[record_type].append(observation)
         result.terminal_stop = observation
+
+
+def successor_refs(comments: list[Comment]) -> list[str]:
+    refs: list[str] = []
+    for comment in comments:
+        carrier = classify_carrier(comment.body)
+        if comment.updated_at != comment.created_at or not carrier.schema_valid or carrier.record is None:
+            continue
+        record = carrier.record
+        if record["type"] == "stop" and record["reason"] == "superseded":
+            refs.append(record["successor_ref"])
+    return list(dict.fromkeys(refs))
 
 
 def fold_comments(comments: list[Comment], context: FoldContext | None = None) -> FoldResult:

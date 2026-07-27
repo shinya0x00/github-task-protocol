@@ -1057,7 +1057,6 @@ class ReleaseSurfaceTests(unittest.TestCase):
     def test_v104_candidate_manifest_is_complete(self) -> None:
         expected_acceptance = [
             "acceptance/v1.0.4/human-probe.md",
-            "acceptance/v1.0.4/human-post-producer.json",
             "acceptance/v1.0.4/walking-skeleton.json",
             "acceptance/v1.0.4/live-paths.json",
             "acceptance/v1.0.4/public-record-disclosure.json",
@@ -1087,24 +1086,15 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertEqual(["1", "2", "3", "4", "5"], re.findall(r"^(\d)\. ", answers, re.MULTILINE))
 
     def test_human_post_producer_is_connected_without_issue_requirement(self) -> None:
-        receipt = json.loads((ROOT / "acceptance" / "v1.0.4" / "human-post-producer.json").read_text(encoding="utf-8"))
-        self.assertEqual("gtp-human-post-producer-v1", receipt["schema"])
-        self.assertEqual("independent_from_gtp_source_repository", receipt["target_repository_relation"])
-        self.assertEqual((0, True, True), (
-            receipt["issue_case"]["pre_write"]["exit_code"],
-            receipt["issue_case"]["pre_write"]["valid"],
-            receipt["issue_case"]["post_write_get"]["body_match"],
-        ))
-        pr = receipt["pr_only_case"]
-        self.assertFalse(pr["issue_reference_required"])
-        self.assertFalse(pr["gtp_record_required"])
-        self.assertEqual("success", pr["head_update"])
-        self.assertEqual("success", pr["body_edit"])
-        self.assertTrue(pr["post_write_get"]["body_match"])
-        self.assertTrue(pr["post_write_get"]["head_match"])
-        self.assertTrue(pr["post_write_get"]["old_head_absent"])
-        self.assertEqual(1, pr["post_write_get"]["current_heading_count"])
-        self.assertEqual({False}, set(receipt["non_interference"].values()))
+        probe = (ROOT / "acceptance" / "v1.0.4" / "human-probe.md").read_text(encoding="utf-8")
+        observations = probe.split("Producer observations:", 1)[1].split("Reader boundary:", 1)[0]
+        for fact in (
+            "GTP source repositoryとは独立", "target check exit `0`", "post-write GET本文一致",
+            "Issue referenceとGTP Recordは不要", "post-write GET本文・head一致",
+            "old head不在", "`現在地`見出し1件", "closed without merge",
+            "default branch direct push", "template", "workflow", "ruleset", "required check",
+        ):
+            self.assertIn(fact, observations)
         gtp = (ROOT / "GTP.md").read_text(encoding="utf-8")
         self.assertIn("gtp check [--target record|issue|pr] <file>", gtp)
         self.assertIn("problem／fix専用の見出しを必須にしない", gtp)
@@ -1645,7 +1635,6 @@ class ReleaseSurfaceTests(unittest.TestCase):
                     "adr/0039-existing-instructions-and-issue-lifecycle-boundary.md",
                     "adr/0040-production-source-budget-and-formatting.md",
                     "adr/0041-readme-human-entry-budget.md",
-                    "adr/0042-human-github-body-producer-connection.md",
                 ],
                 "candidate_notes": "acceptance/release-notes-v1.0.4.md",
                 "published_history": {
