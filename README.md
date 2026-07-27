@@ -1,24 +1,78 @@
 # GitHub Task Protocol
 
-AIに作業を任せたあと、「何を約束したのか」「どこまで終わったのか」「何を根拠にそう言えるのか」が会話の外でも分かるようにする小さなprotocolです。
+AIに作業を任せたあと、「何を頼んだか」「いまどこまで進んだか」「何を根拠に完成候補といえるか」をGitHub上の記録から確認するための小さなprotocolです。
 
 > 作業はAIに任せる。判断は手放さない。
 
-GTPは、GitHub Issueに残したRecordと、実際のbranch、PR、commit、Check Runを結び付けます。前の会話や実行環境を知らない人やAgentでも、GitHubから現在地を再構成できます。
+GTPは、GitHub Issueに残したRecordと、実際のbranch、PR、commit、Check Runを結び付けます。前の会話や実行環境を知らない人やAgentでも、GitHubだけを読んで現在地を確かめられます。
 
-GTPは仕事の進め方を決めません。repository、organization、ユーザーが既に持つinstructionsやrulesの内容を定義、検証、上書きせず、`AGENTS.md`なども勝手に書き換えません。運用を決めるのはユーザーで、GTPが行うのは残されたRecordの読み取りと接続です。
+GTPは仕事の進め方を決めません。既存のinstructionsやrulesを定義、検証、上書きせず、`AGENTS.md`なども勝手に書き換えません。merge、公開、やり直しを決めるのは人間です。
 
 ## 何ができるか
 
-- 作業前の目的、変更範囲、完了条件をContractへ固定する
-- 作業中に条件が増えた履歴を、古い条件を消さずに追記する
-- PRのsource headが変わったら、古いDoneを残したまま新headへDoneを再提示する
-- 最新の不正なDoneを無視して、都合よく古いDoneへ戻らない
-- Evidenceが足りない、古い、矛盾している、取得できない状態を成功扱いしない
+- 作業前の目的、変更してよい範囲、完了条件を残す
+- 作業中に確認項目が増えた履歴を、古い記録を消さずに追加する
+- PRを直したあと、新しい内容について確認資料を出し直す
+- 記録や確認資料が古い、足りない、矛盾しているときに成功扱いしない
+- 最初に確認するURLと、直す場所・直さない場所を人向けに示す
 
-RecordがないIssueでは、詳しい作業履歴を推測せず`unmanaged`とします。valid Contractがあれば、mode選択を求めず、そのIssueのGTP lifecycleを再構成します。これは既存instructionsやrulesの適用状態を変えるものではありません。
+RecordがないIssueでは、詳しい作業履歴を推測せずGTP上の管理対象外とします。この正式なstate名が`unmanaged`です。Recordがある場合だけ、そのIssueのGTP上の現在地を再構成します。どちらの場合も、既存のinstructionsやrulesの効力は変えません。
 
-## Recordとstate
+## protocol 1.1でできるようになったこと
+
+package `1.0.4`は配布するCLIのversion、protocol `1.1`はIssueへ残すRecordの規則のversionです。CLIの更新番号と、記録形式の互換性を示す番号は別物です。
+
+- `amendment`: 作業途中で確認項目を追加します。ただし、目的や変更範囲、branch、PRは変えません。
+- re-Done: PRを直したら、新しいPR内容について、現在の全完了条件の確認資料を出し直します。
+
+例えば、作業開始後に「別の環境でも確認する」という条件が必要になったら`amendment`で追加します。その後PRを直したら、追加前後を含むすべての完了条件について確認資料をそろえ、Doneを出し直します。過去のRecordは編集しません。
+
+目的、変更範囲、branch、PRまで変える必要がある場合は`amendment`を使いません。元のIssueをStopで閉じ、人間が後継Issueを作るか判断します。参照関係やterminal ruleの正式な定義は[`GTP.md`](GTP.md)にあります。
+
+## GTPの表示を読む
+
+`gtp status`の人向け表示は、通常は次の6項目です。
+
+### 通常は6項目
+
+1. `状態`: GTPが再構成した現在地
+2. `停止要否`: GTP上の次のtransitionへ進めるか
+3. `次の行動`: 記録上、次に確認または提示するもの
+4. `理由`: その状態になった理由
+5. `最初のURL`: 人が最初に開くGitHub URL
+6. `非許可表示`: この出力が変更・完了・mergeを許可しないこと
+
+### `halt`時は8項目を追加
+
+`halt`では、通常の6項目に加えて「問題の整理」を次の8項目で表示します。
+
+GitHub情報を最後まで取得できずstateを決められない場合も、取得経路を確認できるよう同じ8項目を表示します。
+
+1. `何が問題か`: 観測した不一致や不足
+2. `どこが問題か`: 最初に確認するRecordやGitHub resource
+3. `なぜそう判断したか`: 表示の根拠になった観測事実
+4. `どこを直すか`: 修正候補
+5. `何を直さないか`: 推測で変更してはいけないもの
+6. `次の安全な一手`: まずread-onlyで行う確認
+7. `最初に確認するURL`: 原因を確認できる場所
+8. `解決したと判断する条件`: 再確認で見る結果
+
+`halt`は「GTPの記録だけでは、そのtransitionを正しく確認できない」という状態です。それ自体は作業、merge、公開の禁止命令でも許可でもありません。最初のURLと8項目を読み、実際にどうするかは人間が判断します。
+
+machine JSONの`authority: none`も同じ境界を表します。CLI、Record、緑のCheck、`state: done`は、人間の代わりにmergeや公開を許可しません。
+
+## 人が判断すること
+
+GTPはRecordとGitHub上の事実の対応を確認しますが、次は人が読み、判断します。
+
+- 完了条件の文章が本当に満たされているか
+- Check Runやartifactの内容が十分か
+- Issue本文や通常commentに未解決事項がないか
+- review、merge、公開を実行してよいか
+
+表示に問題があれば、まず`最初のURL`を開きます。正式なRecord形式とstate規則は[`GTP.md`](GTP.md)、現在の実装構成は[`DESIGN.md`](DESIGN.md)、判断理由は[`adr/`](adr/)で確認できます。
+
+## 正式なRecordとstate
 
 protocol 1.0には4 Record、1.1には`amendment`を加えた5 Recordがあります。
 
@@ -26,7 +80,7 @@ protocol 1.0には4 Record、1.1には`amendment`を加えた5 Recordがあり�
 |---|---|
 | `contract` | 目的、変更してよい範囲、完了条件を固定する |
 | `start` | Contractと唯一の作業branchを結び付ける |
-| `amendment` | Start後に新しい完了条件だけを追記する（1.1） |
+| `amendment` | Start後に新しい完了条件だけを追加する（1.1） |
 | `done` | 特定のContract revisionとPR source headへ、条件ごとのEvidenceを提示する |
 | `stop` | 完了を主張せず中止し、必要なら後継Issueを示す |
 
@@ -37,35 +91,13 @@ protocol 1.0には4 Record、1.1には`amendment`を加えた5 Recordがあり�
 | `unmanaged` | recognized GTP Carrierがない |
 | `ready` | ContractはあるがStart前 |
 | `in_progress` | 作業中、merge待ち、またはCheck完了待ち |
-| `halt` | 記録やGitHub factの不適合により一意に進めない |
-| `done` | Done chainのcurrent Doneがexact source headとEvidenceへ結び付き、そのheadのPRがnative mergeされた |
+| `halt` | 記録やGitHub factの不適合により、GTP上の次のtransitionを一意に決められない |
+| `done` | current Doneがexact source headとEvidenceへ結び付き、そのheadのPRがnative mergeされた |
 | `stopped` | Stopにより、このIssueでの作業を終了した |
-
-Done Recordは完成候補を示す自主検査記録であり、それだけでtask完了にはなりません。`state: done`は、Done chainのcurrent Done、現在のContract revision、exact source head、全Evidence、native mergeを確認して初めて導出されます。これは独立した検査員の承認、actor本人性、review、approval、authorityを意味しません。
-
-CheckがpendingのままPRがmergeされた場合は`in_progress`です。同じCheckがsuccessになれば新Recordなしで`done`へ進みますが、merge後にamendmentやre-Doneは追加できません。
 
 `done`が示すのはsource PR lifecycleの完了です。tag作成、GitHub Release、PyPI公開、deploymentなど、merge後の外部Operationの完了は示しません。その結果は通常のGitHub記録へ残せますが、GTP stateは変わりません。
 
-## amendmentとre-Done
-
-1.1の`amendment`は、既存のDone Conditionを変更・削除せず、新しい条件だけを追加します。goal、scope、branch、PRを変える汎用patchではありません。そこまで変える場合はStopと後継Issueを使います。
-
-amendment後のDoneは、追加後の最新Contract revisionを指す必要があります。新しい条件が古い条件を意味上弱めていないかは人が読みます。GTPが自動確認するのは構造上のadd-onlyまでです。
-
-re-Doneは同じIssue、branch、PRで、直前のDoneと現在のContract revisionを指し、新しいsource headへEvidenceを出し直します。古いDoneは当時の記録として残ります。後続Doneがinvalidなら`halt`となり、過去のvalid Doneへfallbackしません。
-
-## GTPが証明しないこと
-
-GTPは、存在するRecordを決められた規則で解釈し、GitHub factへ結び付けます。次のことまでは証明しません。
-
-- Done Conditionが自然言語上、本当に満たされたこと
-- Evidenceの内容が真実、十分、高品質であること
-- 本当は存在したすべての判断やunknownが記録されたこと
-- actor本人性、credential安全性、authority、review、approval
-- コードや作業結果そのものの正しさ
-
-記録の細かさは利用者の運用次第です。GTPは足りない事実を推測で埋めず、分からないことを分かったふりをしません。
+CheckがpendingのままPRがmergeされた場合は`in_progress`です。同じCheckがsuccessになれば新Recordなしで`done`へ進みます。merge後に`amendment`やre-Doneは追加できません。
 
 ## 導入
 
@@ -91,7 +123,7 @@ setup Agentは、fileやbranchを変える前に既存instructions、必要なau
 
 ## CLIは任意の検証器
 
-人間がGTPを使うためにCLIをinstallする必要はありません。`gtp status`はGitHubへGETだけを行い、`gtp check`は投稿前Carrierをoffline検査します。CLI、exit code、緑のCheckは変更やmergeの許可ではありません。
+人間がGTPを使うためにCLIをinstallする必要はありません。`gtp status`はGitHubへGETだけを行い、`gtp check`は投稿前Carrierをoffline検査します。
 
 利用するpackage versionは、GitHubのlatest stable ReleaseとPyPIのversion pageの両方で同じ値が解決できることを確認して固定します。
 
@@ -101,8 +133,6 @@ uvx --from "github-task-protocol==$VERSION" gtp status <issue-url>
 uvx --from "github-task-protocol==$VERSION" gtp check <comment.md>
 ```
 
-このsource treeのPython distribution versionは`1.0.4`、新しいRecord protocolは`1.1`です。この値はpublicationのEvidenceでも、exact source commitのidentityでもありません。source metadataのpackage versionは配布候補の識別子です。package versionはPython packagingのversion identifierであり、Semantic Versioningのpatch互換性を主張しません。Record／reader互換性はprotocol versionで示します。理由は[ADR-038](adr/0038-protocol-1-1-revisions-and-package-versioning.md)にあります。
+このsource treeのPython distribution versionは`1.0.4`、新しいRecord protocolは`1.1`です。この値はpublicationのEvidenceでも、exact source commitのidentityでもありません。source metadataのpackage versionは配布候補の識別子です。
 
-公開仕様の唯一の正本は400行以内の[`GTP.md`](GTP.md)、current architectureは[`DESIGN.md`](DESIGN.md)、materialな判断理由は[`adr/`](adr/)です。
-
-License: [MIT](LICENSE)
+公開仕様の唯一の正本は[`GTP.md`](GTP.md)です。READMEの入口を守る行数上限の理由は[ADR-041](adr/0041-readme-human-entry-budget.md)にあります。License: [MIT](LICENSE)
