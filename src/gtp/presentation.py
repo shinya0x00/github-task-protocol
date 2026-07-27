@@ -21,7 +21,7 @@ def _visible_lines(body: str) -> list[tuple[int, str]]:
     for number, line in enumerate(body.splitlines(), start=1):
         stripped = line.lstrip(" "); indent = len(line) - len(stripped); marker = stripped[:1]; run = len(stripped) - len(stripped.lstrip(marker)) if marker in {"`", "~"} else 0
         if fence is not None: fence = None if marker == fence[0] and indent <= 3 and run >= fence[1] and not stripped[run:].strip() else fence; continue
-        if indent <= 3 and run >= 3: fence = marker, run; continue
+        if not comment and indent <= 3 and run >= 3: fence = marker, run; continue
         while comment or "<!--" in line:
             if comment and "-->" not in line: line = ""; break
             if comment:

@@ -1328,6 +1328,9 @@ class HumanPostTests(unittest.TestCase):
         fenced_comment = human_body("pr").replace("## ゴール", "```html\n<!--\n```\n\n## ゴール", 1)
         result = validate_human_post(fenced_comment, "pr")
         self.assertTrue(result.valid, result.errors)
+        commented_fence = human_body("pr").replace("## ゴール", "<!--\n```text\n-->\n## ゴール", 1)
+        result = validate_human_post(commented_fence, "pr")
+        self.assertTrue(result.valid, result.errors)
 
     def test_commonmark_heading_indentation_obeys_visible_boundaries(self) -> None:
         indented = human_body("pr").replace("## ", "   ## ")
