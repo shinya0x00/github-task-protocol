@@ -42,11 +42,15 @@ pull requestを使う場合は、本文に判断の概要を示し、Decision Re
   - `gtp/decisions/request-id-retry.md`
 ```
 
+このpathはPR headのtreeを基準に読む。merge後は同じpathをmainから参照する。
+
 pull requestを使わない場合は、commit messageへGit trailerを置ける。
 
 ```text
 Decision-Ref: gtp/decisions/request-id-retry.md
 ```
+
+複数の判断を参照する場合は、`Decision-Ref`を1件ずつ複数行置く。
 
 ## 使い始める
 

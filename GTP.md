@@ -1,5 +1,7 @@
 # GitHub Task Protocol 2.0
 
+Protocol version: `2.0`
+
 GitHub Task Protocol（GTP）は、後から変更するコストまたは影響が大きい未決定事項について、採用した手段をプロジェクト内へ残すためのprotocolである。
 
 ## 記録する判断
@@ -13,7 +15,9 @@ GitHub Task Protocol（GTP）は、後から変更するコストまたは影響
 
 ## Decision Record
 
-一つの未決定事項につき、一つのMarkdown fileを作る。最低限の形式は次のとおりである。
+一つの未決定事項につき、一つのMarkdown fileを作る。正準見出しは`## 未決定事項`と`## 採用した手段`である。判断を変更した場合だけ`## 変更履歴`を追加する。
+
+最低限の形式は次のとおりである。
 
 ```markdown
 ## 未決定事項
@@ -27,9 +31,11 @@ GitHub Task Protocol（GTP）は、後から変更するコストまたは影響
 
 理由、比較案、詳細な推論過程、status、承認者は必須項目にしない。既存仕様やADRがすでに手段を一意に決めている場合は、新しいDecision Recordを作らず、その正本に従う。
 
+Decision Recordには、そのrepositoryへ保存してよい派生情報だけを書く。credential、token、private prompt、authorization本文などを転載しない。
+
 ## 正本
 
-Decision Recordの正本は、利用プロジェクトがversion管理する`gtp/decisions/`に置く。
+Decision Recordの正本は、利用プロジェクトがversion管理する`gtp/decisions/`に固定し、別pathへ設定可能にしない。
 
 ```text
 利用プロジェクト/
@@ -38,7 +44,7 @@ Decision Recordの正本は、利用プロジェクトがversion管理する`gtp
         └── request-id-retry.md
 ```
 
-file名は、判断対象を説明するlowercaseのhyphen区切りとする。連番、status、独自IDは要求しない。特定Agentのmemory、chat、一時file、Issue、pull requestは正本にしない。GitHubの利用も必須にしない。
+Decision Recordのidentityはrepository-relative pathである。file名は、判断対象を説明するlowercaseのhyphen区切りとする。連番、status、独自IDは要求しない。特定Agentのmemory、chat、一時file、Issue、pull requestは正本にしない。GitHubの利用も必須にしない。
 
 ## 判断を変更する
 
@@ -51,6 +57,8 @@ file名は、判断対象を説明するlowercaseのhyphen区切りとする。�
 ```
 
 相互参照できる環境ではpull request、commit、Issueなどへのlinkを付ける。参照できない環境では、何から何へ変わったかを短い文章で残す。過去の手段を現在の手段として本文へ併記しない。
+
+判断の対象が廃止されるなど、Decision Recordが現在は適用されなくなった場合もfileを削除しない。`採用した手段`を「現在は適用しない」と分かる内容へ更新し、`変更履歴`へ理由を短く追記する。専用のstatus fieldは追加しない。
 
 ## 成果物から参照する
 
@@ -65,13 +73,24 @@ pull requestを使う場合は、本文へ判断の概要と相対pathを記載�
   - `gtp/decisions/request-id-retry.md`
 ```
 
+pull request本文のrepository-relative pathはPR headのtreeを基準に解決する。merge後は同じpathをmainのtreeから参照する。
+
 pull requestを使わない場合は、Git trailerとしてcommit message末尾へ記載できる。
 
 ```text
 Decision-Ref: gtp/decisions/request-id-retry.md
 ```
 
-`Decision-Ref`はGTPが定めるtrailer tokenである。値は同じcommitに含まれるDecision Recordへのrepository-relative pathとする。Decision Recordから成果物への逆参照や、成果物fileへの参照埋め込みは要求しない。
+`Decision-Ref`はGTPが定めるtrailer tokenである。値は、そのcommitのtree上で解決できるDecision Recordへのrepository-relative pathとする。Decision Recordがそのcommitのdiffに含まれる必要はない。
+
+複数の判断を参照する場合は、1件につき1行の`Decision-Ref`を置く。
+
+```text
+Decision-Ref: gtp/decisions/request-id-retry.md
+Decision-Ref: gtp/decisions/user-identifier.md
+```
+
+Decision Recordから成果物への逆参照や、成果物fileへの参照埋め込みは要求しない。
 
 ## Issueとpull request
 
