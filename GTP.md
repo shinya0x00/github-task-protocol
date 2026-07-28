@@ -56,12 +56,13 @@ file名は、判断対象を説明するlowercaseのhyphen区切りとする。�
 
 成果物の変更から、関連するDecision Recordへ一方向にたどれるようにする。
 
-pull requestを使う場合は、本文へ相対pathを記載する。
+pull requestを使う場合は、本文へ判断の概要と相対pathを記載する。
 
 ```markdown
-## Decision references
+## 関連する判断
 
-- gtp/decisions/request-id-retry.md
+- 完了済みrequest IDは再実行せず、保存済み結果を返す
+  - `gtp/decisions/request-id-retry.md`
 ```
 
 pull requestを使わない場合は、Git trailerとしてcommit message末尾へ記載できる。

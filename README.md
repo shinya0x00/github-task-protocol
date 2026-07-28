@@ -33,12 +33,13 @@ GTP 2.0は、そうした未決定事項に対して、どの手段を採用し�
 
 ## 成果物から判断へつなぐ
 
-pull requestを使う場合は、本文からDecision Recordへ参照する。
+pull requestを使う場合は、本文に判断の概要を示し、Decision Recordへ参照する。
 
 ```markdown
-## Decision references
+## 関連する判断
 
-- gtp/decisions/request-id-retry.md
+- 完了済みrequest IDは再実行せず、保存済み結果を返す
+  - `gtp/decisions/request-id-retry.md`
 ```
 
 pull requestを使わない場合は、commit messageへGit trailerを置ける。
