@@ -8,6 +8,8 @@
 
 公開済み`1.0.3`のprotocol semanticsとversion identity以外のCLI behaviorを変えず、package version、人向け説明、release検証だけを訂正する最終[PEP 440 post-release](https://packaging.python.org/en/latest/specifications/version-specifiers/#post-releases) `1.0.3.post1`を一度だけ公開する。公開後にartifactの一致、clean install、version表示を検証してから[PyPI projectをarchive](https://blog.pypi.org/posts/2025-01-30-archival/)する。2.0はPyPIから配布せず、GitHubのlatest Releaseは2.xのまま維持する。
 
+`1.0.3.post1`のsourceと公開後Evidenceは`legacy/1.x` branchへversion管理し、PyPI archiveとEvidence記録の完了後はこのbranchを凍結する。作業branchは削除する。
+
 mainには案内だけを置き、2.0から参照されないPython runtime、package、test、acceptance、CIはmainから除く。
 
 ## 変更履歴
