@@ -1,3 +1,211 @@
 {
-  "schema": "github-task-protocol-public-release-evidence/v1"
+  "schema": "github-task-protocol-public-release-evidence/v1",
+  "observed_at": "2026-08-01T09:31:59Z",
+  "candidate": {
+    "branch": "legacy/1.x",
+    "commit_sha": "1ce3b44e6642a37a935e0662b1ec4c22c5e25fe8",
+    "pull_request": "https://github.com/shinya0x00/github-task-protocol/pull/153",
+    "merged_at": "2026-08-01T09:03:38Z",
+    "source_date_epoch": 1785575018,
+    "ci_run": "https://github.com/shinya0x00/github-task-protocol/actions/runs/30692995652",
+    "artifact": {
+      "id": 8816316910,
+      "name": "v1.0.3.post1-legacy-candidate-1ce3b44e6642a37a935e0662b1ec4c22c5e25fe8",
+      "archive_digest": "sha256:30b9e3d6229627823a543904c404a55504f31e129d0f4ee10a98b3330b8d8dfe",
+      "created_at": "2026-08-01T09:04:05Z",
+      "expires_at": "2026-10-30T09:03:41Z"
+    },
+    "files": [
+      {
+        "filename": "github_task_protocol-1.0.3.post1.tar.gz",
+        "size": 170312,
+        "sha256": "4b8e6daff689c4c72244dbb52a41e7c7b4b330c9ef3505e88b3d9bb3a56955e1"
+      },
+      {
+        "filename": "github_task_protocol-1.0.3.post1-py3-none-any.whl",
+        "size": 33559,
+        "sha256": "3fd3dce27d059d1ef23ddde713b66b0669acf03bf1058e494482bc5e287a754e"
+      },
+      {
+        "filename": "SHA256SUMS",
+        "size": 232,
+        "sha256": "200fc6649c71c0352d8e4a86756afbca46e6dbccb90bb9fe569f9a421024d0c7"
+      },
+      {
+        "filename": "BUILD-INFO",
+        "size": 679,
+        "sha256": "3c9c3ecdc830981b64a8164d25c98afdebdb629010cd65697db50590f89d1a6c"
+      }
+    ]
+  },
+  "tag": {
+    "name": "v1.0.3.post1",
+    "kind": "annotated",
+    "tag_object_sha": "ce5e11a22865909837eecd65ae139e872f50b8eb",
+    "target_commit_sha": "1ce3b44e6642a37a935e0662b1ec4c22c5e25fe8"
+  },
+  "github_release": {
+    "id": 363480406,
+    "url": "https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.3.post1",
+    "title": "GitHub Task Protocol 1.0.3.post1",
+    "author": "ao-codex-agent[bot]",
+    "published_at": "2026-08-01T09:07:48Z",
+    "draft": false,
+    "prerelease": false,
+    "latest_stable": false,
+    "target_commitish_api_field": "main",
+    "tag_target_is_authoritative": true,
+    "current_latest": {
+      "tag": "v2.0.2",
+      "url": "https://github.com/shinya0x00/github-task-protocol/releases/tag/v2.0.2"
+    },
+    "assets_redownloaded_and_hashed": true,
+    "assets": [
+      {
+        "id": 497756110,
+        "filename": "github_task_protocol-1.0.3.post1.tar.gz",
+        "size": 170312,
+        "sha256": "4b8e6daff689c4c72244dbb52a41e7c7b4b330c9ef3505e88b3d9bb3a56955e1",
+        "url": "https://github.com/shinya0x00/github-task-protocol/releases/download/v1.0.3.post1/github_task_protocol-1.0.3.post1.tar.gz"
+      },
+      {
+        "id": 497756115,
+        "filename": "github_task_protocol-1.0.3.post1-py3-none-any.whl",
+        "size": 33559,
+        "sha256": "3fd3dce27d059d1ef23ddde713b66b0669acf03bf1058e494482bc5e287a754e",
+        "url": "https://github.com/shinya0x00/github-task-protocol/releases/download/v1.0.3.post1/github_task_protocol-1.0.3.post1-py3-none-any.whl"
+      },
+      {
+        "id": 497756111,
+        "filename": "SHA256SUMS",
+        "size": 232,
+        "sha256": "200fc6649c71c0352d8e4a86756afbca46e6dbccb90bb9fe569f9a421024d0c7",
+        "url": "https://github.com/shinya0x00/github-task-protocol/releases/download/v1.0.3.post1/SHA256SUMS"
+      },
+      {
+        "id": 497756113,
+        "filename": "BUILD-INFO",
+        "size": 679,
+        "sha256": "3c9c3ecdc830981b64a8164d25c98afdebdb629010cd65697db50590f89d1a6c",
+        "url": "https://github.com/shinya0x00/github-task-protocol/releases/download/v1.0.3.post1/BUILD-INFO"
+      }
+    ]
+  },
+  "pypi": {
+    "project_url": "https://pypi.org/project/github-task-protocol/",
+    "release_url": "https://pypi.org/project/github-task-protocol/1.0.3.post1/",
+    "json_api_url": "https://pypi.org/pypi/github-task-protocol/1.0.3.post1/json",
+    "package_version": "1.0.3.post1",
+    "requires_python": ">=3.11",
+    "summary": "Legacy GTP 1.x CLI for reconstructing AI coding task state from GitHub Issue records",
+    "files_redownloaded_and_hashed": true,
+    "files": [
+      {
+        "filename": "github_task_protocol-1.0.3.post1.tar.gz",
+        "packagetype": "sdist",
+        "size": 170312,
+        "sha256": "4b8e6daff689c4c72244dbb52a41e7c7b4b330c9ef3505e88b3d9bb3a56955e1",
+        "upload_time": "2026-08-01T09:18:17.673724Z",
+        "yanked": false,
+        "url": "https://files.pythonhosted.org/packages/72/13/3f1c3658beb7d0a93e0c61904cedfe86cf48fc2ca759949031932ddd0b75/github_task_protocol-1.0.3.post1.tar.gz"
+      },
+      {
+        "filename": "github_task_protocol-1.0.3.post1-py3-none-any.whl",
+        "packagetype": "bdist_wheel",
+        "size": 33559,
+        "sha256": "3fd3dce27d059d1ef23ddde713b66b0669acf03bf1058e494482bc5e287a754e",
+        "upload_time": "2026-08-01T09:18:16.283889Z",
+        "yanked": false,
+        "url": "https://files.pythonhosted.org/packages/ca/5a/f61db83ee39b68655b62e45bde6bf747369ef6a2bcd21d7c84d200ce8cfa/github_task_protocol-1.0.3.post1-py3-none-any.whl"
+      }
+    ],
+    "archive": {
+      "archived": true,
+      "observed_at": "2026-08-01T09:31:59Z",
+      "authenticated_settings_status": "This project has been archived.",
+      "unarchive_action_visible": true,
+      "public_json_project_status": null,
+      "public_project_page_archive_marker_found": false
+    }
+  },
+  "build_and_upload_observations": {
+    "twine_version": "6.2.0",
+    "candidate_wheel_and_sdist_uploaded_without_rebuild": true,
+    "successful_upload": "wheel and sdist each returned HTTP 200",
+    "credential_source": "authenticated PyPI token retrieved from macOS Keychain",
+    "credential_value_recorded": false
+  },
+  "public_validation": {
+    "github_release_and_pypi_bytes_equal_to_candidate": true,
+    "github_release_sidecars_equal_to_candidate": true,
+    "metadata": {
+      "name": "github-task-protocol",
+      "version": "1.0.3.post1",
+      "requires_python": ">=3.11"
+    },
+    "github_release_clean_install": {
+      "version_stdout": "1.0.3.post1",
+      "pip_check": "No broken requirements found.",
+      "offline_check_recognized": true,
+      "offline_check_schema_valid": true
+    },
+    "pypi_clean_install": {
+      "version_stdout": "1.0.3.post1",
+      "pip_check": "No broken requirements found.",
+      "offline_check_recognized": true,
+      "offline_check_schema_valid": true
+    },
+    "authenticated_live_status": {
+      "installed_from": "PyPI redownloaded wheel",
+      "issue": "https://github.com/shinya0x00/github-task-protocol/issues/93",
+      "acquisition": "complete",
+      "state": "done",
+      "next_action": "none_done",
+      "primary_url": "https://github.com/shinya0x00/github-task-protocol/pull/94",
+      "authority": "none"
+    },
+    "tag_target_matches_candidate": true,
+    "github_latest_remains_v2.0.2": true,
+    "pypi_archive_confirmed_in_authenticated_settings": true
+  },
+  "evidence_pr": {
+    "url": "https://github.com/shinya0x00/github-task-protocol/pull/154",
+    "branch": "codex/v1.0.3-post1-public-evidence",
+    "base": "legacy/1.x",
+    "walking_skeleton": {
+      "commit_sha": "5f90bcba5e6313f422be51ba3183e89326f3d93b",
+      "ci_run": "https://github.com/shinya0x00/github-task-protocol/actions/runs/30693858813",
+      "artifact_id": 8816587248,
+      "artifact_name": "v1.0.3.post1-pr-verification-5f90bcba5e6313f422be51ba3183e89326f3d93b",
+      "artifact_digest": "sha256:9352d129cb789a55564253b307d373db643170951856b4dc6bd57a5049f2ef5a",
+      "checks_passed": [
+        "build",
+        "integration",
+        "tests-python-3.11",
+        "tests-python-3.12",
+        "tests-python-3.13",
+        "release-ready"
+      ],
+      "legacy_candidate_created": false
+    },
+    "scope": [
+      ".github/workflows/ci.yml",
+      "DESIGN.md",
+      "README.md",
+      "acceptance/public-release-v1.0.3.post1.json",
+      "build_backend.py",
+      "tests/fixtures/release/surface.json",
+      "tests/test_build_backend.py",
+      "tests/test_release_surface.py"
+    ],
+    "post_merge_policy": "freeze legacy/1.x and make no additional changes",
+    "final_checks": "presented separately on the final source head before human review and merge"
+  },
+  "evidence_limits": [
+    "PyPI archive state was observed through the authenticated project settings page; the public JSON API and public project page did not expose that state.",
+    "The PyPI upload input and credential lifecycle cannot be reconstructed from public GitHub resources; the credential value was never recorded.",
+    "GitHub Release target_commitish reports main, so source identity is established by dereferencing the existing annotated tag to its exact commit.",
+    "Matching public hashes establish byte correspondence to the frozen candidate; they do not independently prove code quality.",
+    "CLI output, CI success, this Evidence, and archive state grant no authority to merge the Evidence pull request."
+  ]
 }

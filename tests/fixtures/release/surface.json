@@ -28,7 +28,8 @@
   "release_documents": {
     "current_design": "DESIGN.md",
     "decision": "adr/0037-final-legacy-post-release-candidate.md",
-    "notes": "acceptance/release-notes-v1.0.3.post1.md"
+    "notes": "acceptance/release-notes-v1.0.3.post1.md",
+    "evidence": "acceptance/public-release-v1.0.3.post1.json"
   },
   "ci_release": {
     "source_sha": {
