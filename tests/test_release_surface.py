@@ -874,7 +874,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertEqual(
             {
                 "current_design": "DESIGN.md",
-                "decision": "adr/0036-reproducible-release-artifacts.md",
+                "decision": "adr/0037-final-legacy-post-release-candidate.md",
                 "notes": "acceptance/release-notes-v1.0.3.post1.md",
             },
             MATRIX["release_documents"],
@@ -970,6 +970,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertNotIn(".gitignore", manifest)
         self.assertFalse(any(path.startswith(".github/") for path in manifest))
         self.assertIn("adr/0036-reproducible-release-artifacts.md", manifest)
+        self.assertIn("adr/0037-final-legacy-post-release-candidate.md", manifest)
         self.assertIn("acceptance/release-notes-v1.0.3.md", manifest)
         self.assertIn("acceptance/release-notes-v1.0.3.post1.md", manifest)
         for required in MATRIX["required_sdist"]:
@@ -1000,7 +1001,11 @@ class ReleaseSurfaceTests(unittest.TestCase):
             self.assertIn(value, design)
             self.assertIn(value, adr)
         self.assertIn("PR artifactは検証専用", design)
-        self.assertIn("main artifactだけを公開候補", design)
+        self.assertIn("`legacy/1.x` push artifactだけを公開候補", design)
+        self.assertIn(
+            "`v1.0.3.post1-legacy-candidate-<SOURCE_SHA>`", design
+        )
+        self.assertNotIn("main artifactだけを公開候補", design)
         self.assertIn("同じmanifest oracle", design)
         self.assertIn("merge tree", design)
         self.assertIn("公開候補sdist／wheel", design)
@@ -1025,6 +1030,56 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn("公開候補sdist／wheel", notes)
         self.assertIn("producer処理は実行しない", notes)
         self.assertIn("temporary directory", notes)
+
+    def test_final_legacy_post_release_candidate_is_bound_to_legacy_branch(self) -> None:
+        design = (ROOT / "DESIGN.md").read_text(encoding="utf-8")
+        decisions = (ROOT / "DECISIONS.md").read_text(encoding="utf-8")
+        adr36 = (
+            ROOT / "adr" / "0036-reproducible-release-artifacts.md"
+        ).read_text(encoding="utf-8")
+        adr37_path = ROOT / "adr" / "0037-final-legacy-post-release-candidate.md"
+        self.assertTrue(adr37_path.exists())
+        adr37 = adr37_path.read_text(encoding="utf-8")
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("`legacy/1.x`へnative merge", design)
+        self.assertIn("`legacy/1.x`上の同じpath", decisions)
+        self.assertIn(
+            "[ADR-037](adr/0037-final-legacy-post-release-candidate.md)",
+            design,
+        )
+        self.assertIn("Superseded by: ADR-037", adr36)
+        self.assertIn(
+            "Supersedes: ADR-036のmain push、candidate artifact identity、"
+            "publication handoff",
+            adr37,
+        )
+        adr37_current = adr37.split("## 不採用案", 1)[0]
+        for current in (design, adr37_current):
+            self.assertIn("`legacy/1.x` push", current)
+            self.assertIn(
+                "`v1.0.3.post1-pr-verification-<SOURCE_SHA>`", current
+            )
+            self.assertIn(
+                "`v1.0.3.post1-legacy-candidate-<SOURCE_SHA>`", current
+            )
+            self.assertNotIn("v1.0.3-main-candidate", current)
+            self.assertNotIn("main artifactだけを公開候補", current)
+        self.assertIn(
+            "`v1.0.3-main-candidate-<SOURCE_SHA>`という名前を残す案は",
+            adr37,
+        )
+        self.assertIn('branches: ["legacy/1.x"]', workflow)
+        self.assertIn(
+            "v1.0.3.post1-legacy-candidate-${SOURCE_SHA}", workflow
+        )
+        self.assertNotIn("v1.0.3-main-candidate", workflow)
+        self.assertEqual(
+            "adr/0037-final-legacy-post-release-candidate.md",
+            MATRIX["release_documents"]["decision"],
+        )
 
     def test_repository_has_one_non_publish_ci_workflow(self) -> None:
         workflows = list((ROOT / ".github" / "workflows").glob("*.yml"))

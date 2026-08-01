@@ -71,6 +71,7 @@ SDIST_SOURCE_MANIFEST = (
     "acceptance/stop-time-boundary-run.json",
     "adr/0035-human-actionable-problem-explanations.md",
     "adr/0036-reproducible-release-artifacts.md",
+    "adr/0037-final-legacy-post-release-candidate.md",
     "build_backend.py",
     "pyproject.toml",
     "src/gtp/__init__.py",

@@ -27,7 +27,7 @@
   "license": "MIT",
   "release_documents": {
     "current_design": "DESIGN.md",
-    "decision": "adr/0036-reproducible-release-artifacts.md",
+    "decision": "adr/0037-final-legacy-post-release-candidate.md",
     "notes": "acceptance/release-notes-v1.0.3.post1.md"
   },
   "ci_release": {

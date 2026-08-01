@@ -6,7 +6,7 @@
 
 - packageとruntimeのversion identityをPEP 440 post-release `1.0.3.post1`へ合わせる。
 - PyPIに表示されるREADMEをlegacy landing pageへ変え、GTP 2.xと1.xの導線を分ける。
-- このrelease note、explicit source manifest、release-surface test、CIのartifact名とlegacy branch triggerを新releaseへ合わせる。
+- current DESIGNとADR-037、このrelease note、explicit source manifest、release-surface test、CIのartifact名とlegacy branch triggerを新releaseへ合わせる。
 
 `gtp --version`のversion表示を除き、`GTP.md`、Record、state、halt reason、`status`／`check`の意味と出力、GitHubへのread-only access、exit codeを含むprotocol／runtime behaviorは変更しない。`src/gtp/__init__.py`のversion文字列を除き、`src/gtp/`は`v1.0.3`と同一である。既存の`acceptance/release-notes-v1.0.3.md`と公開済み1.x artifactも変更しない。
 

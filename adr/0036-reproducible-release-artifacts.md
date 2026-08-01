@@ -1,9 +1,9 @@
 # ADR-036: exact sourceから一意な配布artifactを生成・検証する
 
-- Status: Accepted
+- Status: Accepted; release branchとcandidate artifact identityはADR-037でsupersede
 - Date: 2026-07-25
 - Supersedes: None
-- Superseded by: None
+- Superseded by: ADR-037（release branchとcandidate artifact identityのみ）
 
 ## 背景
 

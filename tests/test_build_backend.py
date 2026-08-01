@@ -77,6 +77,7 @@ EXPECTED_SDIST_SOURCE_MANIFEST = (
     "acceptance/stop-time-boundary-run.json",
     "adr/0035-human-actionable-problem-explanations.md",
     "adr/0036-reproducible-release-artifacts.md",
+    "adr/0037-final-legacy-post-release-candidate.md",
     "build_backend.py",
     "pyproject.toml",
     "src/gtp/__init__.py",
@@ -139,7 +140,7 @@ class BuildBackendTests(unittest.TestCase):
             build_backend.SDIST_SOURCE_MANIFEST,
         )
         self.assertEqual(11, len(build_backend.WHEEL_SOURCE_MANIFEST))
-        self.assertEqual(79, len(build_backend.SDIST_SOURCE_MANIFEST))
+        self.assertEqual(80, len(build_backend.SDIST_SOURCE_MANIFEST))
         backend_source = Path(build_backend.__file__).read_text(encoding="utf-8")
         self.assertNotIn(".glob(", backend_source)
         self.assertNotIn(".rglob(", backend_source)
@@ -461,7 +462,7 @@ class BuildBackendTests(unittest.TestCase):
             ] + [f"{sdist_root}/PKG-INFO"]
             with tarfile.open(first_sdist, "r:gz") as archive:
                 self.assertEqual(expected_sdist_names, archive.getnames())
-                self.assertEqual(80, len(archive.getmembers()))
+                self.assertEqual(81, len(archive.getmembers()))
                 for info in archive.getmembers():
                     self.assertTrue(info.isreg())
                     self.assertEqual(0o644, info.mode)
@@ -715,6 +716,10 @@ class BuildBackendTests(unittest.TestCase):
         )
         self.assertIn(
             f"{root}/adr/0036-reproducible-release-artifacts.md",
+            names,
+        )
+        self.assertIn(
+            f"{root}/adr/0037-final-legacy-post-release-candidate.md",
             names,
         )
         self.assertIn(
