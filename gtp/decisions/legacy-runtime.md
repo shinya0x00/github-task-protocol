@@ -12,4 +12,4 @@ mainには案内だけを置き、2.0から参照されないPython runtime、pa
 
 ## 変更履歴
 
-- 2026-08-01に、すべての1.x公開物を変更せず残す方針から、既存artifactを保持しつつ誤導するmetadataを最終post-releaseで訂正し、PyPIをarchiveする方針へ変更。
+- [PR #152](https://github.com/shinya0x00/github-task-protocol/pull/152)で、すべての1.x公開物を変更せず残す方針から、既存artifactを保持しつつ誤導するmetadataを最終post-releaseで訂正し、PyPIをarchiveする方針へ変更。
