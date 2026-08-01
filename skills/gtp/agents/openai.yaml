@@ -1,4 +1,4 @@
 interface:
   display_name: "GitHub Task Protocol"
-  short_description: "重要で後戻りしにくい未決定事項と採用手段を記録する"
-  default_prompt: "Use $gtp to record a material project decision in the project-owned decision log."
+  short_description: "重要な判断を記録し、Issue・PRを提出前reviewする"
+  default_prompt: "Use $gtp to record consequential decisions and run the pre-submission review for an Issue or pull request; infer its language from user-authored text or repository context, and ask if neither selects one."

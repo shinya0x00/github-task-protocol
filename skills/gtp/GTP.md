@@ -74,6 +74,7 @@ pull requestを使う場合は、本文へ判断の概要と相対pathを記載�
 ```
 
 pull request本文のrepository-relative pathはPR headのtreeを基準に解決する。merge後は同じpathをmainのtreeから参照する。
+pull request本文の概要と参照はprojectionであり、Decision Recordの正本ではない。
 
 pull requestを使わない場合は、Git trailerとしてcommit message末尾へ記載できる。
 
@@ -92,20 +93,9 @@ Decision-Ref: gtp/decisions/user-identifier.md
 
 Decision Recordから成果物への逆参照や、成果物fileへの参照埋め込みは要求しない。
 
-## Issueとpull request
-
-Issueやpull requestへDecision Recordを表示する場合、それらはprojectionであり正本ではない。linkだけにせず、非エンジニアが作業を理解できる説明を残す。
-
-pull requestでは少なくとも次を平易に説明する。
-
-- 目的
-- 何が変わるか
-- 変更内容
-- 関連する判断の概要とDecision Recordへの参照
-
 ## 境界
 
-GTP 2.0は、記録方法と参照方法だけを定める。次は扱わない。
+GTP 2.0の中核は、記録方法と参照方法だけを定める。次は扱わない。
 
 - 作業の開始、停止、完了状態
 - workflowの制御
