@@ -15,8 +15,8 @@ pull request / commit
 
 ## 所有関係
 
-- [`skills/gtp/GTP.md`](skills/gtp/GTP.md)は、記録対象、最小形式、変更履歴、参照方法、非保証を定義するprotocolの正本である。
-- [`skills/gtp/SKILL.md`](skills/gtp/SKILL.md)は、Agentがprotocolを適用する手順である。protocolへ新しい意味を追加しない。
+- [`skills/gtp/GTP.md`](skills/gtp/GTP.md)は、記録対象、最小形式、変更履歴、参照方法、非保証を定義するGTP中核の正本である。
+- [`skills/gtp/SKILL.md`](skills/gtp/SKILL.md)は、AgentがGTP中核を適用する手順と、中核から分離した提出前reviewを所有する。提出前reviewは、人間可読な文章の言語、repositoryのtemplate、Issueとpull requestの可読性を扱う。
 - 各利用プロジェクトの`gtp/decisions/`は、そのプロジェクトで採用した手段の正本である。
 - Issue、pull request、commit messageは、人が作業を理解し、正本へ移動するためのprojectionである。
 - rootの[`GTP.md`](GTP.md)は、既存参照からSkill内のprotocol正本へ移動するためのprojectionである。
@@ -27,7 +27,8 @@ pull request / commit
 1. Agentは、Skillに同梱したprotocol、現在の指示、仕様、既存Decision Recordを読む。
 2. 手段が一意に決まらず、後から変える影響が大きい場合だけ、Decision Recordを作るか更新する。
 3. 成果物を変更するpull requestまたはcommitから、そのDecision Recordへ参照を置く。
-4. 読み手は成果物の変更からDecision Recordへ進み、現在採用されている手段を確認する。
+4. 利用者が対象を明示して省略しない限り、Agentはその対象の提出前reviewを行う。言語を決め、適用されるrepositoryのtemplateを保ち、Issueまたはpull requestを読みやすくする。Decision Recordを作らない場合もreviewは行う。
+5. 読み手は成果物の変更からDecision Recordへ進み、現在採用されている手段を確認する。
 
 GTPは、Issueやpull requestからDecision Recordを自動生成しない。Decision Recordからrepository activityを探索しない。task state、Evidence、approval、workflow enforcementを合成するruntimeも持たない。
 
