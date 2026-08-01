@@ -54,18 +54,20 @@ Decision-Ref: gtp/decisions/request-id-retry.md
 
 ## 導入
 
-### 1. versionを固定して配布物を取得する
+GTP本体は利用プロジェクトへ置かない。自己完結した`skills/gtp/`を、利用するAgentのuser-level Skill scopeへ一度インストールする。利用プロジェクトに残るのは、記録条件を満たした`gtp/decisions/*.md`だけである。
+
+### 1. versionを固定してSkillを取得する
 
 1. [Releases](https://github.com/shinya0x00/github-task-protocol/releases)から利用するGTP 2.xのReleaseを選ぶ。1.xは責務と配布形式が異なるため、この導入手順の対象外である。1.xが必要な場合は[`LEGACY.md`](LEGACY.md)を参照する。
 2. そのReleaseの**Source code (zip)**または**Source code (tar.gz)**をダウンロードして展開する。これは添付assetとは別にGitHubが生成するsource archiveである。
-3. archive直下の`GTP.md`を、利用プロジェクトのrootへコピーする。
-4. archive直下の`skills/gtp/`一式を、次節に示すAgentの認識先へコピーする。
+3. archive直下の`skills/gtp/`一式を、次節に示すAgentのuser-level認識先へコピーする。
 
-`GTP.md`と`skills/gtp/`は、必ず同じtagまたはReleaseから取得する。GTPが配布するSkillは一つだけであり、Agent別の`SKILL.md`は作らない。
+archive直下の`GTP.md`は既存参照向けの入口であり、利用プロジェクトへコピーしない。protocolの正本はSkillに同梱されている。GTPが配布するSkillは一つだけであり、Agent別の`SKILL.md`は作らない。
 
 ```text
 skills/gtp/
 ├── SKILL.md
+├── GTP.md
 └── agents/
     └── openai.yaml
 ```
@@ -74,27 +76,37 @@ skills/gtp/
 
 ### 2. Agent別の配置・認識確認・呼び出し方法
 
-pathはすべて利用プロジェクトのrootを基準にする。
-
-| Agent | `skills/gtp/`一式の配置先 | 認識されたことの確認 | 明示的な呼び出し | 公式資料 |
-| --- | --- | --- | --- | --- |
-| Codex | `.agents/skills/gtp/` | `/skills`を開くか、`$`を入力して`gtp`が表示されることを確認する | `$gtp` | [Build skills](https://learn.chatgpt.com/docs/build-skills) |
-| Claude Code | `.claude/skills/gtp/` | `/skills`を開き、`gtp`が表示されることを確認する | `/gtp` | [Extend Claude with skills](https://code.claude.com/docs/en/skills) |
-| Cursor | `.agents/skills/gtp/`または`.cursor/skills/gtp/` | Agent chatで`/`を入力し、`gtp`を検索できることを確認する | `/gtp` | [Agent Skills](https://cursor.com/docs/skills) |
+| Agent | 公式scope | `skills/gtp/`一式の配置先 | 認識されたことの確認 | 明示的な呼び出し | 公式資料 |
+| --- | --- | --- | --- | --- | --- |
+| Codex | `USER` | `$HOME/.agents/skills/gtp/` | `/skills`を開くか、`$`を入力して`gtp`が表示されることを確認する | `$gtp` | [Build skills](https://learn.chatgpt.com/docs/build-skills) |
+| Claude Code | `Personal` | `~/.claude/skills/gtp/` | `/skills`を開き、`gtp`が表示されることを確認する | `/gtp` | [Extend Claude with skills](https://code.claude.com/docs/en/skills) |
+| Cursor | `User-level` | `~/.agents/skills/gtp/`または`~/.cursor/skills/gtp/` | Agent chatで`/`を入力し、`gtp`を検索できることを確認する | `/gtp` | [Agent Skills](https://cursor.com/docs/skills) |
 
 Skillの共通形式は[Agent Skills specification](https://agentskills.io/specification)に従う。配置後にSkillが表示されない場合は、Agentを再起動してからもう一度確認する。
 
-複数のAgentを同じプロジェクトで使う場合も、同じ`skills/gtp/`一式を必要な認識先へ配置する。CodexとCursorは`.agents/skills/gtp/`を共有できる。更新時も、すべての配置先を同じGTP Releaseの内容で置き換える。
+Agentへインストールを頼む場合は、Release URLを示して次のように依頼できる。
+
+```text
+このGTP Releaseのskills/gtp/一式を、あなたのuser-level Skill scopeへインストールして。
+利用プロジェクトにはGTP.mdやSkill fileを置かないで。
+Release: <GTP 2.x Release URL>
+```
+
+複数のAgentを使う場合は、同じ`skills/gtp/`一式を各Agentのuser-level認識先へ配置する。CodexとCursorは`~/.agents/skills/gtp/`を共有できる。更新時も、すべての配置先を同じGTP Releaseの内容で置き換える。
+
+user-level配置は、そのAgentで開くすべてのプロジェクトへ同じGTP versionを適用する。プロジェクトごとに別versionを固定する仕組みは持たない。versionを更新すると、そのuser-level配置を使う全プロジェクトのGTPが切り替わる。
+
+project-local配置を使っていた既存プロジェクトは、先にuser-level配置と認識確認を済ませる。その後、GTPからコピーしたrootの`GTP.md`、`.agents/skills/gtp/`、`.claude/skills/gtp/`、`.cursor/skills/gtp/`をプロジェクトから削除する。`gtp/decisions/`は判断結果の正本なので残す。
 
 ### 3. 導入を確認して使い始める
 
 上表の方法で`gtp`を明示的に呼び出し、次のように依頼する。
 
 ```text
-このrepositoryのGTP.mdを読み、GTPが記録する判断と記録しない判断を一つずつ説明して。fileは変更しないで。
+GTPのprotocol versionと、記録する判断の二条件を説明して。fileは変更しないで。
 ```
 
-Skillが`GTP.md`を読み、記録対象と対象外を説明できれば導入確認は完了である。実際の作業では、次のように依頼する。
+Skillが同梱した`GTP.md`を読み、protocol versionと二条件を説明できれば導入確認は完了である。実際の作業では、次のように依頼する。
 
 ```text
 この変更にGTPを適用し、記録条件を満たす判断だけをDecision Recordへ残して。
@@ -102,7 +114,7 @@ Skillが`GTP.md`を読み、記録対象と対象外を説明できれば導入�
 
 判断が記録条件を満たす場合、Agentは利用プロジェクトの`gtp/decisions/`へRecordを作るか更新する。条件を満たす判断がなければ、Recordは作らない。
 
-Python、CLI、PyPI、GitHub Issue、特定のpull request templateは不要や。正式な規則は[`GTP.md`](GTP.md)、構成は[`DESIGN.md`](DESIGN.md)、提出前reviewを含むAgentの手順は[`skills/gtp/SKILL.md`](skills/gtp/SKILL.md)にある。
+Python、CLI、PyPI、GitHub Issue、特定のpull request templateは不要や。正式な規則は[`skills/gtp/GTP.md`](skills/gtp/GTP.md)、構成は[`DESIGN.md`](DESIGN.md)、提出前reviewを含むAgentの手順は[`skills/gtp/SKILL.md`](skills/gtp/SKILL.md)にある。
 
 ## GTPがしないこと
 

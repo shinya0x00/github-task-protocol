@@ -1,17 +1,17 @@
 ---
 name: gtp
-description: Set up GTP or record and update project-owned Decision Records for material choices that are not determined by existing instructions and would be costly or disruptive to change later. Use when adopting GTP; when designing, planning, simulating, or implementing work that introduces a consequential choice about compatibility, data formats, public behavior, architecture, broad refactoring, or other hard-to-reverse means; or when an existing recorded choice changes. Do not use for small reversible implementation details or choices already fixed by a specification or ADR.
+description: Apply GTP to record and update project-owned Decision Records for material choices that are not determined by existing instructions and would be costly or disruptive to change later. Use when adopting GTP in a project; when designing, planning, simulating, or implementing work that introduces a consequential choice about compatibility, data formats, public behavior, architecture, broad refactoring, or other hard-to-reverse means; or when an existing recorded choice changes. Do not use for small reversible implementation details or choices already fixed by a specification or ADR.
 ---
 
 # GitHub Task Protocol
 
 Protocol version: `2.0`
 
-Apply the repository's `GTP.md` without adding state, approval, Evidence aggregation, or enforcement.
+Apply the bundled `GTP.md` without adding state, approval, Evidence aggregation, or enforcement.
 
 ## Workflow
 
-1. Read `GTP.md` completely.
+1. Read `GTP.md` completely, resolving the path relative to this Skill's directory.
 2. Read the applicable user instructions, specifications, ADRs, and existing `gtp/decisions/*.md` files.
 3. State the undecided matter without naming a preferred solution.
 4. Determine whether both recording criteria in `GTP.md` are met.
@@ -26,7 +26,7 @@ Apply the repository's `GTP.md` without adding state, approval, Evidence aggrega
     - For every selected means changed by the task, confirm that its change-history entry states what changed and includes a pull request, commit, or Issue link when one is available.
     - Judge readability and traceability, not a particular Markdown heading, list marker, indentation width, or link spelling. If repair is within the current task, fix specific omissions; otherwise report them.
 
-If the project does not contain `GTP.md`, do not invent or reconstruct its protocol from this Skill. For an adoption request, copy the version-matched `GTP.md` and `skills/gtp/` from the same GTP release before creating project Decision Records.
+Do not require or create a project-local `GTP.md` or Agent Skill copy. This installed Skill and its bundled protocol are the GTP body. In a consumer project, the only durable GTP-owned files are qualifying `gtp/decisions/*.md` records. For an adoption request, use the installed Skill without copying it into the project.
 
 ## Record rules
 
