@@ -66,8 +66,10 @@ Decision-Ref: gtp/decisions/request-id-retry.md
 ```text
 skills/gtp/
 ├── SKILL.md
-└── agents/
-    └── openai.yaml
+├── agents/
+│   └── openai.yaml
+└── scripts/
+    └── validate.sh
 ```
 
 `agents/openai.yaml`はOpenAI向けの任意metadataであり、Skill本体の分岐ではない。
@@ -102,11 +104,26 @@ Skillが`GTP.md`を読み、記録対象と対象外を説明できれば導入�
 
 判断が記録条件を満たす場合、Agentは利用プロジェクトの`gtp/decisions/`へRecordを作るか更新する。条件を満たす判断がなければ、Recordは作らない。
 
-Python、CLI、PyPI、GitHub Issue、特定のpull request templateは不要や。正式な規則は[`GTP.md`](GTP.md)、構成は[`DESIGN.md`](DESIGN.md)、Agentの手順は[`skills/gtp/SKILL.md`](skills/gtp/SKILL.md)にある。
+### 4. review前に形式を検査する
+
+Skillは、pull request本文をreviewへ渡す前に、同じ配布物の`scripts/validate.sh`を実行する。これにより、判断概要を伴わないDecision Record pathと、参照可能な変更履歴linkの欠落を、review前に不適合として検出する。
+
+```text
+sh <Skillの配置先>/scripts/validate.sh \
+  --repo-root . \
+  --base-ref <比較元commit> \
+  --head-ref <PR head commit> \
+  --pr-body <pull request本文を保存したfile> \
+  --change-reference <現在のpull request、commit、Issueのlink先>
+```
+
+pull request本文の検査では、比較元とPR headのexact commitを渡す。validatorはhead commitを読み、未commitのworktree変更は読まない。pull request本文を省略すれば変更履歴だけを検査でき、headを省略した場合はworktreeを読む。`1`なら表示されたGTP形式を直し、`2`なら引数または実行環境を直して再実行する。既存の変更履歴を一括で書き換える検査ではなく、比較元commitから新規または更新されたentryだけを対象にする。終了codeはreviewやmergeを許可する判定やない。
+
+1.xのPython CLI、PyPI、GitHub Issue、特定のpull request templateは不要や。正式な規則は[`GTP.md`](GTP.md)、構成は[`DESIGN.md`](DESIGN.md)、Agentの手順は[`skills/gtp/SKILL.md`](skills/gtp/SKILL.md)にある。
 
 ## GTPがしないこと
 
-GTP 2.0は作業状態、完了判定、Evidence集約、承認、権限、workflow制御、強制機構を持たない。Issueやpull requestへ表示した内容は、人が作業を理解するためのprojectionであり、Decision Recordの正本ではない。
+GTP 2.0は作業状態、完了判定、Evidence集約、承認、権限、repository workflowの状態遷移、reviewやmergeの許可を扱わない。付属validatorが判定するのは、GTP Markdownの形式だけや。Issueやpull requestへ表示した内容は、人が作業を理解するためのprojectionであり、Decision Recordの正本ではない。
 
 公開済み1.xのCLI、tag、Release、PyPI packageは削除せず、そのまま取得できる。[`LEGACY.md`](LEGACY.md)に入口を残している。
 
