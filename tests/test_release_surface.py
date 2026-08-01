@@ -852,15 +852,14 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn(
             "793a3e801c9ea4ec079fcced23b782da7a6e35d7", readme
         )
+        self.assertIn("CLI `1.0.3.post1`は[PyPI]", readme)
+        self.assertIn("PyPI projectはarchive済みです", readme)
         self.assertIn(
-            "`pyproject.toml`は、1.xの最終metadata訂正版としてpackage version "
-            "`1.0.3.post1`を宣言しています",
+            "package version文字列だけではpublicationまたはexact source commitを"
+            "証明しません",
             readme,
         )
-        self.assertIn(
-            "この値はpublicationのEvidenceでも、exact source commitのidentityでもありません",
-            readme,
-        )
+        self.assertIn("public-release-v1.0.3.post1.json", readme)
         self.assertNotIn("source内容のidentity", readme)
         self.assertNotIn("現在のsource candidate", readme)
         self.assertTrue((ROOT / "acceptance" / "release-notes-v1.0.2.md").exists())
@@ -876,17 +875,17 @@ class ReleaseSurfaceTests(unittest.TestCase):
                 "current_design": "DESIGN.md",
                 "decision": "adr/0037-final-legacy-post-release-candidate.md",
                 "notes": "acceptance/release-notes-v1.0.3.post1.md",
+                "evidence": "acceptance/public-release-v1.0.3.post1.json",
             },
             MATRIX["release_documents"],
         )
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("CLI `1.0.3.post1`は[PyPI]", readme)
+        self.assertIn("PyPI projectはarchive済みです", readme)
+        self.assertIn("新しい1.x uploadは行いません", readme)
         self.assertIn(
-            "`pyproject.toml`は、1.xの最終metadata訂正版としてpackage version "
-            "`1.0.3.post1`を宣言しています",
-            readme,
-        )
-        self.assertIn(
-            "この値はpublicationのEvidenceでも、exact source commitのidentityでもありません",
+            "package version文字列だけではpublicationまたはexact source commitを"
+            "証明しません",
             readme,
         )
         self.assertNotIn("source内容のidentity", readme)
@@ -917,6 +916,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
         )
         self.assertIn("installと実行はexact versionへ固定します", readme)
         self.assertIn("public-release-v1.0.3.json", readme)
+        self.assertIn("public-release-v1.0.3.post1.json", readme)
         self.assertNotIn("latest stable", readme.lower())
         for unstable in (
             "現在のsource candidate",
@@ -948,6 +948,101 @@ class ReleaseSurfaceTests(unittest.TestCase):
             "f644c1df00649eaefc1c05b0ea422eb06a6d6a48fa16160f417734b56c9164d3",
             hashlib.sha256(old_notes).hexdigest(),
         )
+
+    def test_v103_post1_public_evidence_binds_publication_and_freeze(self) -> None:
+        evidence_path = ROOT / MATRIX["release_documents"]["evidence"]
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            "github-task-protocol-public-release-evidence/v1",
+            evidence["schema"],
+        )
+        self.assertEqual(
+            "1ce3b44e6642a37a935e0662b1ec4c22c5e25fe8",
+            evidence["candidate"]["commit_sha"],
+        )
+        self.assertEqual(8816316910, evidence["candidate"]["artifact"]["id"])
+        self.assertEqual(
+            "v1.0.3.post1-legacy-candidate-"
+            "1ce3b44e6642a37a935e0662b1ec4c22c5e25fe8",
+            evidence["candidate"]["artifact"]["name"],
+        )
+        self.assertEqual(
+            "sha256:30b9e3d6229627823a543904c404a55504f31e129d0f4ee10a98b3330b8d8dfe",
+            evidence["candidate"]["artifact"]["archive_digest"],
+        )
+        self.assertEqual(
+            "ce5e11a22865909837eecd65ae139e872f50b8eb",
+            evidence["tag"]["tag_object_sha"],
+        )
+        self.assertEqual(
+            evidence["candidate"]["commit_sha"],
+            evidence["tag"]["target_commit_sha"],
+        )
+        release = evidence["github_release"]
+        self.assertFalse(release["draft"])
+        self.assertFalse(release["prerelease"])
+        self.assertFalse(release["latest_stable"])
+        self.assertEqual("v2.0.2", release["current_latest"]["tag"])
+        pypi = evidence["pypi"]
+        self.assertEqual(POST_RELEASE_VERSION, pypi["package_version"])
+        self.assertTrue(pypi["archive"]["archived"])
+        self.assertIsNone(pypi["archive"]["public_json_project_status"])
+        self.assertFalse(
+            pypi["archive"]["public_project_page_archive_marker_found"]
+        )
+
+        candidate_hashes = {
+            item["filename"]: item["sha256"]
+            for item in evidence["candidate"]["files"]
+        }
+        release_hashes = {
+            item["filename"]: item["sha256"]
+            for item in release["assets"]
+        }
+        pypi_hashes = {
+            item["filename"]: item["sha256"] for item in pypi["files"]
+        }
+        self.assertEqual(candidate_hashes, release_hashes)
+        self.assertEqual(
+            {
+                filename: sha256
+                for filename, sha256 in candidate_hashes.items()
+                if filename.endswith((".tar.gz", ".whl"))
+            },
+            pypi_hashes,
+        )
+        validation = evidence["public_validation"]
+        self.assertTrue(
+            validation["github_release_and_pypi_bytes_equal_to_candidate"]
+        )
+        self.assertEqual(
+            POST_RELEASE_VERSION,
+            validation["pypi_clean_install"]["version_stdout"],
+        )
+        self.assertEqual(
+            "done", validation["authenticated_live_status"]["state"]
+        )
+        self.assertEqual(
+            "https://github.com/shinya0x00/github-task-protocol/pull/154",
+            evidence["evidence_pr"]["url"],
+        )
+        self.assertEqual(
+            "https://github.com/shinya0x00/github-task-protocol/"
+            "actions/runs/30693858813",
+            evidence["evidence_pr"]["walking_skeleton"]["ci_run"],
+        )
+        self.assertFalse(
+            evidence["evidence_pr"]["walking_skeleton"][
+                "legacy_candidate_created"
+            ]
+        )
+        self.assertEqual(
+            "freeze legacy/1.x and make no additional changes",
+            evidence["evidence_pr"]["post_merge_policy"],
+        )
+        relative = evidence_path.relative_to(ROOT).as_posix()
+        self.assertIn(relative, build_backend._REPOSITORY_ONLY_SOURCE_PATHS)
+        self.assertNotIn(relative, build_backend.SDIST_SOURCE_MANIFEST)
 
     def test_sdist_release_surface_is_explicit(self) -> None:
         self.assertEqual(
@@ -1000,11 +1095,18 @@ class ReleaseSurfaceTests(unittest.TestCase):
         ):
             self.assertIn(value, design)
             self.assertIn(value, adr)
-        self.assertIn("PR artifactは検証専用", design)
+        self.assertIn("公開時のPR artifactは検証専用", design)
         self.assertIn("`legacy/1.x` push artifactだけを公開候補", design)
         self.assertIn(
             "`v1.0.3.post1-legacy-candidate-<SOURCE_SHA>`", design
         )
+        self.assertIn("current workflowはpull requestだけを検証", design)
+        self.assertIn(
+            "`legacy/1.x` pushで新しい公開候補を作らない", design
+        )
+        self.assertIn("repository-only file", design)
+        self.assertIn("sdistとwheelに含めない", design)
+        self.assertIn("`legacy/1.x`を運用上凍結", design)
         self.assertNotIn("main artifactだけを公開候補", design)
         self.assertIn("同じmanifest oracle", design)
         self.assertIn("merge tree", design)
@@ -1031,7 +1133,9 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn("producer処理は実行しない", notes)
         self.assertIn("temporary directory", notes)
 
-    def test_final_legacy_post_release_candidate_is_bound_to_legacy_branch(self) -> None:
+    def test_final_legacy_post_release_candidate_is_bound_to_legacy_branch(
+        self,
+    ) -> None:
         design = (ROOT / "DESIGN.md").read_text(encoding="utf-8")
         decisions = (ROOT / "DECISIONS.md").read_text(encoding="utf-8")
         adr36 = (
@@ -1057,22 +1161,31 @@ class ReleaseSurfaceTests(unittest.TestCase):
             adr37,
         )
         adr37_current = adr37.split("## 不採用案", 1)[0]
-        for current in (design, adr37_current):
-            self.assertIn("`legacy/1.x` push", current)
+        for publication_record in (design, adr37_current):
+            self.assertIn("`legacy/1.x` push", publication_record)
             self.assertIn(
-                "`v1.0.3.post1-pr-verification-<SOURCE_SHA>`", current
+                "`v1.0.3.post1-pr-verification-<SOURCE_SHA>`",
+                publication_record,
             )
             self.assertIn(
-                "`v1.0.3.post1-legacy-candidate-<SOURCE_SHA>`", current
+                "`v1.0.3.post1-legacy-candidate-<SOURCE_SHA>`",
+                publication_record,
             )
-            self.assertNotIn("v1.0.3-main-candidate", current)
-            self.assertNotIn("main artifactだけを公開候補", current)
+            self.assertNotIn("v1.0.3-main-candidate", publication_record)
+            self.assertNotIn(
+                "main artifactだけを公開候補", publication_record
+            )
+        self.assertIn("current workflowはpull requestだけを検証", design)
+        self.assertIn(
+            "`legacy/1.x` pushで新しい公開候補を作らない", design
+        )
+        self.assertIn("`legacy/1.x`を運用上凍結", design)
         self.assertIn(
             "`v1.0.3-main-candidate-<SOURCE_SHA>`という名前を残す案は",
             adr37,
         )
-        self.assertIn('branches: ["legacy/1.x"]', workflow)
-        self.assertIn(
+        self.assertNotIn('branches: ["legacy/1.x"]', workflow)
+        self.assertNotIn(
             "v1.0.3.post1-legacy-candidate-${SOURCE_SHA}", workflow
         )
         self.assertNotIn("v1.0.3-main-candidate", workflow)
@@ -1126,18 +1239,16 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertEqual(
             {
                 "pull_request": "github.event.pull_request.head.sha",
-                "push": "github.sha",
             },
             MATRIX["ci_release"]["source_sha"],
         )
         self.assertEqual(
-            ["legacy/1.x"],
+            [],
             MATRIX["ci_release"]["push_branches"],
         )
         self.assertEqual(
             {
                 "pull_request": "v1.0.3.post1-pr-verification-<SOURCE_SHA>",
-                "legacy_push": "v1.0.3.post1-legacy-candidate-<SOURCE_SHA>",
                 "sidecars": ["BUILD-INFO", "SHA256SUMS"],
                 "retention_days": 90,
             },
@@ -1174,7 +1285,13 @@ class ReleaseSurfaceTests(unittest.TestCase):
 
         self.assertIn("github.event.pull_request.head.sha", workflow)
         self.assertIn("github.sha", workflow)
-        self.assertIn('branches: ["legacy/1.x"]', workflow)
+        self.assertNotIn('branches: ["legacy/1.x"]', workflow)
+        self.assertIn(
+            "SOURCE_SHA: ${{ github.event.pull_request.head.sha }}", workflow
+        )
+        self.assertNotIn(
+            "github.event_name == 'pull_request' &&", workflow
+        )
         self.assertIn('PYTHONDONTWRITEBYTECODE: "1"', workflow)
         self.assertIn('[[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]', workflow)
         self.assertGreaterEqual(workflow.count("ref: ${{ env.SOURCE_SHA }}"), 2)
@@ -1231,7 +1348,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
             'test "${{ needs.integration.result }}" = "success"', workflow
         )
         self.assertIn("v1.0.3.post1-pr-verification-${SOURCE_SHA}", workflow)
-        self.assertIn("v1.0.3.post1-legacy-candidate-${SOURCE_SHA}", workflow)
+        self.assertNotIn("v1.0.3.post1-legacy-candidate-${SOURCE_SHA}", workflow)
         self.assertIn("github_task_protocol-1.0.3.post1.tar.gz", workflow)
         self.assertIn(
             "github_task_protocol-1.0.3.post1-py3-none-any.whl", workflow

@@ -38,6 +38,7 @@ EXPECTED_WHEEL_SOURCE_MANIFEST = (
 EXPECTED_REPOSITORY_ONLY_SOURCE_PATHS = (
     ".github/workflows/ci.yml",
     ".gitignore",
+    "acceptance/public-release-v1.0.3.post1.json",
 )
 
 EXPECTED_SDIST_SOURCE_MANIFEST = (
@@ -740,10 +741,11 @@ class BuildBackendTests(unittest.TestCase):
             "uvx --from github-task-protocol==1.0.3.post1 gtp check <comment.md>",
         )
         package_identity_boundaries = (
-            "`pyproject.toml`は、1.xの最終metadata訂正版としてpackage version "
-            "`1.0.3.post1`を宣言しています。",
-            "この値はpublicationのEvidenceでも、"
-            "exact source commitのidentityでもありません。",
+            "PyPI projectはarchive済みです。",
+            "新しい1.x uploadは行いません。",
+            "package version文字列だけではpublicationまたは"
+            "exact source commitを証明しません。",
+            "public-release-v1.0.3.post1.json",
         )
         surfaces = {
             "README": readme,

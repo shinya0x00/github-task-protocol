@@ -1,15 +1,13 @@
 name: CI
 
 on:
-  push:
-    branches: ["legacy/1.x"]
   pull_request:
 
 permissions:
   contents: read
 
 env:
-  SOURCE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
   PYTHONDONTWRITEBYTECODE: "1"
 
 jobs:
@@ -37,11 +35,7 @@ jobs:
           source_date_epoch="$(git show -s --format=%ct "$SOURCE_SHA")"
           test -n "$source_date_epoch"
           echo "SOURCE_DATE_EPOCH=$source_date_epoch" >> "$GITHUB_ENV"
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            artifact_name="v1.0.3.post1-pr-verification-${SOURCE_SHA}"
-          else
-            artifact_name="v1.0.3.post1-legacy-candidate-${SOURCE_SHA}"
-          fi
+          artifact_name="v1.0.3.post1-pr-verification-${SOURCE_SHA}"
           echo "ARTIFACT_NAME=$artifact_name" >> "$GITHUB_ENV"
           echo "artifact_name=$artifact_name" >> "$GITHUB_OUTPUT"
       - name: Match the explicit manifest to the source tree

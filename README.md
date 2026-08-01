@@ -100,7 +100,7 @@ GitHub情報を完全に取得できない場合はstateを推測しません。
 
 CLI `1.0.3`は[PyPI](https://pypi.org/project/github-task-protocol/1.0.3/)と[GitHub Release](https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.3)へ公開済みです。再download・hash・clean install・live statusの検証結果はimmutableな[`acceptance/public-release-v1.0.3.json`](https://github.com/shinya0x00/github-task-protocol/blob/793a3e801c9ea4ec079fcced23b782da7a6e35d7/acceptance/public-release-v1.0.3.json)にあります。GTPを使うだけならCLIのinstallは不要です。
 
-`pyproject.toml`は、1.xの最終metadata訂正版としてpackage version `1.0.3.post1`を宣言しています。この値はpublicationのEvidenceでも、exact source commitのidentityでもありません。公開状況は[PyPIのexact version page](https://pypi.org/project/github-task-protocol/1.0.3.post1/)と[GitHub Release](https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.3.post1)で確認してください。installと実行はexact versionへ固定します。
+CLI `1.0.3.post1`は[PyPI](https://pypi.org/project/github-task-protocol/1.0.3.post1/)と[GitHub Release](https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.3.post1)へ公開済みで、PyPI projectはarchive済みです。新しい1.x uploadは行いません。package version文字列だけではpublicationまたはexact source commitを証明しません。再download、hash、clean install、live status、archiveの観測結果は[`acceptance/public-release-v1.0.3.post1.json`](https://github.com/shinya0x00/github-task-protocol/blob/legacy/1.x/acceptance/public-release-v1.0.3.post1.json)にあります。installと実行はexact versionへ固定します。
 
 ```console
 python -m pip install github-task-protocol==1.0.3.post1
