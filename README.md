@@ -102,7 +102,7 @@ Skillが`GTP.md`を読み、記録対象と対象外を説明できれば導入�
 
 判断が記録条件を満たす場合、Agentは利用プロジェクトの`gtp/decisions/`へRecordを作るか更新する。条件を満たす判断がなければ、Recordは作らない。
 
-Python、CLI、PyPI、GitHub Issue、特定のpull request templateは不要や。正式な規則は[`GTP.md`](GTP.md)、構成は[`DESIGN.md`](DESIGN.md)、Agentの手順は[`skills/gtp/SKILL.md`](skills/gtp/SKILL.md)にある。
+Python、CLI、PyPI、GitHub Issue、特定のpull request templateは不要や。正式な規則は[`GTP.md`](GTP.md)、構成は[`DESIGN.md`](DESIGN.md)、提出前reviewを含むAgentの手順は[`skills/gtp/SKILL.md`](skills/gtp/SKILL.md)にある。
 
 ## GTPがしないこと
 
