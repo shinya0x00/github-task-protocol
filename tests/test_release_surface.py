@@ -23,6 +23,8 @@ MATRIX = json.loads(
 )
 PROJECT = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
 PUBLISHED_CLI_VERSION = "1.0.2"
+POST_RELEASE_VERSION = "1.0.3.post1"
+POST_RELEASE_BASE_COMMIT = "70fab3aacf8637bc1255459afb5efec7a5cf48ee"
 ACCEPTANCE_CANDIDATE = "46103e0fdd41364f98e098518f6b91211fb1f5ea"
 RELEASE_LOCK_REQUIRED_ENV = "GTP_RELEASE_LOCK_REQUIRED"
 GIT_TIMEOUT_SECONDS = 10
@@ -141,24 +143,28 @@ class ReleaseSurfaceTests(unittest.TestCase):
             for value in forbidden:
                 self.assertNotIn(value, text, str(path.relative_to(ROOT)))
 
-    def test_readme_requires_explicit_setup_request_before_mutation(self) -> None:
+    def test_legacy_readme_requires_exact_v103_setup_before_mutation(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertLessEqual(len(readme.splitlines()), MATRIX["budgets"]["README.md"])
         introduction = readme.split("## 4つのRecord", 1)[0]
-        self.assertIn("## 推奨: 明示的にsetupを依頼", introduction)
+        self.assertIn("## GTP 1.xを明示的にsetup", introduction)
         self.assertIn(
             "bare GTP repository URLだけではsetup依頼にもrepository変更のauthorizationにもなりません",
             introduction,
         )
         self.assertIn(
-            "このrepositoryへGTPを導入するDraft setup PRを作ってください。",
+            "このrepositoryへGTP 1.xを導入するDraft setup PRを作ってください。",
             introduction,
         )
-        self.assertIn("https://github.com/shinya0x00/github-task-protocol", introduction)
-        self.assertIn("latest stable Release", introduction)
+        self.assertIn(
+            "https://github.com/shinya0x00/github-task-protocol/tree/v1.0.3",
+            introduction,
+        )
+        self.assertIn("releases/tag/v1.0.3", introduction)
+        self.assertNotIn("latest stable", readme.lower())
         self.assertIn("`draft: false`", introduction)
         self.assertIn("`prerelease: false`", introduction)
-        self.assertIn("tagをcommit SHAまでdereference", introduction)
+        self.assertIn("tag `v1.0.3`をcommit SHAまでdereference", introduction)
         self.assertIn("そのcommitの`GTP.md`だけ", introduction)
         self.assertIn(
             "https://raw.githubusercontent.com/shinya0x00/"
@@ -187,10 +193,23 @@ class ReleaseSurfaceTests(unittest.TestCase):
         manual = introduction.split("## 手動導入", 1)[1]
         steps = re.findall(r"^[1-3]\. ", manual, flags=re.MULTILINE)
         self.assertEqual(3, len(steps))
-        self.assertIn("[`GTP.md`](GTP.md)", readme)
+        self.assertIn(
+            "[`GTP.md`](https://github.com/shinya0x00/"
+            "github-task-protocol/blob/v1.0.3/GTP.md)",
+            readme,
+        )
         self.assertIn("人間がGTPを使うためにCLIをinstallする必要はありません", readme)
         self.assertIn(
-            "uvx --from github-task-protocol==1.0.2 gtp status",
+            "uvx --from github-task-protocol==1.0.3.post1 gtp status",
+            readme,
+        )
+        self.assertIn("GTP 2.xはPyPIで配布していません", readme)
+        self.assertIn(
+            "https://github.com/shinya0x00/github-task-protocol/blob/main/README.md",
+            readme,
+        )
+        self.assertIn(
+            "https://github.com/shinya0x00/github-task-protocol/blob/main/LEGACY.md",
             readme,
         )
         self.assertNotIn("package registryへ一般公開していません", readme)
@@ -735,6 +754,11 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertEqual(MATRIX["distribution"], project["name"])
         self.assertEqual(MATRIX["python"], project["requires-python"])
         self.assertEqual(MATRIX["license"], project["license"])
+        self.assertEqual(
+            "Legacy GTP 1.x CLI for reconstructing AI coding task state from "
+            "GitHub Issue records",
+            project["description"],
+        )
         self.assertEqual([], project["dependencies"])
         self.assertEqual("gtp.cli:main", project["scripts"][MATRIX["console_script"]])
         self.assertEqual(project["version"], gtp.__version__)
@@ -742,6 +766,37 @@ class ReleaseSurfaceTests(unittest.TestCase):
             "https://github.com/shinya0x00/github-task-protocol",
             project["urls"]["Repository"],
         )
+
+    def test_protocol_and_runtime_match_the_v103_base_except_version_identity(self) -> None:
+        mode = _observed_verification_mode(POST_RELEASE_BASE_COMMIT)
+        if mode == "fail":
+            self.fail(
+                f"base commit {POST_RELEASE_BASE_COMMIT} cannot be read although "
+                "release lock verification is required"
+            )
+        if mode == "skip":
+            self.skipTest(
+                f"base commit {POST_RELEASE_BASE_COMMIT} cannot be read in this "
+                "source tree"
+            )
+        self.assertEqual(
+            _blob_at(POST_RELEASE_BASE_COMMIT, "GTP.md"),
+            (ROOT / "GTP.md").read_bytes(),
+        )
+        for path in sorted((ROOT / "src" / "gtp").glob("*.py")):
+            relative = path.relative_to(ROOT).as_posix()
+            base = _blob_at(POST_RELEASE_BASE_COMMIT, relative)
+            self.assertIsNotNone(base, relative)
+            if relative == "src/gtp/__init__.py":
+                self.assertEqual(
+                    base.replace(
+                        b'__version__ = "1.0.3"',
+                        b'__version__ = "1.0.3.post1"',
+                    ),
+                    path.read_bytes(),
+                )
+            else:
+                self.assertEqual(base, path.read_bytes(), relative)
 
     def test_release_plan_resolves_to_public_evidence_and_policy_decision(self) -> None:
         release_plan = json.loads(
@@ -773,7 +828,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
                 encoding="utf-8"
             )
         )
-        self.assertEqual("1.0.3", PROJECT["version"])
+        self.assertEqual(POST_RELEASE_VERSION, PROJECT["version"])
         self.assertEqual(
             PUBLISHED_CLI_VERSION, current_evidence["pypi"]["package_version"]
         )
@@ -792,11 +847,14 @@ class ReleaseSurfaceTests(unittest.TestCase):
             ],
         )
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertIn("CLI `1.0.2`は[PyPI]", readme)
-        self.assertIn("public-release-v1.0.2.json", readme)
+        self.assertIn("CLI `1.0.3`は[PyPI]", readme)
+        self.assertIn("public-release-v1.0.3.json", readme)
         self.assertIn(
-            "`pyproject.toml`は、このsourceからbuildするpackage versionとして"
-            "`1.0.3`を宣言しています",
+            "793a3e801c9ea4ec079fcced23b782da7a6e35d7", readme
+        )
+        self.assertIn(
+            "`pyproject.toml`は、1.xの最終metadata訂正版としてpackage version "
+            "`1.0.3.post1`を宣言しています",
             readme,
         )
         self.assertIn(
@@ -812,19 +870,19 @@ class ReleaseSurfaceTests(unittest.TestCase):
             decisions,
         )
 
-    def test_v103_release_documents_are_time_stable(self) -> None:
+    def test_v103_post1_release_documents_define_metadata_only_boundary(self) -> None:
         self.assertEqual(
             {
                 "current_design": "DESIGN.md",
                 "decision": "adr/0036-reproducible-release-artifacts.md",
-                "notes": "acceptance/release-notes-v1.0.3.md",
+                "notes": "acceptance/release-notes-v1.0.3.post1.md",
             },
             MATRIX["release_documents"],
         )
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn(
-            "`pyproject.toml`は、このsourceからbuildするpackage versionとして"
-            "`1.0.3`を宣言しています",
+            "`pyproject.toml`は、1.xの最終metadata訂正版としてpackage version "
+            "`1.0.3.post1`を宣言しています",
             readme,
         )
         self.assertIn(
@@ -839,40 +897,27 @@ class ReleaseSurfaceTests(unittest.TestCase):
         )
         self.assertEqual(
             [
-                "uvx --from github-task-protocol==1.0.2 gtp status <issue-url>",
-                "uvx --from github-task-protocol==1.0.2 gtp check <comment.md>",
+                "uvx --from github-task-protocol==1.0.3.post1 gtp status <issue-url>",
+                "uvx --from github-task-protocol==1.0.3.post1 gtp check <comment.md>",
             ],
             public_commands,
         )
-        self.assertEqual(2, readme.count("github-task-protocol==1.0.2"))
-        self.assertNotIn("github-task-protocol==1.0.3", readme)
+        self.assertEqual(3, readme.count("github-task-protocol==1.0.3.post1"))
+        self.assertIsNone(
+            re.search(r"github-task-protocol==1\.0\.3(?:\s|$)", readme)
+        )
         self.assertNotIn("github-task-protocol==X.Y.Z", readme)
         self.assertIn(
-            "https://pypi.org/project/github-task-protocol/X.Y.Z/", readme
+            "https://pypi.org/project/github-task-protocol/1.0.3.post1/", readme
         )
         self.assertIn(
             "https://github.com/shinya0x00/github-task-protocol/"
-            "releases/tag/vX.Y.Z",
+            "releases/tag/v1.0.3.post1",
             readme,
         )
-        self.assertIn("両方が解決できることを確認した後だけです", readme)
-        self.assertIn("下の2つのcommandの`1.0.2`だけを", readme)
-        self.assertIn("public-release-v1.0.2.json", readme)
-        cli_section = readme.split("## CLIは任意の検証器", 1)[1].split(
-            "## 仕様と判断記録", 1
-        )[0]
-        for line in cli_section.splitlines():
-            if "1.0.2" not in line:
-                continue
-            for unstable_label in (
-                "latest",
-                "recommended",
-                "current",
-                "最新",
-                "推奨",
-                "現行",
-            ):
-                self.assertNotIn(unstable_label, line.lower())
+        self.assertIn("installと実行はexact versionへ固定します", readme)
+        self.assertIn("public-release-v1.0.3.json", readme)
+        self.assertNotIn("latest stable", readme.lower())
         for unstable in (
             "現在のsource candidate",
             "`1.0.3`（公開前）",
@@ -881,25 +926,28 @@ class ReleaseSurfaceTests(unittest.TestCase):
         ):
             self.assertNotIn(unstable, readme)
 
-        notes_path = ROOT / "acceptance" / "release-notes-v1.0.3.md"
+        notes_path = ROOT / "acceptance" / "release-notes-v1.0.3.post1.md"
         self.assertTrue(notes_path.exists())
         notes = notes_path.read_text(encoding="utf-8")
-        self.assertIn("# GitHub Task Protocol 1.0.3 release notes", notes)
-        self.assertIn("publicationをClaimしない", notes)
-        self.assertIn("PR artifactは検証専用", notes)
-        self.assertIn("main artifactだけを公開候補", notes)
-        self.assertIn("SOURCE_SHA", notes)
-        self.assertIn("SOURCE_DATE_EPOCH", notes)
-        self.assertIn("8項目の「問題の整理」", notes)
-        self.assertIn("machine JSONのkey集合", notes)
-        self.assertIn("`DESIGN.md`、`DECISIONS.md`、`adr/`", notes)
-        for excluded in (
-            "generic Contract amendment semantics",
-            "human-post checker／gate",
-            "line-budgetの置き換えまたはstatus split",
-            "publication operation",
+        for required in (
+            "# GitHub Task Protocol 1.0.3.post1 release notes",
+            POST_RELEASE_BASE_COMMIT,
+            "公開metadataだけを訂正",
+            "`gtp --version`のversion表示を除き",
+            "protocol／runtime behaviorは変更しない",
+            "PyPI archiveの完了をClaimしない",
+            "GitHubの`latest`は2.xのまま維持",
+            "projectをarchiveする予定",
+            "削除、上書き、yankしない",
         ):
-            self.assertIn(excluded, notes)
+            self.assertIn(required, notes)
+        old_notes = (
+            ROOT / "acceptance" / "release-notes-v1.0.3.md"
+        ).read_bytes()
+        self.assertEqual(
+            "f644c1df00649eaefc1c05b0ea422eb06a6d6a48fa16160f417734b56c9164d3",
+            hashlib.sha256(old_notes).hexdigest(),
+        )
 
     def test_sdist_release_surface_is_explicit(self) -> None:
         self.assertEqual(
@@ -923,6 +971,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertFalse(any(path.startswith(".github/") for path in manifest))
         self.assertIn("adr/0036-reproducible-release-artifacts.md", manifest)
         self.assertIn("acceptance/release-notes-v1.0.3.md", manifest)
+        self.assertIn("acceptance/release-notes-v1.0.3.post1.md", manifest)
         for required in MATRIX["required_sdist"]:
             self.assertTrue(
                 required in manifest
@@ -1022,14 +1071,18 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertEqual(
             {
                 "pull_request": "github.event.pull_request.head.sha",
-                "main_push": "github.sha",
+                "push": "github.sha",
             },
             MATRIX["ci_release"]["source_sha"],
         )
         self.assertEqual(
+            ["legacy/1.x"],
+            MATRIX["ci_release"]["push_branches"],
+        )
+        self.assertEqual(
             {
-                "pull_request": "v1.0.3-pr-verification-<SOURCE_SHA>",
-                "main_push": "v1.0.3-main-candidate-<SOURCE_SHA>",
+                "pull_request": "v1.0.3.post1-pr-verification-<SOURCE_SHA>",
+                "legacy_push": "v1.0.3.post1-legacy-candidate-<SOURCE_SHA>",
                 "sidecars": ["BUILD-INFO", "SHA256SUMS"],
                 "retention_days": 90,
             },
@@ -1066,6 +1119,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
 
         self.assertIn("github.event.pull_request.head.sha", workflow)
         self.assertIn("github.sha", workflow)
+        self.assertIn('branches: ["legacy/1.x"]', workflow)
         self.assertIn('PYTHONDONTWRITEBYTECODE: "1"', workflow)
         self.assertIn('[[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]', workflow)
         self.assertGreaterEqual(workflow.count("ref: ${{ env.SOURCE_SHA }}"), 2)
@@ -1121,8 +1175,19 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertIn(
             'test "${{ needs.integration.result }}" = "success"', workflow
         )
-        self.assertIn("v1.0.3-pr-verification-${SOURCE_SHA}", workflow)
-        self.assertIn("v1.0.3-main-candidate-${SOURCE_SHA}", workflow)
+        self.assertIn("v1.0.3.post1-pr-verification-${SOURCE_SHA}", workflow)
+        self.assertIn("v1.0.3.post1-legacy-candidate-${SOURCE_SHA}", workflow)
+        self.assertIn("github_task_protocol-1.0.3.post1.tar.gz", workflow)
+        self.assertIn(
+            "github_task_protocol-1.0.3.post1-py3-none-any.whl", workflow
+        )
+        for forbidden_release_operation in (
+            "gh release",
+            "make_latest",
+            "releases/latest",
+            "--latest",
+        ):
+            self.assertNotIn(forbidden_release_operation, workflow.lower())
         self.assertIn("retention-days: 90", workflow)
         self.assertIn("BUILD-INFO", workflow)
         self.assertIn("SHA256SUMS", workflow)

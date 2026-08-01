@@ -28,13 +28,14 @@
   "release_documents": {
     "current_design": "DESIGN.md",
     "decision": "adr/0036-reproducible-release-artifacts.md",
-    "notes": "acceptance/release-notes-v1.0.3.md"
+    "notes": "acceptance/release-notes-v1.0.3.post1.md"
   },
   "ci_release": {
     "source_sha": {
       "pull_request": "github.event.pull_request.head.sha",
-      "main_push": "github.sha"
+      "push": "github.sha"
     },
+    "push_branches": ["legacy/1.x"],
     "producer_python": "3.11",
     "consumer_python": ["3.11", "3.12", "3.13"],
     "actions": {
@@ -44,8 +45,8 @@
       "download-artifact": "3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c"
     },
     "artifacts": {
-      "pull_request": "v1.0.3-pr-verification-<SOURCE_SHA>",
-      "main_push": "v1.0.3-main-candidate-<SOURCE_SHA>",
+      "pull_request": "v1.0.3.post1-pr-verification-<SOURCE_SHA>",
+      "legacy_push": "v1.0.3.post1-legacy-candidate-<SOURCE_SHA>",
       "sidecars": ["BUILD-INFO", "SHA256SUMS"],
       "retention_days": 90
     }

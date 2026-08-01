@@ -1,6 +1,10 @@
 # GitHub Task Protocol
 
-GTPは、AIへ実装を任せても、人間が目的・変更範囲・現在地・根拠を理解し、停止・再開・やり直し・mergeの判断を手放さないための小さなprotocolです。
+このREADMEとPyPI package `github-task-protocol`は、開発を終了したGTP 1.xのlegacy公開物です。GTP 2.xはPyPIで配布していません。2.xを導入する場合は[mainのREADME](https://github.com/shinya0x00/github-task-protocol/blob/main/README.md)、1.xの保存・終了方針は[LEGACY.md](https://github.com/shinya0x00/github-task-protocol/blob/main/LEGACY.md)を参照してください。
+
+GTP 1.xのprotocolとversion identity以外のruntime sourceは、exact tag [`v1.0.3`](https://github.com/shinya0x00/github-task-protocol/tree/v1.0.3)へ固定されています。このpost-releaseが変えるのはversion identity、公開説明、release検証面だけです。version表示以外のCLI behaviorは変更しません。mainの2.x文書と1.x CLIを組み合わせないでください。
+
+GTP 1.xは、AIへ実装を任せても、人間が目的・変更範囲・現在地・根拠を理解し、停止・再開・やり直し・mergeの判断を手放さないための小さなprotocolです。
 
 > 作業はAIに任せる。判断は手放さない。
 
@@ -8,15 +12,15 @@ AIの説明だけを信じるのではなく、GitHub Issue上のRecordと、実
 
 task固有の未確認事項は、通常のIssue本文やcommentへ人が読める形で残します。開始前から完了判断に必要な不明点はDone Conditionにし、開始後にContract変更が必要になった場合はStopと後継Issueへ移ります。GTP Recordは自由文の意味を自動評価しないため、`status`はDone提示前にIssueを確認するURLを表示します。
 
-## 推奨: 明示的にsetupを依頼
+## GTP 1.xを明示的にsetup
 
 bare GTP repository URLだけではsetup依頼にもrepository変更のauthorizationにもなりません。URLだけを受け取ったagentは、説明または目的確認に留まり、現在のrepositoryを変更しません。
 
 導入先repositoryを操作中のclean agentへ、変更対象とDraft setup PR作成を明示して依頼します。
 
 ```text
-このrepositoryへGTPを導入するDraft setup PRを作ってください。
-GTP repository: https://github.com/shinya0x00/github-task-protocol
+このrepositoryへGTP 1.xを導入するDraft setup PRを作ってください。
+GTP 1.x source: https://github.com/shinya0x00/github-task-protocol/tree/v1.0.3
 ```
 
 この明示依頼を受けたagentは、次の順序でsetupします。
@@ -36,8 +40,8 @@ blockerでは、chatまたはconsoleへ「何が問題か」「どこが問題�
 
 preflightとblocker報告はephemeralです。working tree、branch、commit、push、Issue、comment、label、PRを変更せず、repair Issueも自動作成しません。blocker解消後は同じ入力でpreflightを再実行します。`instructionなし`または`両立可能`の場合だけ、次の既存branch-first手順へ進みます。
 
-1. GitHubのlatest stable Releaseを取得し、`draft: false`かつ`prerelease: false`を確認する。未公開candidateやmoving `main`は選ばない。
-2. Releaseのtagをcommit SHAまでdereferenceし、選択したtagとexact commit SHAを記録する。
+1. GitHub Release [`v1.0.3`](https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.3)を取得し、`draft: false`かつ`prerelease: false`を確認する。未公開candidateやmoving `main`は選ばない。
+2. tag `v1.0.3`をcommit SHAまでdereferenceし、tagとexact commit SHAを記録する。
 3. target fileを変更する前にrepositoryのdefault branch名とhead SHAを記録し、そのheadから`gtp/setup-<tag>-<short-sha>` branchを作ってswitchする。現在branchがdefault branchではなくsetup branchであることを確認できなければ停止する。
 4. そのcommitの`GTP.md`だけを`https://raw.githubusercontent.com/shinya0x00/github-task-protocol/<commit-sha>/GTP.md`から取得し、導入先rootへvendorする。既存`GTP.md`とSHA-256が同一なら保持する。内容が異なるfile、別のGTP authority、または既存instructionとの衝突があれば、上書きせず停止して人間へ報告する。
 5. root `AGENTS.md`がなければ作成する。存在する場合は本文を変更・削除せず、下のexact adapterがなければ`## GitHub Task Protocol adapter` heading付きで追記する。既に同じadapterがあれば重複追加しない。
@@ -58,7 +62,7 @@ preflightとblocker報告はephemeralです。working tree、branch、commit、p
 
 自動setupを使わない場合は、次の3手順で導入できます。
 
-1. latest stable Releaseをexact commitへ固定し、file変更前にdefault branchからsetup用branchを作ってswitchする。
+1. tag `v1.0.3`をexact commitへ固定し、file変更前にdefault branchからsetup用branchを作ってswitchする。
 2. setup branch上で`GTP.md`をrootへコピーし、共通adapter文を既存instructionへ非破壊で追加する。
 3. commitとpushをsetup branchだけに行ってDraft PRを作り、人間が内容を確認してmergeする。
 
@@ -94,17 +98,18 @@ GitHub情報を完全に取得できない場合はstateを推測しません。
 
 人間がGTPを使うためにCLIをinstallする必要はありません。`gtp`はagentや自動検査がRecordと現在stateを確認するための、runtime dependency 0の任意toolです。
 
-CLI `1.0.2`は[PyPI](https://pypi.org/project/github-task-protocol/1.0.2/)と[GitHub Release](https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.2)へ公開済みです。再downloadとhash・clean install・live statusの検証結果は[`acceptance/public-release-v1.0.2.json`](acceptance/public-release-v1.0.2.json)にあります。GTPを使うだけならCLIのinstallは不要です。
+CLI `1.0.3`は[PyPI](https://pypi.org/project/github-task-protocol/1.0.3/)と[GitHub Release](https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.3)へ公開済みです。再download・hash・clean install・live statusの検証結果はimmutableな[`acceptance/public-release-v1.0.3.json`](https://github.com/shinya0x00/github-task-protocol/blob/793a3e801c9ea4ec079fcced23b782da7a6e35d7/acceptance/public-release-v1.0.3.json)にあります。GTPを使うだけならCLIのinstallは不要です。
 
-`pyproject.toml`は、このsourceからbuildするpackage versionとして`1.0.3`を宣言しています。この値はpublicationのEvidenceでも、exact source commitのidentityでもありません。別の`X.Y.Z`を使うのは、[PyPIのversion page](https://pypi.org/project/github-task-protocol/X.Y.Z/)と[GitHub Release](https://github.com/shinya0x00/github-task-protocol/releases/tag/vX.Y.Z)の両方が解決できることを確認した後だけです。そのとき、下の2つのcommandの`1.0.2`だけを確認したexact versionに置き換えます。
+`pyproject.toml`は、1.xの最終metadata訂正版としてpackage version `1.0.3.post1`を宣言しています。この値はpublicationのEvidenceでも、exact source commitのidentityでもありません。公開状況は[PyPIのexact version page](https://pypi.org/project/github-task-protocol/1.0.3.post1/)と[GitHub Release](https://github.com/shinya0x00/github-task-protocol/releases/tag/v1.0.3.post1)で確認してください。installと実行はexact versionへ固定します。
 
 ```console
-uvx --from github-task-protocol==1.0.2 gtp status <issue-url>
-uvx --from github-task-protocol==1.0.2 gtp check <comment.md>
+python -m pip install github-task-protocol==1.0.3.post1
+uvx --from github-task-protocol==1.0.3.post1 gtp status <issue-url>
+uvx --from github-task-protocol==1.0.3.post1 gtp check <comment.md>
 ```
 
-- 公開済み`1.0.2`の`status`はGitHubへGETだけを行い、日本語6項目の後にmachine JSONを出します。Evidenceの存在・種類・状態・source headとの結び付きを検査しますが、完了条件の自然言語上の充足までは自動判定しません。
-- source version `1.0.3`は、`state: halt`のとき先頭6項目の直後に8項目の「問題の整理」を表示します。
+- `1.0.3.post1`の`status`はGitHubへGETだけを行い、日本語6項目の後にmachine JSONを出します。Evidenceの存在・種類・状態・source headとの結び付きを検査しますが、完了条件の自然言語上の充足までは自動判定しません。
+- `1.0.3`で追加した、`state: halt`のとき先頭6項目の直後に出す8項目の「問題の整理」を、そのまま保持します。
   この表示追加はmachine JSONのkey集合、exit code規則、`authority: none`を変更しません。
 - 未完了Check Runのstate、`next_action`、exit codeは、上記の非終端境界へ訂正します。
 - `check`は投稿前のMarkdown comment全文をoffline検査します。Issue上でもvalidだとは主張しません。
@@ -112,11 +117,11 @@ uvx --from github-task-protocol==1.0.2 gtp check <comment.md>
 
 ## 仕様と判断記録
 
-protocolの唯一の正本は400行以内の[`GTP.md`](GTP.md)です。Record作成やstate判断に、他の文書は必要ありません。
+GTP 1.x protocolの唯一の正本はexact tag `v1.0.3`の[`GTP.md`](https://github.com/shinya0x00/github-task-protocol/blob/v1.0.3/GTP.md)です。Record作成やstate判断に、他の文書は必要ありません。
 
-[`DECISIONS.md`](DECISIONS.md)は、設計変更の理由と履歴です。`GTP.md`と意味が衝突する場合は`GTP.md`を優先します。
+[`DECISIONS.md`](https://github.com/shinya0x00/github-task-protocol/blob/v1.0.3/DECISIONS.md)は、1.xの設計変更の理由と履歴です。`GTP.md`と意味が衝突する場合は`GTP.md`を優先します。
 
-実GitHubで観測した引き継ぎ結果は[`acceptance/level0/`](acceptance/level0/)にあります。これは仕様の代わりではありません。
+実GitHubで観測した引き継ぎ結果はexact tag `v1.0.3`の[`acceptance/level0/`](https://github.com/shinya0x00/github-task-protocol/tree/v1.0.3/acceptance/level0)にあります。これは仕様の代わりではありません。
 
 ## GTPが証明しないこと
 
@@ -124,6 +129,6 @@ GTPは、actor本人性、credential安全性、コード品質そのもの、Ev
 
 サンドボックス、最小権限、不可逆操作前の確認、reviewと組み合わせてください。最終的な受理は、人間がPRとEvidenceを読み、GitHubのnative mergeで判断します。
 
-License: [MIT](LICENSE)
+License: [MIT](https://github.com/shinya0x00/github-task-protocol/blob/v1.0.3/LICENSE)
 
 GTPを試して、分かりにくかった所・詰まった所があれば、一言だけでも教えてもらえると助かります。IssueでもXでも。

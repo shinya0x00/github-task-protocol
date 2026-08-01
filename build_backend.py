@@ -66,6 +66,7 @@ SDIST_SOURCE_MANIFEST = (
     "acceptance/release-notes-v1.0.1.md",
     "acceptance/release-notes-v1.0.2.md",
     "acceptance/release-notes-v1.0.3.md",
+    "acceptance/release-notes-v1.0.3.post1.md",
     "acceptance/release.json",
     "acceptance/stop-time-boundary-run.json",
     "adr/0035-human-actionable-problem-explanations.md",
