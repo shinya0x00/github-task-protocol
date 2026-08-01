@@ -32,10 +32,9 @@
   },
   "ci_release": {
     "source_sha": {
-      "pull_request": "github.event.pull_request.head.sha",
-      "push": "github.sha"
+      "pull_request": "github.event.pull_request.head.sha"
     },
-    "push_branches": ["legacy/1.x"],
+    "push_branches": [],
     "producer_python": "3.11",
     "consumer_python": ["3.11", "3.12", "3.13"],
     "actions": {
@@ -46,7 +45,6 @@
     },
     "artifacts": {
       "pull_request": "v1.0.3.post1-pr-verification-<SOURCE_SHA>",
-      "legacy_push": "v1.0.3.post1-legacy-candidate-<SOURCE_SHA>",
       "sidecars": ["BUILD-INFO", "SHA256SUMS"],
       "retention_days": 90
     }

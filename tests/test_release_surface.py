@@ -1071,8 +1071,8 @@ class ReleaseSurfaceTests(unittest.TestCase):
             "`v1.0.3-main-candidate-<SOURCE_SHA>`という名前を残す案は",
             adr37,
         )
-        self.assertIn('branches: ["legacy/1.x"]', workflow)
-        self.assertIn(
+        self.assertNotIn('branches: ["legacy/1.x"]', workflow)
+        self.assertNotIn(
             "v1.0.3.post1-legacy-candidate-${SOURCE_SHA}", workflow
         )
         self.assertNotIn("v1.0.3-main-candidate", workflow)
@@ -1126,18 +1126,16 @@ class ReleaseSurfaceTests(unittest.TestCase):
         self.assertEqual(
             {
                 "pull_request": "github.event.pull_request.head.sha",
-                "push": "github.sha",
             },
             MATRIX["ci_release"]["source_sha"],
         )
         self.assertEqual(
-            ["legacy/1.x"],
+            [],
             MATRIX["ci_release"]["push_branches"],
         )
         self.assertEqual(
             {
                 "pull_request": "v1.0.3.post1-pr-verification-<SOURCE_SHA>",
-                "legacy_push": "v1.0.3.post1-legacy-candidate-<SOURCE_SHA>",
                 "sidecars": ["BUILD-INFO", "SHA256SUMS"],
                 "retention_days": 90,
             },
@@ -1174,7 +1172,13 @@ class ReleaseSurfaceTests(unittest.TestCase):
 
         self.assertIn("github.event.pull_request.head.sha", workflow)
         self.assertIn("github.sha", workflow)
-        self.assertIn('branches: ["legacy/1.x"]', workflow)
+        self.assertNotIn('branches: ["legacy/1.x"]', workflow)
+        self.assertIn(
+            "SOURCE_SHA: ${{ github.event.pull_request.head.sha }}", workflow
+        )
+        self.assertNotIn(
+            "github.event_name == 'pull_request' &&", workflow
+        )
         self.assertIn('PYTHONDONTWRITEBYTECODE: "1"', workflow)
         self.assertIn('[[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]', workflow)
         self.assertGreaterEqual(workflow.count("ref: ${{ env.SOURCE_SHA }}"), 2)
@@ -1231,7 +1235,7 @@ class ReleaseSurfaceTests(unittest.TestCase):
             'test "${{ needs.integration.result }}" = "success"', workflow
         )
         self.assertIn("v1.0.3.post1-pr-verification-${SOURCE_SHA}", workflow)
-        self.assertIn("v1.0.3.post1-legacy-candidate-${SOURCE_SHA}", workflow)
+        self.assertNotIn("v1.0.3.post1-legacy-candidate-${SOURCE_SHA}", workflow)
         self.assertIn("github_task_protocol-1.0.3.post1.tar.gz", workflow)
         self.assertIn(
             "github_task_protocol-1.0.3.post1-py3-none-any.whl", workflow

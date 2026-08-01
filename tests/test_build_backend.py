@@ -38,6 +38,7 @@ EXPECTED_WHEEL_SOURCE_MANIFEST = (
 EXPECTED_REPOSITORY_ONLY_SOURCE_PATHS = (
     ".github/workflows/ci.yml",
     ".gitignore",
+    "acceptance/public-release-v1.0.3.post1.json",
 )
 
 EXPECTED_SDIST_SOURCE_MANIFEST = (

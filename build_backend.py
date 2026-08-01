@@ -120,6 +120,7 @@ SDIST_SOURCE_MANIFEST = (
 _REPOSITORY_ONLY_SOURCE_PATHS = (
     ".github/workflows/ci.yml",
     ".gitignore",
+    "acceptance/public-release-v1.0.3.post1.json",
 )
 
 _DEFAULT_SOURCE_DATE_EPOCH = 0
