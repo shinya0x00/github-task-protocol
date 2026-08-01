@@ -12,4 +12,4 @@ task state、Done、Evidence集約、authority、approval、workflow制御、強
 
 ## 変更履歴
 
-- GTPの中核をDecision Recordの記録と成果物からの参照に保ち、言語、template、Issue・pull requestの可読性を、対象を明示すれば省略できる提出前reviewへ分離。
+- [PR #156](https://github.com/shinya0x00/github-task-protocol/pull/156)で、GTPの中核をDecision Recordの記録と成果物からの参照に保ち、言語、template、Issue・pull requestの可読性を、対象を明示すれば省略できる提出前reviewへ分離。
