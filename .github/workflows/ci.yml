@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: ["legacy/1.x"]
   pull_request:
 
 permissions:
@@ -38,9 +38,9 @@ jobs:
           test -n "$source_date_epoch"
           echo "SOURCE_DATE_EPOCH=$source_date_epoch" >> "$GITHUB_ENV"
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            artifact_name="v1.0.3-pr-verification-${SOURCE_SHA}"
+            artifact_name="v1.0.3.post1-pr-verification-${SOURCE_SHA}"
           else
-            artifact_name="v1.0.3-main-candidate-${SOURCE_SHA}"
+            artifact_name="v1.0.3.post1-legacy-candidate-${SOURCE_SHA}"
           fi
           echo "ARTIFACT_NAME=$artifact_name" >> "$GITHUB_ENV"
           echo "artifact_name=$artifact_name" >> "$GITHUB_OUTPUT"
@@ -95,11 +95,11 @@ jobs:
             python -c 'import build_backend, sys; print(build_backend.build_sdist(sys.argv[1])); print(build_backend.build_wheel(sys.argv[1]))' "$RUNNER_TEMP/dist-b"
           )
           cmp \
-            "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.3.tar.gz" \
-            "$RUNNER_TEMP/dist-b/github_task_protocol-1.0.3.tar.gz"
+            "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.3.post1.tar.gz" \
+            "$RUNNER_TEMP/dist-b/github_task_protocol-1.0.3.post1.tar.gz"
           cmp \
-            "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.3-py3-none-any.whl" \
-            "$RUNNER_TEMP/dist-b/github_task_protocol-1.0.3-py3-none-any.whl"
+            "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.3.post1-py3-none-any.whl" \
+            "$RUNNER_TEMP/dist-b/github_task_protocol-1.0.3.post1-py3-none-any.whl"
       - name: Rebuild the wheel from a fresh sdist environment
         shell: bash
         run: |
@@ -108,10 +108,10 @@ jobs:
           mkdir "$RUNNER_TEMP/sdist-wheel"
           "$RUNNER_TEMP/sdist-wheel-env/bin/python" -m pip wheel --no-index --no-deps \
             --wheel-dir "$RUNNER_TEMP/sdist-wheel" \
-            "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.3.tar.gz"
+            "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.3.post1.tar.gz"
           cmp \
-            "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.3-py3-none-any.whl" \
-            "$RUNNER_TEMP/sdist-wheel/github_task_protocol-1.0.3-py3-none-any.whl"
+            "$RUNNER_TEMP/dist-a/github_task_protocol-1.0.3.post1-py3-none-any.whl" \
+            "$RUNNER_TEMP/sdist-wheel/github_task_protocol-1.0.3.post1-py3-none-any.whl"
       - name: Check distribution metadata with Twine
         run: |
           python -m pip install twine==6.2.0

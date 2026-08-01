@@ -2,7 +2,7 @@
 
 この文書は、GTP reader、presentation、setup／adapter、外部Operation接続、通常のIssue→PR workflowの設計を、`Implemented`と`Target / not yet implemented`を区別して所有する。
 
-pull requestのsource headにあるこの文書は正準候補である。repositoryのcurrent canonical sourceになるのは、そのsource headがmainへnative mergeされ、main上のpathを再取得できた後である。
+pull requestのsource headにあるこの文書は正準候補である。GTP 1.x legacy sourceのcurrent canonical sourceになるのは、そのsource headが`legacy/1.x`へnative mergeされ、同branch上のpathを再取得できた後である。
 
 公開protocolの意味は[`GTP.md`](GTP.md)だけが所有する。この文書やADRだけで、4 Record、6 state、7 halt reason、transition、Evidence、native merge、Acquisition Error、CLI machine contractの意味を変更しない。protocol変更が必要な場合は、同じ変更laneで`GTP.md`を更新する。
 
@@ -28,7 +28,7 @@ pull requestのsource headにあるこの文書は正準候補である。reposi
 - Issue #99で実装したCLI presentationは、`state: halt`のとき既存の診断事実から8項目の「問題の整理」を表示する。
 - READMEの明示setup手順はstable Releaseをexact commitへ固定し、file変更前にbranchを作る。
 - Check Runの既知非終端statusは、`conclusion` keyが存在して値が`null`の場合だけpendingにする。key欠落は`invalid_evidence`にする。
-- [ADR-036](adr/0036-reproducible-release-artifacts.md)に従い、CIはexact source headから一つの配布artifact identityを生成し、同じbytesをsupported Python matrixで検査する。
+- [ADR-036](adr/0036-reproducible-release-artifacts.md)に従い、CIはexact source headから一つの配布artifact identityを生成し、同じbytesをsupported Python matrixで検査する。[ADR-037](adr/0037-final-legacy-post-release-candidate.md)に従い、最終1.x post-releaseの公開候補は`legacy/1.x` pushへ束縛する。
 
 ### Target / not yet implemented
 
@@ -167,16 +167,16 @@ productionの問題説明は、既存のstdout、stderr、machine JSON、diagnos
 
 ## Distribution boundary
 
-- pull requestでは`github.event.pull_request.head.sha`、main pushでは`github.sha`を唯一の`SOURCE_SHA`とする。checkout、`SOURCE_DATE_EPOCH`導出、`git ls-tree`、`git archive`、build、artifact名はすべてこのSHAを使う。pull requestのmerge refはsource identityに使わない。
+- pull requestでは`github.event.pull_request.head.sha`、`legacy/1.x` pushでは`github.sha`を唯一の`SOURCE_SHA`とする。checkout、`SOURCE_DATE_EPOCH`導出、`git ls-tree`、`git archive`、build、artifact名はすべてこのSHAを使う。pull requestのmerge refはsource identityに使わない。
 - source-head build jobは`SOURCE_SHA`のtree、integration jobはsynthetic mergeの`HEAD`（merge tree）を同じmanifest oracleへ渡す。integration jobはmerge treeのmanifest parityとfull unit test／budgetを検査するが、clean export、公開候補sdist／wheel、Twine、sidecar、Actions artifact uploadから成るproducer処理は実行しない。unit testがtemporary directoryでbackendを検査するために作るarchiveは公開候補ではない。explicit sdist manifestは配布対象fileと一致させ、explicit wheel manifestはruntime package fileだけを所有する。backendは未宣言file、cache、symlink、directory、その他の非regular fileを追跡または再帰探索しない。
 - producerはPython 3.11でだけ1回実行する。`SOURCE_SHA`から2つのclean `git archive` exportを作り、commit timestampから導出した同じ`SOURCE_DATE_EPOCH`でsdistとwheelをbuildする。両buildのbytesを比較し、fresh environmentでsdistから`pip wheel --no-index --no-deps`を実行して直接buildのwheelと比較し、`twine check`を行う。
 - verified sdistとwheelに`SHA256SUMS`と`BUILD-INFO`を添付する。`BUILD-INFO`は`SOURCE_SHA`、`SOURCE_DATE_EPOCH`、`GITHUB_RUN_ID`、`GITHUB_RUN_ATTEMPT`、Python 3.11、zlib、filename、size、SHA-256とartifact identityを記録する。artifactの保持期間は90日とする。
-- PR artifactは検証専用の`v1.0.3-pr-verification-<SOURCE_SHA>`とする。squash merge後のmain artifactだけを公開候補とし、`v1.0.3-main-candidate-<SOURCE_SHA>`とする。Python 3.11、Python 3.12、Python 3.13のconsumerはproducerがuploadした同じartifactをdownloadし、checksum、clean install、installed CLI、unit testを検査する。
-- PRではsource-head producer／consumerとは別にGitHubのsynthetic merge refをintegration jobで検査する。merge refはmainとの統合結果だけを検査し、artifact source、`SOURCE_SHA`、Done Evidenceの代わりにしない。最後の`release-ready` Checkはbuild、3-version consumer matrix、PR時のintegrationがすべて成功したことを一つの結果へ集約する。
+- PR artifactは検証専用の`v1.0.3.post1-pr-verification-<SOURCE_SHA>`とする。squash merge後の`legacy/1.x` push artifactだけを公開候補とし、`v1.0.3.post1-legacy-candidate-<SOURCE_SHA>`とする。Python 3.11、Python 3.12、Python 3.13のconsumerはproducerがuploadした同じartifactをdownloadし、checksum、clean install、installed CLI、unit testを検査する。
+- PRではsource-head producer／consumerとは別にGitHubのsynthetic merge refをintegration jobで検査する。merge refは`legacy/1.x`との統合結果だけを検査し、artifact source、`SOURCE_SHA`、Done Evidenceの代わりにしない。最後の`release-ready` Checkはbuild、3-version consumer matrix、PR時のintegrationがすべて成功したことを一つの結果へ集約する。
 - workflowが実行するGitHub Actionのidentityと`tests/fixtures/release/surface.json`の対応値は、同じfull 40文字のlowercase commit SHAだけで表す。tagやversion labelを併記して第二のidentityにしない。
-- workflowは`contents: read`だけを使い、tag、GitHub Release、PyPIを変更しない。main artifactのsource SHA、run、artifact ID、expiry、build条件、filename、size、SHA-256、再検査手順は公開前のoperation recordへ引き継ぐ。1.0.3 publicationと公開後EvidenceはIssue #102が所有する。
+- workflowは`contents: read`だけを使い、tag、GitHub Release、PyPIを変更しない。`legacy/1.x` artifactのsource SHA、run、artifact ID、expiry、build条件、filename、size、SHA-256、再検査手順は公開前のoperation recordへ引き継ぐ。`1.0.3.post1`の公開後Evidenceは`legacy/1.x`へversion管理し、PyPI archiveとEvidence記録の完了後にbranchを凍結する。
 - 上記のbyte一致が示すのは、同じsource、epoch、記録したPythonとzlib条件での再現性である。あらゆるbuild環境での同一bytes、publication、merge authority、コード品質全体は証明しない。
-- 公開済み1.0.2のsdistは`DESIGN.md`と`adr/`を含まず、archive内だけでcurrent designを再構成できるとはClaimしない。1.0.3 sdistは`DESIGN.md`、`DECISIONS.md`、`adr/`を収録し、相対linkをarchive内で検査する。
+- 公開済み1.0.2のsdistは`DESIGN.md`と`adr/`を含まず、archive内だけでcurrent designを再構成できるとはClaimしない。1.0.3以降のsdistは`DESIGN.md`、`DECISIONS.md`、`adr/`を収録し、`1.0.3.post1`ではADR-037を含む相対linkをarchive内で検査する。
 - `acceptance/explicit-setup-install/run.json`はdefault branchへの一時的なdirect pushを含むhistorical observationとして保持し、現行branch-first setupへの適合Evidenceとして再利用しない。
 
 ## 変更規則
