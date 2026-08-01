@@ -21,6 +21,10 @@ Apply the repository's `GTP.md` without adding state, approval, Evidence aggrega
 8. When the current task includes a pull request body or commit message, add the one-way reference defined by `GTP.md`. Do not perform an external write unless the user authorized that operation.
 9. Verify that the record contains the current selected means and that any changed means has a concise change-history entry.
 10. If the recorded decision no longer applies, keep the file and use the no-longer-applicable procedure defined by `GTP.md`.
+11. Before handing a pull request body to review, read the intended body and the Decision Records changed by the task as a fresh reader.
+    - For every Decision Record path in the body, confirm that nearby plain-language prose explains the related selected means and makes the association clear without opening the file.
+    - For every selected means changed by the task, confirm that its change-history entry states what changed and includes a pull request, commit, or Issue link when one is available.
+    - Judge readability and traceability, not a particular Markdown heading, list marker, indentation width, or link spelling. If repair is within the current task, fix specific omissions; otherwise report them.
 
 If the project does not contain `GTP.md`, do not invent or reconstruct its protocol from this Skill. For an adoption request, copy the version-matched `GTP.md` and `skills/gtp/` from the same GTP release before creating project Decision Records.
 
