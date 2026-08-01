@@ -56,7 +56,7 @@ Decision-Ref: gtp/decisions/request-id-retry.md
 
 ### 1. versionを固定して配布物を取得する
 
-1. [Releases](https://github.com/shinya0x00/github-task-protocol/releases)から利用するversionを選ぶ。
+1. [Releases](https://github.com/shinya0x00/github-task-protocol/releases)から利用するGTP 2.xのReleaseを選ぶ。1.xは責務と配布形式が異なるため、この導入手順の対象外である。1.xが必要な場合は[`LEGACY.md`](LEGACY.md)を参照する。
 2. そのReleaseの**Source code (zip)**または**Source code (tar.gz)**をダウンロードして展開する。これは添付assetとは別にGitHubが生成するsource archiveである。
 3. archive直下の`GTP.md`を、利用プロジェクトのrootへコピーする。
 4. archive直下の`skills/gtp/`一式を、次節に示すAgentの認識先へコピーする。
@@ -78,7 +78,7 @@ pathはすべて利用プロジェクトのrootを基準にする。
 
 | Agent | `skills/gtp/`一式の配置先 | 認識されたことの確認 | 明示的な呼び出し | 公式資料 |
 | --- | --- | --- | --- | --- |
-| Codex | `.agents/skills/gtp/` | `/skills`を開くか、`$`を入力して`gtp`が表示されることを確認する | `$gtp` | [Build skills](https://developers.openai.com/codex/build-skills) |
+| Codex | `.agents/skills/gtp/` | `/skills`を開くか、`$`を入力して`gtp`が表示されることを確認する | `$gtp` | [Build skills](https://learn.chatgpt.com/docs/build-skills) |
 | Claude Code | `.claude/skills/gtp/` | `/skills`を開き、`gtp`が表示されることを確認する | `/gtp` | [Extend Claude with skills](https://code.claude.com/docs/en/skills) |
 | Cursor | `.agents/skills/gtp/`または`.cursor/skills/gtp/` | Agent chatで`/`を入力し、`gtp`を検索できることを確認する | `/gtp` | [Agent Skills](https://cursor.com/docs/skills) |
 
