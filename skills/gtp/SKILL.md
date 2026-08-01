@@ -7,20 +7,20 @@ description: Apply GTP to record and update project-owned Decision Records for m
 
 Protocol version: `2.0`
 
-Apply the bundled `references/GTP.md` without adding state, approval, Evidence aggregation, or enforcement.
+Apply the bundled `GTP.md` without adding state, approval, Evidence aggregation, or enforcement.
 
 ## Workflow
 
-1. Read `references/GTP.md` completely, resolving the path relative to this Skill's directory.
+1. Read `GTP.md` completely, resolving the path relative to this Skill's directory.
 2. Read the applicable user instructions, specifications, ADRs, and existing `gtp/decisions/*.md` files.
 3. State the undecided matter without naming a preferred solution.
-4. Determine whether both recording criteria in `references/GTP.md` are met.
+4. Determine whether both recording criteria in `GTP.md` are met.
 5. If either criterion is not met, do not create a Decision Record. Continue the task and briefly identify the existing owner or why the choice is cheap to reverse.
 6. Search for an existing Decision Record covering the same undecided matter. Update it instead of creating a duplicate.
 7. Create or update the smallest valid record in the project's `gtp/decisions/` directory.
-8. When the current task includes a pull request body or commit message, add the one-way reference defined by `references/GTP.md`. Do not perform an external write unless the user authorized that operation.
+8. When the current task includes a pull request body or commit message, add the one-way reference defined by `GTP.md`. Do not perform an external write unless the user authorized that operation.
 9. Verify that the record contains the current selected means and that any changed means has a concise change-history entry.
-10. If the recorded decision no longer applies, keep the file and use the no-longer-applicable procedure defined by `references/GTP.md`.
+10. If the recorded decision no longer applies, keep the file and use the no-longer-applicable procedure defined by `GTP.md`.
 11. Before handing a pull request body to review, read the intended body and the Decision Records changed by the task as a fresh reader.
     - For every Decision Record path in the body, confirm that nearby plain-language prose explains the related selected means and makes the association clear without opening the file.
     - For every selected means changed by the task, confirm that its change-history entry states what changed and includes a pull request, commit, or Issue link when one is available.
@@ -31,8 +31,8 @@ Do not require or create a project-local `GTP.md` or Agent Skill copy. This inst
 ## Record rules
 
 - Keep one undecided matter per Markdown file.
-- Use the canonical headings defined by `references/GTP.md`: `## 未決定事項` and `## 採用した手段`.
-- Add `## 変更履歴` only in the case defined by `references/GTP.md`.
+- Use the canonical headings defined by `GTP.md`: `## 未決定事項` and `## 採用した手段`.
+- Add `## 変更履歴` only in the case defined by `GTP.md`.
 - Keep the current means in `採用した手段`; keep former means only in `変更履歴`.
 - Use a descriptive lowercase hyphenated filename.
 - Write only derived information that may be stored in the repository. Never copy credentials, tokens, private prompts, or authorization text into a Decision Record.

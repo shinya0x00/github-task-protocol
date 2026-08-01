@@ -67,8 +67,7 @@ archive直下の`GTP.md`は既存参照向けの入口であり、利用プロ�
 ```text
 skills/gtp/
 ├── SKILL.md
-├── references/
-│   └── GTP.md
+├── GTP.md
 └── agents/
     └── openai.yaml
 ```
@@ -107,7 +106,7 @@ project-local配置を使っていた既存プロジェクトは、先にuser-le
 GTPのprotocol versionと、記録する判断の二条件を説明して。fileは変更しないで。
 ```
 
-Skillが同梱した`references/GTP.md`を読み、protocol versionと二条件を説明できれば導入確認は完了である。実際の作業では、次のように依頼する。
+Skillが同梱した`GTP.md`を読み、protocol versionと二条件を説明できれば導入確認は完了である。実際の作業では、次のように依頼する。
 
 ```text
 この変更にGTPを適用し、記録条件を満たす判断だけをDecision Recordへ残して。
@@ -115,7 +114,7 @@ Skillが同梱した`references/GTP.md`を読み、protocol versionと二条件�
 
 判断が記録条件を満たす場合、Agentは利用プロジェクトの`gtp/decisions/`へRecordを作るか更新する。条件を満たす判断がなければ、Recordは作らない。
 
-Python、CLI、PyPI、GitHub Issue、特定のpull request templateは不要や。正式な規則は[`skills/gtp/references/GTP.md`](skills/gtp/references/GTP.md)、構成は[`DESIGN.md`](DESIGN.md)、提出前reviewを含むAgentの手順は[`skills/gtp/SKILL.md`](skills/gtp/SKILL.md)にある。
+Python、CLI、PyPI、GitHub Issue、特定のpull request templateは不要や。正式な規則は[`skills/gtp/GTP.md`](skills/gtp/GTP.md)、構成は[`DESIGN.md`](DESIGN.md)、提出前reviewを含むAgentの手順は[`skills/gtp/SKILL.md`](skills/gtp/SKILL.md)にある。
 
 ## GTPがしないこと
 

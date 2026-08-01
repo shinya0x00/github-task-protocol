@@ -6,7 +6,7 @@ GTP 2.0は、protocolを同梱したAgent Skill、利用プロジェクトのDec
 Agentのuser-level Skill scope
 └── skills/gtp/
     ├── SKILL.md
-    └── references/GTP.md
+    └── GTP.md
         ↓ creates or updates
 利用プロジェクトの gtp/decisions/*.md
   ↑ referenced by
@@ -15,7 +15,7 @@ pull request / commit
 
 ## 所有関係
 
-- [`skills/gtp/references/GTP.md`](skills/gtp/references/GTP.md)は、記録対象、最小形式、変更履歴、参照方法、非保証を定義するprotocolの正本である。
+- [`skills/gtp/GTP.md`](skills/gtp/GTP.md)は、記録対象、最小形式、変更履歴、参照方法、非保証を定義するprotocolの正本である。
 - [`skills/gtp/SKILL.md`](skills/gtp/SKILL.md)は、Agentがprotocolを適用する手順である。protocolへ新しい意味を追加しない。
 - 各利用プロジェクトの`gtp/decisions/`は、そのプロジェクトで採用した手段の正本である。
 - Issue、pull request、commit messageは、人が作業を理解し、正本へ移動するためのprojectionである。
