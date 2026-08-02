@@ -18,7 +18,7 @@ GTP 2.0は、そうした未決定事項に対して、どの手段を採用し�
 
 `skills/pre-submission-review/`は、Issue、pull request、commit message、Release notes、Decision Record、利用者向けの提出文章を、handoffまたは外部投稿の前にreviewする。言語を決め、repositoryのtemplateを守り、目的と変更を読みやすくする。GTPを使わないtaskにも適用できる。
 
-二つのSkillは互いを必要としない。利用者は片方だけ、または両方をインストールできる。同じReleaseに収録することは、同じ発火条件や責務を持たせることを意味しない。
+二つのSkillは実行時には互いを必要としない。標準インストールでは、二つのSkillを同じinstall runでuser-level scopeへ入れる。インストール後に片方が不要なら、そのSkill directoryだけを削除する。同じReleaseに収録して一緒にインストールすることは、同じ発火条件や責務を持たせることを意味しない。
 
 ## GTPが記録するもの
 
@@ -74,7 +74,7 @@ Decision-Ref: gtp/decisions/request-id-retry.md
 
 1. [Releases](https://github.com/shinya0x00/github-task-protocol/releases)から利用するGTP 2.xのReleaseを選ぶ。1.xは責務と配布形式が異なるため、この導入手順の対象外である。1.xが必要な場合は[`LEGACY.md`](LEGACY.md)を参照する。
 2. そのReleaseの**Source code (zip)**または**Source code (tar.gz)**をダウンロードして展開する。これはGitHubがtag時点のrepositoryから生成するsource archiveであり、独自packageや添付assetではない。
-3. 利用するSkill directoryを、次節に示すAgentのuser-level認識先へcopyする。
+3. 二つのSkill directoryを、同じinstall runで次節に示すAgentのuser-level認識先へ配置する。標準インストールを片方だけに縮めない。
 
 ```text
 skills/
@@ -106,23 +106,34 @@ $HOME/.agents/skills/
 └── pre-submission-review/
 ```
 
-Skillの共通形式は[Agent Skills specification](https://agentskills.io/specification)に従う。配置後に`/skills`を開くなど、Agentが選んだSkillを認識したことを確認する。表示されない場合はAgentを再起動してからもう一度確認する。
+Skillの共通形式は[Agent Skills specification](https://agentskills.io/specification)に従う。配置後に`/skills`を開くなど、Agentが二つのSkillを認識したことを確認する。表示されない場合はAgentを再起動してからもう一度確認する。
 
-Agentへ両方のインストールを頼む場合は、Release URLを示して次のように依頼できる。
+CodexのSkill Installerへ標準インストールを頼む場合は、Releaseを固定し、二つのpathを同じ依頼で明示する。
 
 ```text
-このReleaseのskills/gtp/とskills/pre-submission-review/を、あなたのuser-level Skill scopeへインストールして。
+$skill-installer
+shinya0x00/github-task-protocolのRelease v2.0.7から、次の二つを同じinstall runでUSER scopeへインストールして。
+- skills/gtp
+- skills/pre-submission-review
+片方だけに縮めず、Skill Installerへ二つのpathを渡して。
 利用プロジェクトにはGTP.mdやSkill fileを置かないで。
-Release: <GTP 2.x Release URL>
 ```
 
-片方だけ使う場合は、依頼文とcopy対象から不要なSkillを除く。独自installer、複数Skill用manifest、install stateは使わない。
+この依頼は、Skill Installerのhelperへ次の引数を渡す操作に対応する。`--path`へ二つを同時に並べることが肝であり、二回の別installや、片方だけのinstallへ読み替えない。
 
-複数のAgentを使う場合は、選んだSkillを各Agentのuser-level認識先へ配置する。更新時も、すべての配置先を同じReleaseの内容で置き換える。user-level配置を更新すると、その配置を使う全プロジェクトへ新しいSkill内容が適用される。
+```text
+--repo shinya0x00/github-task-protocol --ref v2.0.7 --path skills/gtp skills/pre-submission-review --dest "$HOME/.agents/skills"
+```
 
-### 3. 2.0.5以前から更新する
+Claude Codeへの手動配置でも、標準インストールではarchive内の二directoryを同じPersonal scopeへ配置する。インストール後に一方を使わないと決めた場合だけ、不要なSkill directoryをuser-level scopeから削除する。GTP独自のinstaller、複数Skill用manifest、install stateは使わない。
 
-先に既存の`gtp`を新しい`skills/gtp/`で置き換える。2.0.5以前のGTP Skillに含まれていた提出前reviewは、新しいGTP Skillには含まれない。同じreviewを継続する場合は、`skills/pre-submission-review/`も独立してインストールする。
+複数のAgentを使う場合は、二つのSkillを各Agentのuser-level認識先へ配置する。更新時も、すべての配置先を同じReleaseの内容で置き換える。user-level配置を更新すると、その配置を使う全プロジェクトへ新しいSkill内容が適用される。
+
+### 3. 2.0.6以前から更新する
+
+v2.0.6で`skills/gtp`の一つのpathだけを指定してインストールした場合も、不足分だけを足して更新完了とはしない。既存の`gtp`を退避してから、v2.0.7の`skills/gtp`と`skills/pre-submission-review`を同じinstall runでインストールする。二つの認識を確認した後、退避した旧directoryを削除する。
+
+2.0.5以前のGTP Skillに含まれていた提出前reviewは、新しいGTP Skillには含まれない。既存の`gtp`を退避し、v2.0.7の二つのSkillを同じinstall runで入れ直す。片方が不要なら、二つの認識確認が終わってから不要なSkill directoryだけを削除する。
 
 project-local配置を使っていた既存プロジェクトは、先にuser-level配置と認識確認を済ませる。その後、GTPからcopyしたrootの`GTP.md`とproject-localのSkill copyをプロジェクトから削除する。`gtp/decisions/`は判断結果の正本なので残す。
 
@@ -131,6 +142,7 @@ project-local配置を使っていた既存プロジェクトは、先にuser-le
 GTPは次のように明示的に呼び出す。
 
 ```text
+$gtp
 GTPのprotocol versionと、記録する判断の二条件を説明して。fileは変更しないで。
 ```
 
@@ -139,6 +151,7 @@ Skillが同梱した`GTP.md`を読み、protocol version `2.0`と二条件を説
 Pre-submission Reviewは、GTPを使わない依頼で確認する。
 
 ```text
+$pre-submission-review
 この完成済みpull request本文にpre-submission reviewを行って。外部投稿はしないで。
 ```
 
