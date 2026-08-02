@@ -70,11 +70,49 @@ Decision-Ref: gtp/decisions/request-id-retry.md
 
 二つのSkillは、利用するAgentのuser-level Skill scopeへ置く。利用プロジェクトへGTP本体やPre-submission Review本体をcopyしない。GTPを使う利用プロジェクトに残るのは、記録条件を満たした`gtp/decisions/*.md`だけである。
 
-### 1. versionを固定して取得する
+### 1. `skills.sh`で二つを同時に入れる
 
-1. [Releases](https://github.com/shinya0x00/github-task-protocol/releases)から利用するGTP 2.xのReleaseを選ぶ。1.xは責務と配布形式が異なるため、この導入手順の対象外である。1.xが必要な場合は[`LEGACY.md`](LEGACY.md)を参照する。
-2. そのReleaseの**Source code (zip)**または**Source code (tar.gz)**をダウンロードして展開する。これはGitHubがtag時点のrepositoryから生成するsource archiveであり、独自packageや添付assetではない。
-3. 二つのSkill directoryを、同じinstall runで次節に示すAgentのuser-level認識先へ配置する。標準インストールを片方だけに縮めない。
+[Releases](https://github.com/shinya0x00/github-task-protocol/releases)から利用するGTP 2.xのReleaseを選び、GitHubのtag URLを`skills.sh`へ渡す。1.xは責務と配布形式が異なるため、この導入手順の対象外である。1.xが必要な場合は[`LEGACY.md`](LEGACY.md)を参照する。
+
+Codexへv2.0.8の二つのSkillを入れる標準コマンドは次のとおりである。
+
+```sh
+npx --yes skills@latest add \
+  https://github.com/shinya0x00/github-task-protocol/tree/v2.0.8 \
+  --skill gtp --skill pre-submission-review \
+  --global --agent codex --copy --yes
+```
+
+Claude CodeではAgent名だけを変える。
+
+```sh
+npx --yes skills@latest add \
+  https://github.com/shinya0x00/github-task-protocol/tree/v2.0.8 \
+  --skill gtp --skill pre-submission-review \
+  --global --agent claude-code --copy --yes
+```
+
+同じ端末でCodexとClaude Codeの両方を使う場合は、一回の実行へ二つのAgentも指定できる。
+
+```sh
+npx --yes skills@latest add \
+  https://github.com/shinya0x00/github-task-protocol/tree/v2.0.8 \
+  --skill gtp --skill pre-submission-review \
+  --global --agent codex --agent claude-code --copy --yes
+```
+
+tag URLがSkill sourceをv2.0.8へ固定する。二つの`--skill`が標準install setを固定し、`--global`がproject-local配置を避ける。`--copy`は各Skillを独立したdirectoryとして配置する。インストール後に片方が不要なら、そのSkill directoryだけを削除できる。
+
+| Agent | `skills.sh`のAgent名 | user-level認識先 | 明示的な呼び出し | 公式資料 |
+| --- | --- | --- | --- | --- |
+| Codex | `codex` | `$HOME/.agents/skills/` | `$gtp` / `$pre-submission-review` | [Build skills](https://learn.chatgpt.com/docs/build-skills) |
+| Claude Code | `claude-code` | `~/.claude/skills/` | `/gtp` / `/pre-submission-review` | [Extend Claude with skills](https://code.claude.com/docs/en/skills) |
+
+`skills.sh`はGTP専用のinstallerではない。Agent Skills repositoryを探索して複数のSkillを導入する外部CLIである。GTPとPre-submission Reviewは、`skills.sh`のlockやprovenance情報をruntimeで読まない。CLIの引数と挙動は[`vercel-labs/skills`](https://github.com/vercel-labs/skills)で確認できる。
+
+### 2. 手動で入れる代替手順
+
+Node.jsまたは`npx`を使わない場合は、選んだReleaseの**Source code (zip)**または**Source code (tar.gz)**を展開し、次の二directoryを同じ作業でAgentのuser-level認識先へcopyする。片方だけを標準install setとして選ばない。
 
 ```text
 skills/
@@ -91,51 +129,15 @@ skills/
 
 archive直下の`GTP.md`は既存参照向けの入口であり、利用プロジェクトへcopyしない。protocolの正本は`skills/gtp/GTP.md`である。各`agents/openai.yaml`はOpenAI向けの任意metadataであり、Skill本体の分岐ではない。
 
-### 2. Agentのuser-level scopeへ配置する
-
-| Agent | 公式scope | user-level認識先 | 明示的な呼び出し | 公式資料 |
-| --- | --- | --- | --- | --- |
-| Codex | `USER` | `$HOME/.agents/skills/` | `$gtp` / `$pre-submission-review` | [Build skills](https://learn.chatgpt.com/docs/build-skills) |
-| Claude Code | `Personal` | `~/.claude/skills/` | `/gtp` / `/pre-submission-review` | [Extend Claude with skills](https://code.claude.com/docs/en/skills) |
-
-例えばCodexへ両方を入れる場合は、archive内のdirectoryを次のように配置する。
-
-```text
-$HOME/.agents/skills/
-├── gtp/
-└── pre-submission-review/
-```
-
 Skillの共通形式は[Agent Skills specification](https://agentskills.io/specification)に従う。配置後に`/skills`を開くなど、Agentが二つのSkillを認識したことを確認する。表示されない場合はAgentを再起動してからもう一度確認する。
 
-CodexのSkill Installerへ標準インストールを頼む場合は、Releaseを固定し、二つのpathを同じ依頼で明示する。
+### 3. 2.0.7以前から更新する
 
-```text
-$skill-installer
-shinya0x00/github-task-protocolのRelease v2.0.7から、次の二つを同じinstall runでUSER scopeへインストールして。
-- skills/gtp
-- skills/pre-submission-review
-片方だけに縮めず、Skill Installerへ二つのpathを渡して。
-利用プロジェクトにはGTP.mdやSkill fileを置かないで。
-```
+利用するAgent向けの標準コマンドを、source URLだけv2.0.8へ変えて実行する。`--copy`による再導入は、同名のSkill directoryを新しいRelease内容へ置き換える。導入先を直接変更していた場合、その変更は失われるため、必要なら実行前にuser-level認識先の外へ退避する。
 
-この依頼は、Skill Installerのhelperへ次の引数を渡す操作に対応する。`--path`へ二つを同時に並べることが肝であり、二回の別installや、片方だけのinstallへ読み替えない。
+v2.0.6またはv2.0.7で`gtp`だけが入った状態でも、不足分だけを別手順で足さない。v2.0.8の標準コマンドを一回実行し、`gtp`と`pre-submission-review`を同じReleaseから入れ直す。
 
-```text
---repo shinya0x00/github-task-protocol --ref v2.0.7 --path skills/gtp skills/pre-submission-review --dest "$HOME/.agents/skills"
-```
-
-Claude Codeへの手動配置でも、標準インストールではarchive内の二directoryを同じPersonal scopeへ配置する。インストール後に一方を使わないと決めた場合だけ、不要なSkill directoryをuser-level scopeから削除する。GTP独自のinstaller、複数Skill用manifest、install stateは使わない。
-
-複数のAgentを使う場合は、二つのSkillを各Agentのuser-level認識先へ配置する。更新時も、すべての配置先を同じReleaseの内容で置き換える。user-level配置を更新すると、その配置を使う全プロジェクトへ新しいSkill内容が適用される。
-
-### 3. 2.0.6以前から更新する
-
-v2.0.6から更新する場合は、user-level scopeにある既存の`gtp`と`pre-submission-review`のうち、存在するSkill directoryをすべてuser-level scopeの外へ退避する。Skill Installerは同名の導入先が一つでも存在するとabortするため、そのまま二pathを渡して更新しない。
-
-v2.0.6で`skills/gtp`の一つのpathだけを指定してインストールした場合も、不足分だけを足して更新完了とはしない。既存directoryの退避後、v2.0.7の`skills/gtp`と`skills/pre-submission-review`を同じinstall runでインストールする。二つの認識を確認した後、退避した旧directoryを削除する。
-
-2.0.5以前のGTP Skillに含まれていた提出前reviewは、新しいGTP Skillには含まれない。既存の`gtp`をuser-level scopeの外へ退避し、v2.0.7の二つのSkillを同じinstall runで入れ直す。片方が不要なら、二つの認識確認が終わってから不要なSkill directoryだけを削除する。
+2.0.5以前のGTP Skillに含まれていた提出前reviewは、新しいGTP Skillには含まれない。v2.0.8の標準コマンドで、GTP中核と独立したPre-submission Reviewを同時に入れる。片方が不要なら、二つの認識確認が終わってから不要なSkill directoryだけを削除する。
 
 project-local配置を使っていた既存プロジェクトは、先にuser-level配置と認識確認を済ませる。その後、GTPからcopyしたrootの`GTP.md`とproject-localのSkill copyをプロジェクトから削除する。`gtp/decisions/`は判断結果の正本なので残す。
 
