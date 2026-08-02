@@ -70,6 +70,8 @@ Decision-Ref: gtp/decisions/request-id-retry.md
 
 二つのSkillは、利用するAgentのuser-level Skill scopeへ置く。利用プロジェクトへGTP本体やPre-submission Review本体をcopyしない。GTPを使う利用プロジェクトに残るのは、記録条件を満たした`gtp/decisions/*.md`だけである。
 
+`gtp`と`pre-submission-review`は、[`agent-operated/skills`](https://github.com/agent-operated/skills)のcollection release [`v0.1.0`](https://github.com/agent-operated/skills/releases/tag/v0.1.0)にも固定snapshotとして収録されている。他のagent-operated Skillと比較して選ぶ場合は、collectionを入口にする。このcomponent repositoryからのdirect installは廃止せず、以下の固定release経路を引き続き提供する。
+
 ### 1. `skills.sh`で二つを同時に入れる
 
 [Releases](https://github.com/shinya0x00/github-task-protocol/releases)から利用するGTP 2.xのReleaseを選び、GitHubのtag URLを`skills.sh`へ渡す。1.xは責務と配布形式が異なるため、この導入手順の対象外である。1.xが必要な場合は[`LEGACY.md`](LEGACY.md)を参照する。
