@@ -131,11 +131,11 @@ Claude Codeへの手動配置でも、標準インストールではarchive内�
 
 ### 3. 2.0.6以前から更新する
 
-v2.0.6から更新する場合は、user-level scopeにある既存の`gtp`と`pre-submission-review`のうち、存在するSkill directoryをすべて先に退避する。Skill Installerは同名の導入先が一つでも存在するとabortするため、そのまま二pathを渡して更新しない。
+v2.0.6から更新する場合は、user-level scopeにある既存の`gtp`と`pre-submission-review`のうち、存在するSkill directoryをすべてuser-level scopeの外へ退避する。Skill Installerは同名の導入先が一つでも存在するとabortするため、そのまま二pathを渡して更新しない。
 
 v2.0.6で`skills/gtp`の一つのpathだけを指定してインストールした場合も、不足分だけを足して更新完了とはしない。既存directoryの退避後、v2.0.7の`skills/gtp`と`skills/pre-submission-review`を同じinstall runでインストールする。二つの認識を確認した後、退避した旧directoryを削除する。
 
-2.0.5以前のGTP Skillに含まれていた提出前reviewは、新しいGTP Skillには含まれない。既存の`gtp`を退避し、v2.0.7の二つのSkillを同じinstall runで入れ直す。片方が不要なら、二つの認識確認が終わってから不要なSkill directoryだけを削除する。
+2.0.5以前のGTP Skillに含まれていた提出前reviewは、新しいGTP Skillには含まれない。既存の`gtp`をuser-level scopeの外へ退避し、v2.0.7の二つのSkillを同じinstall runで入れ直す。片方が不要なら、二つの認識確認が終わってから不要なSkill directoryだけを削除する。
 
 project-local配置を使っていた既存プロジェクトは、先にuser-level配置と認識確認を済ませる。その後、GTPからcopyしたrootの`GTP.md`とproject-localのSkill copyをプロジェクトから削除する。`gtp/decisions/`は判断結果の正本なので残す。
 
