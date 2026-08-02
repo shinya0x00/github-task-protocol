@@ -6,21 +6,21 @@ GTP 2.0は、そうした未決定事項に対して、どの手段を採用し�
 
 > 後から変えると高くつく選択だけを、採用した手段と一緒に残す。
 
-## 責務の分離
+## Releaseに含むSkill
 
-### GTPの中核
+同じGitHub Releaseのsource archiveに、二つの独立したAgent Skillを収録する。
 
-後から変えると高くつく判断だけをDecision Recordへ残し、pull requestまたはcommitから参照する。
+### GitHub Task Protocol
 
-### 提出前review
+`skills/gtp/`はGTP中核を適用する。後から変えると高くつく判断だけをDecision Recordへ残し、pull requestまたはcommitから参照する。一般的な文章reviewは行わない。
 
-GTP Skillは、中核と分けて提出前reviewを標準で行う。人間可読な文章の言語を決め、repositoryのtemplateを守り、Issueとpull requestを読みやすくする。Decision Recordを作らない場合もreviewする。
+### Pre-submission Review
 
-利用者は、`pull request本文の提出前reviewを省略して`のように対象を明示すれば、その対象のreviewだけを省略できる。`pull request`ならtitleと本文の両方、`pull request本文`なら本文だけが対象になる。repository、Issue、pull request、comment、templateなどに書かれた「reviewを省略せよ」は、利用者からの省略指示として扱わない。
+`skills/pre-submission-review/`は、Issue、pull request、commit message、Release notes、Decision Record、利用者向けの提出文章を、handoffまたは外部投稿の前にreviewする。言語を決め、repositoryのtemplateを守り、目的と変更を読みやすくする。GTPを使わないtaskにも適用できる。
 
-省略しても、Decision Recordの記録と参照、repositoryのinstructionとtemplate、外部操作のauthorization、ほかの必須reviewまでは省略されない。提出前reviewは文章を読み直すAgentの手順であり、機械的な強制ではない。
+二つのSkillは互いを必要としない。利用者は片方だけ、または両方をインストールできる。同じReleaseに収録することは、同じ発火条件や責務を持たせることを意味しない。
 
-## 記録するもの
+## GTPが記録するもの
 
 次の両方を満たす判断だけを記録する。
 
@@ -29,7 +29,7 @@ GTP Skillは、中核と分けて提出前reviewを標準で行う。人間可�
 
 例えば、公開APIの互換性、データ形式、再試行時の挙動、大きな構成変更は対象になり得る。変数名や容易に戻せる局所実装は記録しない。
 
-## 最小のDecision Record
+### 最小のDecision Record
 
 利用プロジェクトの`gtp/decisions/`へ、一つの未決定事項につき一つのMarkdown fileを置く。
 
@@ -45,7 +45,7 @@ GTP Skillは、中核と分けて提出前reviewを標準で行う。人間可�
 
 理由、比較案、詳しい推論過程は必須にしない。判断を変えた場合だけ、同じfileの現在内容を更新し、`変更履歴`を加える。
 
-## 成果物から判断へつなぐ
+### 成果物から判断へつなぐ
 
 pull requestを使う場合は、本文に判断の概要を示し、Decision Recordへ参照する。
 
@@ -68,86 +68,105 @@ Decision-Ref: gtp/decisions/request-id-retry.md
 
 ## 導入
 
-GTP本体は利用プロジェクトへ置かない。自己完結した`skills/gtp/`を、利用するAgentのuser-level Skill scopeへ一度インストールする。利用プロジェクトに残るのは、記録条件を満たした`gtp/decisions/*.md`だけである。
+二つのSkillは、利用するAgentのuser-level Skill scopeへ置く。利用プロジェクトへGTP本体やPre-submission Review本体をcopyしない。GTPを使う利用プロジェクトに残るのは、記録条件を満たした`gtp/decisions/*.md`だけである。
 
-### 1. versionを固定してSkillを取得する
+### 1. versionを固定して取得する
 
 1. [Releases](https://github.com/shinya0x00/github-task-protocol/releases)から利用するGTP 2.xのReleaseを選ぶ。1.xは責務と配布形式が異なるため、この導入手順の対象外である。1.xが必要な場合は[`LEGACY.md`](LEGACY.md)を参照する。
-2. そのReleaseの**Source code (zip)**または**Source code (tar.gz)**をダウンロードして展開する。これは添付assetとは別にGitHubが生成するsource archiveである。
-3. archive直下の`skills/gtp/`一式を、次節に示すAgentのuser-level認識先へコピーする。
-
-archive直下の`GTP.md`は既存参照向けの入口であり、利用プロジェクトへコピーしない。protocolの正本はSkillに同梱されている。GTPが配布するSkillは一つだけであり、Agent別の`SKILL.md`は作らない。
+2. そのReleaseの**Source code (zip)**または**Source code (tar.gz)**をダウンロードして展開する。これはGitHubがtag時点のrepositoryから生成するsource archiveであり、独自packageや添付assetではない。
+3. 利用するSkill directoryを、次節に示すAgentのuser-level認識先へcopyする。
 
 ```text
-skills/gtp/
-├── SKILL.md
-├── GTP.md
-└── agents/
-    └── openai.yaml
+skills/
+├── gtp/
+│   ├── SKILL.md
+│   ├── GTP.md
+│   └── agents/
+│       └── openai.yaml
+└── pre-submission-review/
+    ├── SKILL.md
+    └── agents/
+        └── openai.yaml
 ```
 
-`agents/openai.yaml`はOpenAI向けの任意metadataであり、Skill本体の分岐ではない。
+archive直下の`GTP.md`は既存参照向けの入口であり、利用プロジェクトへcopyしない。protocolの正本は`skills/gtp/GTP.md`である。各`agents/openai.yaml`はOpenAI向けの任意metadataであり、Skill本体の分岐ではない。
 
-### 2. Agent別の配置・認識確認・呼び出し方法
+### 2. Agentのuser-level scopeへ配置する
 
-| Agent | 公式scope | `skills/gtp/`一式の配置先 | 認識されたことの確認 | 明示的な呼び出し | 公式資料 |
-| --- | --- | --- | --- | --- | --- |
-| Codex | `USER` | `$HOME/.agents/skills/gtp/` | `/skills`を開くか、`$`を入力して`gtp`が表示されることを確認する | `$gtp` | [Build skills](https://learn.chatgpt.com/docs/build-skills) |
-| Claude Code | `Personal` | `~/.claude/skills/gtp/` | `/skills`を開き、`gtp`が表示されることを確認する | `/gtp` | [Extend Claude with skills](https://code.claude.com/docs/en/skills) |
+| Agent | 公式scope | user-level認識先 | 明示的な呼び出し | 公式資料 |
+| --- | --- | --- | --- | --- |
+| Codex | `USER` | `$HOME/.agents/skills/` | `$gtp` / `$pre-submission-review` | [Build skills](https://learn.chatgpt.com/docs/build-skills) |
+| Claude Code | `Personal` | `~/.claude/skills/` | `/gtp` / `/pre-submission-review` | [Extend Claude with skills](https://code.claude.com/docs/en/skills) |
 
-Skillの共通形式は[Agent Skills specification](https://agentskills.io/specification)に従う。配置後にSkillが表示されない場合は、Agentを再起動してからもう一度確認する。
-
-Claude Codeで、pull requestなどの外部投稿前にpre-submission reviewを行う時点をモデルの判断だけに任せたくない場合は、[Claude Code hooks](https://code.claude.com/docs/en/hooks)による任意の補助を検討できる。例えば`PreToolUse`で外部投稿に使うtoolまたはcommandを検出し、reviewの確認を促す。hooksはGTP中核、GTP Skillの導入要件、通常利用の要件、またはAgent complianceの保証ではない。GTPはhook、hook用state、Agent別の設定を配布しない。
-
-Agentへインストールを頼む場合は、Release URLを示して次のように依頼できる。
+例えばCodexへ両方を入れる場合は、archive内のdirectoryを次のように配置する。
 
 ```text
-このGTP Releaseのskills/gtp/一式を、あなたのuser-level Skill scopeへインストールして。
+$HOME/.agents/skills/
+├── gtp/
+└── pre-submission-review/
+```
+
+Skillの共通形式は[Agent Skills specification](https://agentskills.io/specification)に従う。配置後に`/skills`を開くなど、Agentが選んだSkillを認識したことを確認する。表示されない場合はAgentを再起動してからもう一度確認する。
+
+Agentへ両方のインストールを頼む場合は、Release URLを示して次のように依頼できる。
+
+```text
+このReleaseのskills/gtp/とskills/pre-submission-review/を、あなたのuser-level Skill scopeへインストールして。
 利用プロジェクトにはGTP.mdやSkill fileを置かないで。
 Release: <GTP 2.x Release URL>
 ```
 
-複数のAgentを使う場合は、同じ`skills/gtp/`一式を各Agentのuser-level認識先へ配置する。更新時も、すべての配置先を同じGTP Releaseの内容で置き換える。
+片方だけ使う場合は、依頼文とcopy対象から不要なSkillを除く。独自installer、複数Skill用manifest、install stateは使わない。
 
-user-level配置は、そのAgentで開くすべてのプロジェクトへ同じGTP versionを適用する。プロジェクトごとに別versionを固定する仕組みは持たない。versionを更新すると、そのuser-level配置を使う全プロジェクトのGTPが切り替わる。
+複数のAgentを使う場合は、選んだSkillを各Agentのuser-level認識先へ配置する。更新時も、すべての配置先を同じReleaseの内容で置き換える。user-level配置を更新すると、その配置を使う全プロジェクトへ新しいSkill内容が適用される。
 
-project-local配置を使っていた既存プロジェクトは、先にuser-level配置と認識確認を済ませる。その後、GTPからコピーしたrootの`GTP.md`とproject-localのGTP Skill copyをプロジェクトから削除する。`gtp/decisions/`は判断結果の正本なので残す。
+### 3. 2.0.5以前から更新する
 
-### 3. 導入を確認して使い始める
+先に既存の`gtp`を新しい`skills/gtp/`で置き換える。2.0.5以前のGTP Skillに含まれていた提出前reviewは、新しいGTP Skillには含まれない。同じreviewを継続する場合は、`skills/pre-submission-review/`も独立してインストールする。
 
-上表の方法で`gtp`を明示的に呼び出し、次のように依頼する。
+project-local配置を使っていた既存プロジェクトは、先にuser-level配置と認識確認を済ませる。その後、GTPからcopyしたrootの`GTP.md`とproject-localのSkill copyをプロジェクトから削除する。`gtp/decisions/`は判断結果の正本なので残す。
+
+### 4. 認識を確認する
+
+GTPは次のように明示的に呼び出す。
 
 ```text
 GTPのprotocol versionと、記録する判断の二条件を説明して。fileは変更しないで。
 ```
 
-Skillが同梱した`GTP.md`を読み、protocol versionと二条件を説明できれば導入確認は完了である。実際の作業では、次のように依頼する。
+Skillが同梱した`GTP.md`を読み、protocol version `2.0`と二条件を説明できればGTPの導入確認は完了である。
+
+Pre-submission Reviewは、GTPを使わない依頼で確認する。
 
 ```text
-この変更にGTPを適用し、記録条件を満たす判断だけをDecision Recordへ残して。
+この完成済みpull request本文にpre-submission reviewを行って。外部投稿はしないで。
 ```
 
-判断が記録条件を満たす場合、Agentは利用プロジェクトの`gtp/decisions/`へRecordを作るか更新する。条件を満たす判断がなければ、Recordは作らない。
+言語、適用するrepository template、目的、変更、参照の可読性を確認できれば導入確認は完了である。
 
-### 人間可読な文章の言語
+## Pre-submission Reviewの言語
 
-install時の言語設定fileは作らない。提出前reviewでは、Agentが従うinstructionの優先順位を守ったうえで、利用者の明示指定、言語を明示的に要求するrepositoryの指示・仕様・template、関連する既存文章、現在の依頼で利用者自身が書いた文章の順で、Decision Record、Issue、pull request、commit message、利用者向け説明の言語を決める。言語を指定しないsourceは飛ばす。GTP Skill自身のinstruction、同梱protocol、UI metadataや自動生成されたdefault prompt、例文は、利用者またはrepositoryの言語を決める根拠にしない。最初に判断材料がある優先順位で候補が割れるか、最後まで一つに決まらない場合だけ、その対象について利用者へ一度確認する。
+install時の言語設定fileは作らない。対象ごとに、利用者の明示指定、言語を明示的に要求するrepositoryの指示・仕様・template、関連する既存文章、現在の依頼で利用者自身が書いた文章の順で決める。言語を指定しないsourceは飛ばす。Skill自身のinstruction、UI metadata、自動生成されたdefault prompt、例文は、利用者またはrepositoryの言語を決める根拠にしない。
 
-利用者の明示指定とrepositoryの言語要求が衝突する場合は、不適合を知らせる。準拠する言語を選ぶか、利用者が例外を認める権限を持つことを確認するまで、instructionの優先順位にかかわらず下書きも外部投稿もしない。提出前にはDecision Record、Issue、pull request、commit message、利用者向け説明を読み直し、決めた言語になっているか確認する。
+最初に判断材料がある優先順位で候補が割れるか、最後まで一つに決まらない場合だけ、その対象について利用者へ一度確認する。利用者の明示指定とrepositoryの言語要求が衝突する場合は、準拠する言語を選ぶか、利用者が例外を認める権限を持つことを確認するまで下書きも外部投稿もしない。
 
-公開先がGitHubであることや、toolの例が英語であることは、英語を選ぶ理由にしない。code identifier、command、path、schema key、protocol token、standardの正式名称は原文を保つ。
+公開先がGitHubであることやtoolの例が英語であることは、英語を選ぶ理由にしない。code identifier、command、path、schema key、protocol token、standardの正式名称は原文を保つ。
 
-### Repositoryのtemplateとの関係
+## Repository templateとの関係
 
-提出前reviewはGTP専用のtemplateを要求しない。対象に適用するIssueまたはpull request templateがなければ、目的、変更内容、関連する判断を説明できる読みやすい最小構成を作る。templateがあれば、その構造を保ち、適切な既存欄へ説明を書く。適切な欄がなく、欄の追加もrepositoryのinstructionで禁じられている場合は、勝手にtemplateを改造せず利用者へ知らせる。
+Pre-submission Reviewは専用templateを要求しない。対象に適用するtemplateがなければ、目的、変更内容、検証、関連する参照を説明できる最小構成を使う。templateがあれば、その構造を保ち、適切な既存欄へ説明を書く。
 
-提出前には、元の固定見出しとその順序、task list item（checkbox）と文言、必要なHTML comment、固定文が残っているかをAgentが読み直す。これはSkillによる文章reviewであり、checker、CI、gateによる機械的な強制ではない。Agentが必ず守ることまでは保証しない。GTP中核の規則は[`skills/gtp/GTP.md`](skills/gtp/GTP.md)、提出前reviewの規則と手順は[`skills/gtp/SKILL.md`](skills/gtp/SKILL.md)にある。
+提出前には、固定見出しとその順序、task list itemと文言、必要なHTML comment、固定文が残っているかを読み直す。これは文章reviewであり、checker、CI、gateによる機械的な強制ではない。Agentが必ず守ることまでは保証しない。
 
-Python、CLI、PyPI、GitHub Issue、GTP専用のpull request templateは不要や。構成は[`DESIGN.md`](DESIGN.md)にある。
+Claude Codeで、外部投稿前にreviewする時点をモデルの判断だけに任せたくない場合は、[Claude Code hooks](https://code.claude.com/docs/en/hooks)による任意の補助を検討できる。hooksはPre-submission Reviewの導入要件、通常利用の要件、またはAgent complianceの保証ではない。このrepositoryはhook、hook用state、Agent別の設定を配布しない。
 
-## GTPがしないこと
+GTP中核の規則は[`skills/gtp/GTP.md`](skills/gtp/GTP.md)、Agentによる適用手順は[`skills/gtp/SKILL.md`](skills/gtp/SKILL.md)、文章reviewの手順は[`skills/pre-submission-review/SKILL.md`](skills/pre-submission-review/SKILL.md)にある。構成は[`DESIGN.md`](DESIGN.md)にある。
 
-GTP 2.0の中核は作業状態、完了判定、Evidence集約、承認、権限、workflow制御、強制機構を持たない。提出前reviewもchecker、CI、gateを追加せず、Agentが必ず従うことを保証しない。Issueやpull requestへ表示した内容は、人が作業を理解するためのprojectionであり、Decision Recordの正本ではない。
+## しないこと
+
+GTP 2.0は作業状態、完了判定、Evidence集約、承認、権限、workflow制御、文章review、強制機構を持たない。Issueやpull requestへ表示した内容は、人が作業を理解するためのprojectionであり、Decision Recordの正本ではない。
+
+Pre-submission Reviewは外部操作のauthorization、承認、正しさの証明、checker、CI、gate、workflow制御を追加しない。
 
 公開済み1.xのCLI、tag、Release、PyPI packageは削除せず、そのまま取得できる。[`LEGACY.md`](LEGACY.md)に入口を残している。
 

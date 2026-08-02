@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pre-submission Review"
+  short_description: "Issue・PR・commitなどの提出用文章を読み直す"
+  default_prompt: "Use $pre-submission-review to review this completed pull request body before submission."
