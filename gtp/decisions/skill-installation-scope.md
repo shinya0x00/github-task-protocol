@@ -11,4 +11,4 @@ GTP本体を利用プロジェクトごとに置くか、Agentのuser-level Skil
 ## 変更履歴
 
 - [PR #160](https://github.com/shinya0x00/github-task-protocol/pull/160)で、GTPだけを標準配置する方式から、GTPとPre-submission Reviewを標準インストールで同時に配置し、不要分は導入後に削除する方式へ変更。
-- この変更で、二つのpathをAgentへ解釈させる導入から、Release tag URLと二つのSkill名を`skills.sh`へ機械的に渡す導入へ変更し、外部CLIのlockとGTP独自stateの境界を追加。
+- [PR #162](https://github.com/shinya0x00/github-task-protocol/pull/162)で、二つのpathをAgentへ解釈させる導入から、Release tag URLと二つのSkill名を`skills.sh`へ機械的に渡す導入へ変更し、外部CLIのlockとGTP独自stateの境界を追加。
