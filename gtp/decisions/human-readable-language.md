@@ -19,4 +19,4 @@ Agentが従うべきinstructionの優先順位を先に守る。言語の指定�
 
 ## 変更履歴
 
-- この変更で、言語決定手順の所有者をGTP Skill内の提出前reviewから、独立したPre-submission Review Skillへ変更。
+- [PR #159](https://github.com/shinya0x00/github-task-protocol/pull/159)で、言語決定手順の所有者をGTP Skill内の提出前reviewから、独立したPre-submission Review Skillへ変更。

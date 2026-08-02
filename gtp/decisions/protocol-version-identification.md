@@ -9,4 +9,4 @@
 ## 変更履歴
 
 - [PR #155](https://github.com/shinya0x00/github-task-protocol/pull/155)で、利用projectへcopyするroot `GTP.md`から、Skill直下の`GTP.md`へversion表示先を変更。
-- この変更で、Pre-submission Review SkillをGTP protocol versionの表示対象に含めない境界を追加。
+- [PR #159](https://github.com/shinya0x00/github-task-protocol/pull/159)で、Pre-submission Review SkillをGTP protocol versionの表示対象に含めない境界を追加。
