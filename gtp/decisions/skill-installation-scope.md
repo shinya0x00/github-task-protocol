@@ -10,4 +10,4 @@ GTP本体を利用プロジェクトごとに置くか、Agentのuser-level Skil
 
 ## 変更履歴
 
-- GTPだけを標準配置する方式から、GTPとPre-submission Reviewを標準インストールで同時に配置し、不要分は導入後に削除する方式へ変更。
+- [PR #160](https://github.com/shinya0x00/github-task-protocol/pull/160)で、GTPだけを標準配置する方式から、GTPとPre-submission Reviewを標準インストールで同時に配置し、不要分は導入後に削除する方式へ変更。

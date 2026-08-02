@@ -12,4 +12,4 @@ rootの`GTP.md`は既存参照向けのprojectionとし、導入時のcopy対象
 
 - [PR #155](https://github.com/shinya0x00/github-task-protocol/pull/155)で、projectごとに`GTP.md`とSkillを置く配布から、protocolを同梱した自己完結Skillだけをuser-level scopeへ置く配布へ変更。
 - [PR #159](https://github.com/shinya0x00/github-task-protocol/pull/159)で、単一のGTP Skillだけを収録する配布から、GTPとPre-submission Reviewを独立したSkillとして同じGitHub Release source archiveへ収録する配布へ変更。
-- 二つから事前に選ぶ導入から、標準インストールで両方を入れ、不要分は導入後に削除する方式へ変更。
+- [PR #160](https://github.com/shinya0x00/github-task-protocol/pull/160)で、二つから事前に選ぶ導入から、標準インストールで両方を入れ、不要分は導入後に削除する方式へ変更。
