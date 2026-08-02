@@ -94,9 +94,10 @@ skills/gtp/
 | --- | --- | --- | --- | --- | --- |
 | Codex | `USER` | `$HOME/.agents/skills/gtp/` | `/skills`を開くか、`$`を入力して`gtp`が表示されることを確認する | `$gtp` | [Build skills](https://learn.chatgpt.com/docs/build-skills) |
 | Claude Code | `Personal` | `~/.claude/skills/gtp/` | `/skills`を開き、`gtp`が表示されることを確認する | `/gtp` | [Extend Claude with skills](https://code.claude.com/docs/en/skills) |
-| Cursor | `User-level` | `~/.agents/skills/gtp/`または`~/.cursor/skills/gtp/` | Agent chatで`/`を入力し、`gtp`を検索できることを確認する | `/gtp` | [Agent Skills](https://cursor.com/docs/skills) |
 
 Skillの共通形式は[Agent Skills specification](https://agentskills.io/specification)に従う。配置後にSkillが表示されない場合は、Agentを再起動してからもう一度確認する。
+
+Claude Codeで、pull requestなどの外部投稿前にpre-submission reviewを行う時点をモデルの判断だけに任せたくない場合は、[Claude Code hooks](https://code.claude.com/docs/en/hooks)による任意の補助を検討できる。例えば`PreToolUse`で外部投稿に使うtoolまたはcommandを検出し、reviewの確認を促す。hooksはGTP中核、GTP Skillの導入要件、通常利用の要件、またはAgent complianceの保証ではない。GTPはhook、hook用state、Agent別の設定を配布しない。
 
 Agentへインストールを頼む場合は、Release URLを示して次のように依頼できる。
 
@@ -106,11 +107,11 @@ Agentへインストールを頼む場合は、Release URLを示して次のよ�
 Release: <GTP 2.x Release URL>
 ```
 
-複数のAgentを使う場合は、同じ`skills/gtp/`一式を各Agentのuser-level認識先へ配置する。CodexとCursorは`~/.agents/skills/gtp/`を共有できる。更新時も、すべての配置先を同じGTP Releaseの内容で置き換える。
+複数のAgentを使う場合は、同じ`skills/gtp/`一式を各Agentのuser-level認識先へ配置する。更新時も、すべての配置先を同じGTP Releaseの内容で置き換える。
 
 user-level配置は、そのAgentで開くすべてのプロジェクトへ同じGTP versionを適用する。プロジェクトごとに別versionを固定する仕組みは持たない。versionを更新すると、そのuser-level配置を使う全プロジェクトのGTPが切り替わる。
 
-project-local配置を使っていた既存プロジェクトは、先にuser-level配置と認識確認を済ませる。その後、GTPからコピーしたrootの`GTP.md`、`.agents/skills/gtp/`、`.claude/skills/gtp/`、`.cursor/skills/gtp/`をプロジェクトから削除する。`gtp/decisions/`は判断結果の正本なので残す。
+project-local配置を使っていた既存プロジェクトは、先にuser-level配置と認識確認を済ませる。その後、GTPからコピーしたrootの`GTP.md`とproject-localのGTP Skill copyをプロジェクトから削除する。`gtp/decisions/`は判断結果の正本なので残す。
 
 ### 3. 導入を確認して使い始める
 
