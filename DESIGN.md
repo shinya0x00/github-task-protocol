@@ -55,6 +55,8 @@ commitからの参照には、Gitが定義する[trailer](https://git-scm.com/do
 
 ## Distribution
 
-tag時点のrepositoryを含むGitHub Release source archiveを配布単位とする。archive内の`skills/gtp/`と`skills/pre-submission-review/`は、Agent Skills形式に従う独立したSkill directoryである。利用者は片方または両方を、Agentが公式に定めるuser-level Skill scopeへ配置する。
+tag時点のrepositoryを含むGitHub Release source archiveを配布単位とする。archive内の`skills/gtp/`と`skills/pre-submission-review/`は、Agent Skills形式に従う独立したSkill directoryである。標準インストールでは、二つを同じinstall runで、Agentが公式に定めるuser-level Skill scopeへ配置する。インストール後に片方が不要なら、そのSkill directoryだけを削除する。
+
+二つは実行時には互いを必要としない。標準install setを二つに固定することは、発火条件、手順、成果物の所有者を統合することを意味しない。
 
 独自package、複数Skill用manifest、installer、install stateは追加しない。利用プロジェクトにはSkill本体を置かない。tagとGitHub Releaseでsourceを固定できるが、GitHubやPython package managerをprotocol要件にはしない。1.xのPython CLIと公開物は[`LEGACY.md`](LEGACY.md)から参照する。
