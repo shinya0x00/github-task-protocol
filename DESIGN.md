@@ -55,8 +55,8 @@ commitからの参照には、Gitが定義する[trailer](https://git-scm.com/do
 
 ## Distribution
 
-tag時点のrepositoryを含むGitHub Release source archiveに、`skills/gtp/`と`skills/pre-submission-review/`をAgent Skills形式に従う独立したSkill directoryとして収録する。標準インストールでは、Release tagのGitHub tree URL、二つのSkill名、対象Agent、global scope、copy方式を`skills.sh`の一回の実行へ明示する。`skills.sh`が二つを探索し、Agentのuser-level Skill scopeへ別directoryとして配置する。インストール後に片方が不要なら、そのSkill directoryだけを削除する。
+tag時点のrepositoryを含むGitHub Release source archiveに、`skills/gtp/`と`skills/pre-submission-review/`をAgent Skills形式に従う独立したSkill directoryとして収録する。標準インストールでは、Release assetのSHA-256を検証し、固定版外部CLI `skills` v1.5.21のtarballもSHA-512で検証してから、検証済みのローカル`skills/`、二つのSkill名、対象Agent、global scope、copy方式を外部CLIの一回の実行へ明示する。CLIが二つを探索し、Agentのuser-level Skill scopeへ別directoryとして配置する。インストール後に片方が不要なら、そのSkill directoryだけを削除する。
 
 二つは実行時には互いを必要としない。標準install setを二つに固定することは、発火条件、手順、成果物の所有者を統合することを意味しない。
 
-GTP独自のpackage、複数Skill用manifest、installer、install stateは追加しない。`skills.sh`が保持するlockまたはprovenance情報は外部CLIの所有物であり、二つのSkillはruntimeで参照しない。利用プロジェクトにはSkill本体を置かない。GitHubと`skills.sh`は標準配布経路であり、GTP protocolの利用要件にはしない。Node.jsまたは`npx`を使わない場合は、同じRelease source archiveから二つを手動配置できる。1.xのPython CLIと公開物は[`LEGACY.md`](LEGACY.md)から参照する。
+GTP独自のpackage、複数Skill用manifest、installer、install stateは追加しない。外部CLIが保持するlockまたはprovenance情報はCLIの所有物であり、二つのSkillはruntimeで参照しない。利用プロジェクトにはSkill本体を置かない。GitHubと外部CLIは標準配布経路であり、GTP protocolの利用要件にはしない。Node.jsまたは`npx`を使わない場合も、SHA-256検証済みの同じRelease source archiveから二つを手動配置できる。1.xのPython CLIと公開物は[`LEGACY.md`](LEGACY.md)から参照する。

@@ -72,49 +72,67 @@ Decision-Ref: gtp/decisions/request-id-retry.md
 
 `gtp`と`pre-submission-review`は、[`agent-operated/skills`](https://github.com/agent-operated/skills)のcollection release [`v0.1.0`](https://github.com/agent-operated/skills/releases/tag/v0.1.0)にも固定snapshotとして収録されている。他のagent-operated Skillと比較して選ぶ場合は、collectionを入口にする。このcomponent repositoryからのdirect installは廃止せず、以下の固定release経路を引き続き提供する。
 
-### 1. `skills.sh`で二つを同時に入れる
+### 1. 固定版`skills`で二つを同時に入れる
 
-[Releases](https://github.com/shinya0x00/github-task-protocol/releases)から利用するGTP 2.xのReleaseを選び、GitHubのtag URLを`skills.sh`へ渡す。1.xは責務と配布形式が異なるため、この導入手順の対象外である。1.xが必要な場合は[`LEGACY.md`](LEGACY.md)を参照する。
+[Releases](https://github.com/shinya0x00/github-task-protocol/releases)から利用するGTP 2.xのReleaseを選ぶ。1.xは責務と配布形式が異なるため、この導入手順の対象外である。1.xが必要な場合は[`LEGACY.md`](LEGACY.md)を参照する。
 
-Codexへv2.0.8の二つのSkillを入れる標準コマンドは次のとおりである。
+v2.0.9では、Release assetとinstallerを検証してから二つのSkillを入れる。可変な`latest`指定やtag名だけに依存せず、source archiveのSHA-256と、外部CLI `skills` v1.5.21のSHA-512を確認する。次の共通準備を一回だけ実行する。
 
 ```sh
-npx --yes skills@latest add \
-  https://github.com/shinya0x00/github-task-protocol/tree/v2.0.8 \
+RELEASE_DIR="$(mktemp -d)"
+cd "$RELEASE_DIR"
+curl -fsSLO https://github.com/shinya0x00/github-task-protocol/releases/download/v2.0.9/github-task-protocol-v2.0.9.tar.gz
+curl -fsSLO https://github.com/shinya0x00/github-task-protocol/releases/download/v2.0.9/SHA256SUMS
+grep ' github-task-protocol-v2.0.9.tar.gz$' SHA256SUMS | shasum -a 256 -c -
+tar -xzf github-task-protocol-v2.0.9.tar.gz
+test "$(tar -tzf github-task-protocol-v2.0.9.tar.gz | grep -Ec '^github-task-protocol-v2.0.9/skills/(gtp|pre-submission-review)/SKILL.md$')" -eq 2
+export SKILLS_TARBALL="$(npm pack --ignore-scripts --silent skills@1.5.21)"
+export SKILLS_SHA512="089e30c7af765244005be0cba63260ff0c3a7490688eae44f2c4013aa3fadfd1aeb4eef6bf8105895fdfab57ad5b6afd36133f9b0688abc628a8a149f5757b9e"
+printf '%s  %s\n' "$SKILLS_SHA512" "$SKILLS_TARBALL" | shasum -a 512 -c -
+export SOURCE_DIR="$RELEASE_DIR/github-task-protocol-v2.0.9/skills"
+```
+
+検証が成功したあと、使うAgentを選んで実行する。最後の`--yes`は付けず、CLIが表示するSkill一覧を確認してから続行する。
+
+Codex:
+
+```sh
+npm exec --ignore-scripts --yes --package="./${SKILLS_TARBALL}" -- skills add \
+  "$SOURCE_DIR" \
   --skill gtp --skill pre-submission-review \
-  --global --agent codex --copy --yes
+  --global --agent codex --copy
 ```
 
 Claude CodeではAgent名だけを変える。
 
 ```sh
-npx --yes skills@latest add \
-  https://github.com/shinya0x00/github-task-protocol/tree/v2.0.8 \
+npm exec --ignore-scripts --yes --package="./${SKILLS_TARBALL}" -- skills add \
+  "$SOURCE_DIR" \
   --skill gtp --skill pre-submission-review \
-  --global --agent claude-code --copy --yes
+  --global --agent claude-code --copy
 ```
 
 同じ端末でCodexとClaude Codeの両方を使う場合は、一回の実行へ二つのAgentも指定できる。
 
 ```sh
-npx --yes skills@latest add \
-  https://github.com/shinya0x00/github-task-protocol/tree/v2.0.8 \
+npm exec --ignore-scripts --yes --package="./${SKILLS_TARBALL}" -- skills add \
+  "$SOURCE_DIR" \
   --skill gtp --skill pre-submission-review \
-  --global --agent codex --agent claude-code --copy --yes
+  --global --agent codex --agent claude-code --copy
 ```
 
-tag URLがSkill sourceをv2.0.8へ固定する。二つの`--skill`が標準install setを固定し、`--global`がproject-local配置を避ける。`--copy`は各Skillを独立したdirectoryとして配置する。インストール後に片方が不要なら、そのSkill directoryだけを削除できる。
+`SOURCE_DIR`はSHA-256検証済みRelease archiveからだけ作る。二つの`--skill`が標準install setを固定し、`--global`がproject-local配置を避ける。`--copy`は各Skillを独立したdirectoryとして配置する。インストール後に片方が不要なら、そのSkill directoryだけを削除できる。
 
-| Agent | `skills.sh`のAgent名 | user-level認識先 | 明示的な呼び出し | 公式資料 |
+| Agent | `skills`のAgent名 | user-level認識先 | 明示的な呼び出し | 公式資料 |
 | --- | --- | --- | --- | --- |
 | Codex | `codex` | `$HOME/.agents/skills/` | `$gtp` / `$pre-submission-review` | [Build skills](https://learn.chatgpt.com/docs/build-skills) |
 | Claude Code | `claude-code` | `~/.claude/skills/` | `/gtp` / `/pre-submission-review` | [Extend Claude with skills](https://code.claude.com/docs/en/skills) |
 
-`skills.sh`はGTP専用のinstallerではない。Agent Skills repositoryを探索して複数のSkillを導入する外部CLIである。GTPとPre-submission Reviewは、`skills.sh`のlockやprovenance情報をruntimeで読まない。CLIの引数と挙動は[`vercel-labs/skills`](https://github.com/vercel-labs/skills)で確認できる。
+`skills`はGTP専用のinstallerではない。Agent Skills repositoryを探索して複数のSkillを導入する外部CLIである。利用するCLI版はv1.5.21へ固定し、上記のSHA-512検証が通ったtarballだけを実行する。GTPとPre-submission ReviewはCLIのlockやprovenance情報をruntimeで読まない。CLIの引数と挙動は[`vercel-labs/skills`](https://github.com/vercel-labs/skills)で確認できる。
 
 ### 2. 手動で入れる代替手順
 
-Node.jsまたは`npx`を使わない場合は、選んだReleaseの**Source code (zip)**または**Source code (tar.gz)**を展開し、次の二directoryを同じ作業でAgentのuser-level認識先へcopyする。片方だけを標準install setとして選ばない。
+Node.jsまたは`npx`を使わない場合も、Release asset `github-task-protocol-v2.0.9.tar.gz`のSHA-256を同じReleaseの`SHA256SUMS`で先に検証する。検証に成功したarchiveだけを展開し、次の二directoryを同じ作業でAgentのuser-level認識先へcopyする。片方だけを標準install setとして選ばない。GitHubが自動生成する未検証のzipや、tag名だけを根拠にしたarchiveは使わない。
 
 ```text
 skills/
@@ -135,11 +153,11 @@ Skillの共通形式は[Agent Skills specification](https://agentskills.io/speci
 
 ### 3. 2.0.7以前から更新する
 
-利用するAgent向けの標準コマンドを、source URLだけv2.0.8へ変えて実行する。`--copy`による再導入は、同名のSkill directoryを新しいRelease内容へ置き換える。導入先を直接変更していた場合、その変更は失われるため、必要なら実行前にuser-level認識先の外へ退避する。
+共通準備でv2.0.9のRelease archiveと固定版CLIを検証してから、利用するAgent向けの標準コマンドを実行する。`--copy`による再導入は、同名のSkill directoryを新しいRelease内容へ置き換える。導入先を直接変更していた場合、その変更は失われるため、必要なら実行前にuser-level認識先の外へ退避する。
 
-v2.0.6またはv2.0.7で`gtp`だけが入った状態でも、不足分だけを別手順で足さない。v2.0.8の標準コマンドを一回実行し、`gtp`と`pre-submission-review`を同じReleaseから入れ直す。
+v2.0.6またはv2.0.7で`gtp`だけが入った状態でも、不足分だけを別手順で足さない。v2.0.9の標準コマンドを一回実行し、`gtp`と`pre-submission-review`を同じReleaseから入れ直す。
 
-2.0.5以前のGTP Skillに含まれていた提出前reviewは、新しいGTP Skillには含まれない。v2.0.8の標準コマンドで、GTP中核と独立したPre-submission Reviewを同時に入れる。片方が不要なら、二つの認識確認が終わってから不要なSkill directoryだけを削除する。
+2.0.5以前のGTP Skillに含まれていた提出前reviewは、新しいGTP Skillには含まれない。v2.0.9の標準コマンドで、GTP中核と独立したPre-submission Reviewを同時に入れる。片方が不要なら、二つの認識確認が終わってから不要なSkill directoryだけを削除する。
 
 project-local配置を使っていた既存プロジェクトは、先にuser-level配置と認識確認を済ませる。その後、GTPからcopyしたrootの`GTP.md`とproject-localのSkill copyをプロジェクトから削除する。`gtp/decisions/`は判断結果の正本なので残す。
 
